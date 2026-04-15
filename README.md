@@ -1,3 +1,5 @@
+<img width="1318" height="641" alt="image" src="https://github.com/user-attachments/assets/f4ff5b58-b10c-4700-99d8-a9b6acfa7b51" />
+
 # 📚 Hindi Textbook RAG
 
 Query your scanned Hindi textbook PDFs using AI — **completely free!**
