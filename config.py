@@ -36,8 +36,16 @@ CHROMA_DB_PATH = os.path.join(os.path.dirname(__file__), "chroma_db")
 COLLECTION_NAME = "hindi_textbook"
 
 # ── OCR Configuration ────────────────────────────────────────────────
-OCR_LANGUAGES = ["hi", "en"]    # Hindi + English
-PDF_DPI = 200                   # Resolution for PDF to image conversion
+OCR_LANGUAGES = ["hi", "en"]        # (legacy: EasyOCR format)
+TESSERACT_LANG = "eng+hin+san"      # Tesseract format: English + Hindi + Sanskrit
+PDF_DPI = 200                       # Resolution for PDF to image conversion
+
+# ── Text-layer spot check (language-agnostic corruption defense) ──────
+# Some PDFs have a broken font→Unicode map: the page LOOKS fine but get_text()
+# returns scrambled codepoints. We OCR a few 'direct' pages and compare; if the
+# text layer disagrees strongly with OCR, we distrust it and OCR the document.
+LAYER_CHECK_SAMPLE = 3              # pages to spot-check per document
+LAYER_CHECK_MIN_SIMILARITY = 0.4   # median OCR-vs-layer similarity below this → distrust layer
 
 # ── Paths ─────────────────────────────────────────────────────────────
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
