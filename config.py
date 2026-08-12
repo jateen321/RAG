@@ -24,8 +24,11 @@ EMBEDDING_MODEL = "models/gemini-embedding-001"  # Free Gemini embedding model
 LLM_MODEL = "gemini-2.0-flash-lite"             # Free Gemini Flash Lite (best for free tier)
 
 # ── Chunking Configuration ────────────────────────────────────────────
-CHUNK_SIZE = 500          # Characters per chunk
-CHUNK_OVERLAP = 100       # Overlap between chunks
+CHUNK_SIZE = 800          # Target characters per chunk (soft cap: a chunk may
+                          # slightly overflow to avoid splitting a sentence)
+CHUNK_OVERLAP = 100       # Minimum overlap between chunks (chars). Filled with
+                          # WHOLE trailing sentences until this budget is met, so
+                          # the overlap is boundary-clean AND a real bridge.
 MIN_CHUNK_LENGTH = 50     # Skip chunks shorter than this
 
 # ── Retrieval Configuration ───────────────────────────────────────────
