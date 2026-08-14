@@ -1,0 +1,22 @@
+[
+  {"id":"cil-01-en","language":"en","question":"When does online registration for CIL Management Trainees open?","expected_source":"CIL.pdf","expected_pages":[1],"answer_keywords":["12-05-2026","10.00"]},
+  {"id":"cil-02-hi","language":"hi","question":"ऑनलाइन आवेदन जमा करने की अंतिम तारीख क्या है?","expected_source":"CIL.pdf","expected_pages":[1],"answer_keywords":["11-06-2026","18.00"]},
+  {"id":"cil-03-en","language":"en","question":"Where is Coal India Limited's corporate headquarters?","expected_source":"CIL.pdf","expected_pages":[1],"answer_keywords":["Kolkata"]},
+  {"id":"cil-04-hi","language":"hi","question":"भारत के कुल कोयला उत्पादन में CIL का लगभग कितना योगदान है?","expected_source":"CIL.pdf","expected_pages":[1],"answer_keywords":["75%"]},
+  {"id":"cil-05-en","language":"en","question":"What are the minimum qualifying marks for General, OBC-NCL and EWS candidates?","expected_source":"CIL.pdf","expected_pages":[3],"answer_keywords":["60%"]},
+  {"id":"cil-06-hi","language":"hi","question":"SC, ST और PwBD उम्मीदवारों के लिए न्यूनतम योग्यता अंक कितने हैं?","expected_source":"CIL.pdf","expected_pages":[3],"answer_keywords":["55%"]},
+  {"id":"cil-07-en","language":"en","question":"By what date must final-year candidates expect their results?","expected_source":"CIL.pdf","expected_pages":[3],"answer_keywords":["31.08.2026"]},
+  {"id":"cil-08-hi","language":"hi","question":"बैकलॉग सहित कुल कितनी मैनेजमेंट ट्रेनी रिक्तियां हैं?","expected_source":"CIL.pdf","expected_pages":[5],"answer_keywords":["660"]},
+  {"id":"cil-09-en","language":"en","question":"How many vacancies are reserved for PwD candidates?","expected_source":"CIL.pdf","expected_pages":[5],"answer_keywords":["64"]},
+  {"id":"cil-10-hi","language":"hi","question":"मैनेजमेंट ट्रेनी की अंतिम चयन प्रक्रिया क्या है और क्या इंटरव्यू होगा?","expected_source":"CIL.pdf","expected_pages":[6],"answer_keywords":["CBT","interview"]},
+  {"id":"cil-11-en","language":"en","question":"How will the date of the Computer Based Test be communicated?","expected_source":"CIL.pdf","expected_pages":[6],"answer_keywords":["Admit Card"]},
+  {"id":"cil-12-hi","language":"hi","question":"सरकारी या PSU कर्मचारियों को कौन सा अनापत्ति दस्तावेज देना होगा?","expected_source":"CIL.pdf","expected_pages":[7],"answer_keywords":["NOC","No Objection Certificate"]},
+  {"id":"cil-13-en","language":"en","question":"What is the crucial date used to calculate the upper age limit?","expected_source":"CIL.pdf","expected_pages":[8],"answer_keywords":["30-April-2026"]},
+  {"id":"cil-14-hi","language":"hi","question":"EWS आरक्षण के लिए परिवार की वार्षिक आय सीमा क्या है?","expected_source":"CIL.pdf","expected_pages":[9],"answer_keywords":["8.00 Lakhs"]},
+  {"id":"cil-15-en","language":"en","question":"What is the Management Trainee E-1 pay scale and initial monthly basic pay?","expected_source":"CIL.pdf","expected_pages":[10],"answer_keywords":["60,000","1,80,000"]},
+  {"id":"cil-16-hi","language":"hi","question":"मैनेजमेंट ट्रेनी की ट्रेनिंग और प्रोबेशन कितने समय का है?","expected_source":"CIL.pdf","expected_pages":[10],"answer_keywords":["1-year"]},
+  {"id":"cil-17-en","language":"en","question":"Where must candidates apply online for CIL Management Trainee recruitment?","expected_source":"CIL.pdf","expected_pages":[11],"answer_keywords":["coalindia.in","Career with CIL"]},
+  {"id":"cil-18-hi","language":"hi","question":"आयु प्रमाण के लिए कौन सा प्रमाणपत्र अपलोड करना चाहिए?","expected_source":"CIL.pdf","expected_pages":[11],"answer_keywords":["Matriculation","Secondary Board"]},
+  {"id":"cil-19-en","language":"en","question":"Which email address should candidates use for recruitment queries?","expected_source":"CIL.pdf","expected_pages":[14],"answer_keywords":["mtrecruitment.cil@coalindia.in"]},
+  {"id":"cil-20-hi","language":"hi","question":"भर्ती से जुड़े विवाद किस शहर के अधिकार क्षेत्र में निपटाए जाएंगे?","expected_source":"CIL.pdf","expected_pages":[15],"answer_keywords":["Kolkata"]}
+]

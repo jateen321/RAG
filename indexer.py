@@ -10,20 +10,20 @@ import time
 import hashlib
 import os
 import unicodedata
-from google import genai
 import chromadb
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
 
 from config import (
-    GEMINI_API_KEY, EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP,
+    EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP,
     MIN_CHUNK_LENGTH, CHROMA_DB_PATH, COLLECTION_NAME,
 )
+from llm_client import get_client
 
 console = Console()
 
-# Initialize Gemini client (new SDK)
-_client = genai.Client(api_key=GEMINI_API_KEY)
+# Initialize Gemini client (backend chosen in config: Developer API or Vertex)
+_client = get_client()
 
 
 # Sentence-ending marks across our scripts:
