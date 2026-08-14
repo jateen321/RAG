@@ -19,9 +19,10 @@ from config import LLM_BACKEND, GEMINI_API_KEY, VERTEX_API_KEY
 def get_client() -> genai.Client:
     """Build the Gemini client for the backend selected in config."""
     if LLM_BACKEND == "vertex":
-        # Agent Platform / Vertex express mode — API key only. Passing
-        # project/location alongside api_key is rejected by the SDK (they are
-        # mutually exclusive), so express mode carries no location.
-        return genai.Client(vertexai=True, api_key=VERTEX_API_KEY)
+        # Agent Platform express mode — API key only. `enterprise=True` is the
+        # current name for what older google-genai called `vertexai=True`
+        # (both still work in 2.x). Passing project/location alongside api_key
+        # is rejected by the SDK, so express mode carries no location.
+        return genai.Client(enterprise=True, api_key=VERTEX_API_KEY)
     # Gemini Developer API — simple API-key auth (free tier).
     return genai.Client(api_key=GEMINI_API_KEY)

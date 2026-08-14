@@ -1,6 +1,22 @@
-easyocr>=1.7
-pymupdf>=1.24
-chromadb>=0.5
-google-genai>=1.0
-python-dotenv>=1.0
-rich>=13.0
+# Direct dependencies only — the packages our own code imports.
+# Transitive deps (numpy, starlette, onnxruntime, google-auth, ...) are resolved
+# automatically by pip; do NOT list them here. Regenerate a full snapshot with
+# `pip freeze` only for emergency restore, not as this file.
+
+# ── LLM + vector store ───────────────────────────────────────────────
+google-genai>=1.47      # Gemini Developer API + Vertex/Agent Platform (import: google.genai)
+chromadb>=1.5           # persistent vector database
+
+# ── PDF rendering + OCR ──────────────────────────────────────────────
+pymupdf>=1.26           # PDF -> image rendering (import: fitz)
+pytesseract>=0.3.13     # Tesseract OCR wrapper — needs the `tesseract` binary
+                        # installed separately (e.g. `brew install tesseract tesseract-lang`)
+pillow>=11.0            # image handling for OCR (import: PIL)
+
+# ── Web API ──────────────────────────────────────────────────────────
+fastapi>=0.115          # /ask, /index, /health endpoints (pydantic comes with it)
+uvicorn>=0.30           # ASGI server used to run the FastAPI app
+
+# ── Utilities ────────────────────────────────────────────────────────
+python-dotenv>=1.0      # load .env (import: dotenv)
+rich>=13.0              # pretty console output

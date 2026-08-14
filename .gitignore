@@ -8,3 +8,4 @@ data/*.pdf
 venv/
 evaluation/results*.json
 # CLAUDE.md
+.venv*
