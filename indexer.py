@@ -5,45 +5,100 @@ Takes OCR-extracted text, splits into chunks, embeds with Gemini,
 and stores in a persistent ChromaDB collection.
 """
 
+import re
 import time
 import hashlib
 import os
-from google import genai
+import unicodedata
 import chromadb
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
 
 from config import (
-    GEMINI_API_KEY, EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP,
+    EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP,
     MIN_CHUNK_LENGTH, CHROMA_DB_PATH, COLLECTION_NAME,
 )
+from llm_client import get_client
 
 console = Console()
 
-# Initialize Gemini client (new SDK)
-_client = genai.Client(api_key=GEMINI_API_KEY)
+# Initialize Gemini client (backend chosen in config: Developer API or Vertex)
+_client = get_client()
+
+
+# Sentence-ending marks across our scripts:
+#   . ! ?   → English      ।  ॥   → Devanagari danda / double danda
+_SENTENCE_END = re.compile(r'(?<=[.!?।॥])\s+')
+
+# Zero-width characters OCR sprinkles in (invisible, but they split tokens and
+# make otherwise-identical words compare unequal): ZWSP, ZWNJ, ZWJ, BOM.
+_ZERO_WIDTH = dict.fromkeys(map(ord, "​‌‍﻿"), None)
+
+
+def _clean_text(text: str) -> str:
+    """Normalize extracted/OCR text before chunking.
+
+    - NFC: compose Devanagari matras into their canonical single form so the
+      same word always has the same codepoints (better matching + embedding).
+    - Drop zero-width joiners: OCR noise, invisible, but they fragment tokens.
+    Blank lines (paragraph breaks) are preserved for _split_units; per-sentence
+    whitespace is collapsed later, so no info for splitting is lost here.
+    """
+    text = unicodedata.normalize("NFC", text)
+    return text.translate(_ZERO_WIDTH)
+
+
+def _split_units(text: str) -> list[str]:
+    """Break text into the smallest pieces we refuse to cut across:
+    paragraphs first (blank line), then sentences within each paragraph.
+    Internal whitespace (incl. mid-sentence line breaks) is collapsed so a
+    unit reads as one clean line."""
+    units = []
+    for para in re.split(r'\n\s*\n', text):
+        for sent in _SENTENCE_END.split(para.strip()):
+            sent = re.sub(r'\s+', ' ', sent).strip()
+            if sent:
+                units.append(sent)
+    return units
 
 
 def _chunk_text(text: str, page_num: int) -> list[dict]:
     """
-    Split text into overlapping chunks.
+    Split text into overlapping chunks on natural boundaries.
+
+    Greedily packs whole sentences up to CHUNK_SIZE so a chunk never ends
+    mid-word or mid-sentence. Consecutive chunks overlap by whole trailing
+    sentences, carried back until at least CHUNK_OVERLAP characters are reached
+    (so a tiny marker like "(2)" can't become a useless overlap). A single unit
+    longer than CHUNK_SIZE (e.g. an OCR page with almost no punctuation) is
+    hard-split on character size as a fallback.
 
     Returns list of dicts with 'text', 'page', and 'chunk_id'.
     """
+    # 0. Normalize the text (NFC + strip zero-width OCR noise).
+    text = _clean_text(text)
+
+    # 1. Sentence-sized units, hard-splitting any unit bigger than a chunk.
+    units = []
+    for u in _split_units(text):
+        if len(u) > CHUNK_SIZE:
+            units += [u[i:i + CHUNK_SIZE] for i in range(0, len(u), CHUNK_SIZE)]
+        else:
+            units.append(u)
+
+    # 2. Greedily pack units into chunks up to CHUNK_SIZE.
     chunks = []
-    start = 0
+    current = []          # units accumulated in the chunk being built
+    current_len = 0
     chunk_index = 0
 
-    while start < len(text):
-        end = start + CHUNK_SIZE
-        chunk = text[start:end].strip()
-
+    def flush():
+        nonlocal chunk_index
+        chunk = " ".join(current).strip()
         if len(chunk) >= MIN_CHUNK_LENGTH:
-            # Create a unique ID from content hash
             chunk_id = hashlib.md5(
                 f"p{page_num}_c{chunk_index}_{chunk[:50]}".encode()
             ).hexdigest()
-
             chunks.append({
                 "text": chunk,
                 "page": page_num,
@@ -51,7 +106,23 @@ def _chunk_text(text: str, page_num: int) -> list[dict]:
             })
             chunk_index += 1
 
-        start += CHUNK_SIZE - CHUNK_OVERLAP
+    for unit in units:
+        # +1 accounts for the space we join sentences with.
+        if current and current_len + len(unit) + 1 > CHUNK_SIZE:
+            flush()
+            # 3. Carry whole trailing sentences as overlap until we've
+            #    accumulated at least CHUNK_OVERLAP chars of real context.
+            overlap, olen = [], 0
+            for prev in reversed(current):
+                overlap.insert(0, prev)
+                olen += len(prev) + 1
+                if olen >= CHUNK_OVERLAP:
+                    break
+            current, current_len = overlap, olen
+        current.append(unit)
+        current_len += len(unit) + 1
+
+    flush()  # the final chunk
 
     return chunks
 

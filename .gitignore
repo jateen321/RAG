@@ -4,3 +4,8 @@ __pycache__/
 *.pyc
 data/*.pdf
 .DS_Store
+.venv
+venv/
+evaluation/results*.json
+# CLAUDE.md
+.venv*

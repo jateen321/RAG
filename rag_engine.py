@@ -5,19 +5,22 @@ Retrieves relevant chunks, builds a context-aware prompt,
 and generates answers using Gemini Flash (free).
 """
 
-from google import genai
+from typing import NoReturn
+
 from google.genai import types
+from google.genai.errors import ClientError
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
 
-from config import GEMINI_API_KEY, LLM_MODEL
+from config import LLM_MODEL
+from llm_client import get_client
 from retriever import retrieve
 
 console = Console()
 
-# Initialize Gemini client (new SDK)
-_client = genai.Client(api_key=GEMINI_API_KEY)
+# Initialize Gemini client (backend chosen in config: Developer API or Vertex)
+_client = get_client()
 
 # System prompt for the LLM
 SYSTEM_PROMPT = """You are a helpful study assistant for Hindi textbooks. Your job is to help students learn and understand the content from their books.
@@ -106,3 +109,75 @@ Please answer based on the context above."""
 def ask_simple(question: str) -> str:
     """Simple one-shot question without chat history or source display."""
     return ask(question, chat_history=None, show_sources=False)
+
+
+def _quota_guard(exc: ClientError) -> NoReturn:
+    """Translate a Gemini 429 (quota/rate limit) into a RuntimeError, which the
+    API layer maps to a 503. Any other ClientError propagates unchanged."""
+    if exc.code == 429:
+        raise RuntimeError(
+            "Gemini quota/rate limit reached. Please try again later."
+        ) from exc
+    raise exc
+
+
+def ask_with_sources(question: str) -> dict:
+    """
+    Answer a question and return the answer together with its sources.
+
+    Programmatic sibling of ``ask`` (no rich console output). Used by the
+    FastAPI ``/ask`` route and the evaluation harness.
+
+    Returns:
+        {"answer": str, "sources": [{"page", "source", "distance", "preview"}]}
+
+    Raises:
+        RuntimeError: if nothing is indexed yet (empty / missing collection),
+            so the API can surface a 503.
+    """
+    try:
+        chunks = retrieve(question)      # embedding call — can raise a 429
+    except ClientError as e:
+        _quota_guard(e)                  # 429 → RuntimeError; else re-raised
+
+    if not chunks:
+        raise RuntimeError(
+            "No indexed documents found. Index a PDF before asking questions."
+        )
+
+    # Build the grounding context (same layout as `ask`).
+    context = "\n\n---\n\n".join(
+        f"[पृष्ठ {c['page']} / Page {c['page']}]:\n{c['text']}" for c in chunks
+    )
+    user_message = f"""Context from the textbook:
+
+{context}
+
+---
+
+Student's question: {question}
+
+Please answer based on the context above."""
+
+    try:
+        response = _client.models.generate_content(
+            model=LLM_MODEL,
+            contents=[{"role": "user", "parts": [{"text": user_message}]}],
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+            ),
+        )
+        answer = response.text
+    except ClientError as e:
+        _quota_guard(e)                  # 429 → RuntimeError; else re-raised
+
+    sources = [
+        {
+            "page": c["page"],
+            "source": c["source"],
+            "distance": c["distance"],
+            "preview": c["text"][:120].replace("\n", " "),
+        }
+        for c in chunks
+    ]
+    return {"answer": answer, "sources": sources}
