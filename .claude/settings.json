@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "n=$(git status --porcelain | wc -l | tr -d ' '); [ \"$n\" -gt 0 ] && printf '{\"systemMessage\":\"⚠ %s uncommitted file(s) — consider committing\"}' \"$n\" || true"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_response.filePath // .tool_input.file_path // empty' 2>/dev/null); b=$(basename \"$f\" 2>/dev/null); case \"$b\" in app.py|config.py|requirements.txt|api.py) [ README.md -ot \"$f\" ] && printf '{\"systemMessage\":\"📝 %s changed — README.md documents this surface and is older. Check whether it needs updating.\"}' \"$b\" ;; esac; true"
+          }
+        ]
+      }
+    ]
+  }
+}

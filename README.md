@@ -2,93 +2,218 @@
 
 # 📚 Hindi Textbook RAG
 
-Query your scanned Hindi textbook PDFs using AI — **completely free!**
+Query scanned Hindi textbook PDFs with a local OCR and vector-search pipeline,
+then use Gemini to generate answers from the retrieved text.
 
-Uses **Google Gemini (free API)** for smart answers and **EasyOCR** for Hindi text extraction.
+Uses **Google Gemini** for embeddings and answers, and **Tesseract OCR** for Hindi + Sanskrit + English text extraction. No LangChain — the whole pipeline is hand-rolled.
+
+Tesseract and ChromaDB run locally. Gemini cost and availability depend on the
+selected backend, model, billing status, and project-specific quotas; do not
+assume every configuration is free.
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### 1. Install Tesseract (the OCR engine)
+
+Tesseract is a **native binary**, not a Python package — install it first, plus the Hindi/Sanskrit language data:
+
+```bash
+brew install tesseract tesseract-lang
+```
+
+> 🐧 On Debian/Ubuntu: `sudo apt install tesseract-ocr tesseract-ocr-hin tesseract-ocr-san`
+
+### 2. Create a Virtual Environment
+
+Keep this project's packages isolated from your system Python:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+> 🪟 On Windows: `.venv\Scripts\activate`
+
+Built with **Python 3.14**. Your shell prompt shows `(.venv)` once it's active — the
+remaining steps assume it is. Run `deactivate` to leave.
+
+> 💡 `.venv/` is gitignored. It's disposable: delete it and rebuild from
+> `requirements.txt` any time something gets tangled.
+
+### 3. Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-> ⏳ First install takes a few minutes (EasyOCR downloads ~100MB model).
+### 4. Set Up Your API Key
 
-### 2. Set Up Your Free API Key
+This project talks to Gemini through **one of two backends** — pick with
+`LLM_BACKEND`. The selected backend is shared by **both embedding calls and
+answer generation**:
 
-1. Go to [Google AI Studio](https://aistudio.google.com/)
-2. Click **"Get API Key"** → **"Create API Key"**
-3. Create your `.env` file:
+| `LLM_BACKEND` | Backend | Key used | Key looks like |
+|---|---|---|---|
+| `developer` *(default)* | Gemini Developer API — free tier | `GEMINI_API_KEY` | `AIza…` |
+| `vertex` | Agent Platform / Vertex, express mode | `VERTEX_API_KEY` | `AQ.…` |
+
+For Developer API experimentation, get a key from
+[Google AI Studio](https://aistudio.google.com/apikey), then:
 
 ```bash
 cp .env.example .env
 ```
 
-4. Edit `.env` and paste your key:
+Edit `.env`:
 
 ```
+LLM_BACKEND=developer
 GEMINI_API_KEY=your_actual_key_here
 ```
 
-### 3. Index a PDF
+> 💡 You only need the key for the backend you selected. Switching the API backend is
+> a one-line change in `.env`, but model availability, quotas, and billing can differ
+> between backends.
 
-Drop your Hindi textbook PDF into the `data/` folder, then:
+### 5. Index a PDF
+
+Drop your Hindi textbook PDF into the `data/` folder. Run the interactive picker:
+
+```bash
+python app.py index
+```
+
+Or provide a specific PDF:
 
 ```bash
 python app.py index data/your_textbook.pdf
 ```
 
 This will:
-- Extract Hindi text from every page (OCR)
-- Split into searchable chunks
-- Create embeddings and store them
+- Decide **per page** whether to read the embedded text layer or run OCR
+- Split into boundary-aware, searchable chunks
+- Create embeddings and store them in ChromaDB
 
-### 4. Ask Questions!
+### 6. Ask Questions!
 
-**One-shot question:**
+**One-shot question** — ask in English or Hindi, about whatever you indexed:
+
 ```bash
-python app.py ask "मुगल साम्राज्य की स्थापना कब हुई?"
-python app.py ask "What are the main topics in chapter 1?"
+# English
+python app.py ask "Where is Coal India Limited's corporate headquarters?"
+
+# Hindi
+python app.py ask "भारत के कुल कोयला उत्पादन में CIL का लगभग कितना योगदान है?"
 ```
+
+The application attempts to ground each answer in retrieved chunks. The console
+prints their source files and pages so you can verify the answer against the
+original PDF.
 
 **Interactive chat:**
 ```bash
 python app.py chat
 ```
 
-## 📋 All Commands
+## 📋 CLI Commands
 
 | Command | Description |
 |---|---|
+| `python app.py index` | Pick a PDF from `data/` and index it |
 | `python app.py index <pdf>` | Index a PDF for searching |
 | `python app.py ask "question"` | Ask a one-shot question |
 | `python app.py chat` | Start interactive chat |
-| `python app.py status` | Show database statistics |
+| `python app.py status` | Show indexed documents, pages, and chunk counts |
+| `python app.py remove "<source>"` | Delete all chunks belonging to one indexed PDF |
 | `python app.py reset` | Clear all indexed data |
+
+Use the exact source name shown by `status` when removing one document:
+
+```bash
+python app.py status
+python app.py remove "CIL.pdf"
+```
+
+`remove` preserves other documents. `reset` deletes the complete local
+`chroma_db/` directory. Neither command deletes the original PDFs in `data/`,
+but deleted vectors must be regenerated by indexing the PDFs again.
+
+## 🌐 Web API
+
+The same pipeline is exposed over HTTP with FastAPI:
+
+```bash
+uvicorn api:app --reload
+```
+
+Then open **http://127.0.0.1:8000/docs** for interactive Swagger docs.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | Service info |
+| `GET` | `/health` | Status + index statistics |
+| `POST` | `/ask` | Ask a grounded question — returns the answer **and its sources** |
+| `POST` | `/index` | Index a PDF already sitting in `data/` |
+
+```bash
+curl -X POST http://127.0.0.1:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Where is Coal India Limited headquartered?"}'
+```
+
+Responses carry the answer plus the chunks used as grounding context (page,
+source, distance, and preview).
+
+**Status codes:** `400` for a bad request, `503` when nothing is indexed yet or the Gemini
+quota is exhausted — a rate limit upstream becomes a "try again later" downstream, never a 500.
 
 ## 🏗️ How It Works
 
 ```
-Scanned PDF → EasyOCR (Hindi) → Text Chunks → Gemini Embeddings → ChromaDB
-                                                                      ↓
+                    ┌─ clean text layer ──→ use it directly (fast, no OCR)
+PDF page ──routing ─┤
+                    └─ scanned / garbled ─→ rasterize → Tesseract (hin+san+eng)
+                                                     ↓
+                        Boundary-aware chunks → Gemini Embeddings* → ChromaDB
+                                                                        ↓
 Your Question → Gemini Embedding → Similarity Search → Top 5 Chunks
-                                                                      ↓
-                                          Gemini Flash + Context → Answer!
+                                                                        ↓
+                                            Gemini Flash + Context → Answer!
 ```
+
+`*` Embeddings and answer generation use the backend selected by `LLM_BACKEND`.
+
+**Two defenses worth knowing about:**
+- **Per-page routing** — pages with a usable text layer skip OCR entirely, so indexing is much faster on mixed PDFs.
+- **Corrupt-layer detection** — some PDFs render fine but return scrambled characters from a broken font map. The indexer OCRs a few sample pages and compares them to the text layer; if they disagree, it distrusts the layer and OCRs the whole document.
+
+### Retrieval behavior and current limitations
+
+- The question is embedded as one query vector.
+- ChromaDB searches the shared `hindi_textbook` collection and returns `TOP_K=5`
+  chunks ordered by vector distance.
+- The five complete chunk texts are inserted into the Gemini prompt; the
+  terminal displays only short previews.
+- There is currently no minimum relevance threshold, reranker, or source/PDF
+  filter. A weak or general question can therefore retrieve unrelated chunks.
+- All indexed PDFs share one collection. Use `remove` to delete one source or
+  `reset` to rebuild the complete index.
 
 ## 📁 Project Structure
 
 ```
 RAG/
 ├── app.py              # CLI interface (main entry point)
+├── api.py              # FastAPI web interface (/ask, /index, /health)
 ├── config.py           # Configuration & constants
-├── ocr_engine.py       # PDF → text extraction (EasyOCR)
+├── llm_client.py       # Gemini client factory (Developer API vs Vertex)
+├── ocr_engine.py       # PDF → text, per-page routing + Tesseract OCR
+├── text_quality.py     # Scores the text layer to pick direct vs OCR
 ├── indexer.py          # Text → chunks → embeddings → ChromaDB
 ├── retriever.py        # Semantic search in ChromaDB
 ├── rag_engine.py       # Retrieve + Generate answers
-├── requirements.txt    # Python dependencies
+├── evaluate.py         # Retrieval evaluation harness (Hit@k, MRR, source precision)
+├── requirements.txt    # Python dependencies (direct only)
 ├── .env                # Your API key (private, not in git)
 ├── .env.example        # Template for .env
 ├── data/               # Drop your PDFs here
@@ -101,24 +226,53 @@ Edit `config.py` to tune these settings:
 
 | Setting | Default | Description |
 |---|---|---|
-| `CHUNK_SIZE` | 500 | Characters per chunk |
-| `CHUNK_OVERLAP` | 100 | Overlap between chunks |
+| `CHUNK_SIZE` | 800 | Target characters per chunk (soft cap — respects boundaries) |
+| `CHUNK_OVERLAP` | 100 | Minimum overlap between chunks |
+| `MIN_CHUNK_LENGTH` | 50 | Skip chunks shorter than this |
 | `TOP_K` | 5 | Number of chunks to retrieve |
-| `PDF_DPI` | 200 | OCR scan resolution |
-| `LLM_MODEL` | gemini-2.0-flash | Gemini model to use |
+| `PDF_DPI` | 300 | OCR scan resolution (Tesseract's recommended minimum) |
+| `TESSERACT_LANG` | `eng+hin+san` | OCR languages (English + Hindi + Sanskrit) |
+| `EMBEDDING_MODEL` | `gemini-embedding-001` | Embedding model |
+| `LLM_MODEL` | `gemini-2.5-flash` | Generation model |
+
+> **Embedding model lifecycle:** This application currently uses
+> `gemini-embedding-001`, which remains available for text-only workloads.
+> Google's live deprecation schedule lists May 14, 2028 as its earliest shutdown
+> date and recommends `gemini-embedding-2` as the replacement. Changing embedding
+> models requires rebuilding the ChromaDB index because vectors produced by
+> different models are not interchangeable. See Google's
+> [deprecation schedule](https://ai.google.dev/gemini-api/docs/deprecations?hl=en)
+> and [embeddings guide](https://ai.google.dev/gemini-api/docs/embeddings?hl=en).
 
 ## 💡 Tips
 
-- **Better OCR quality**: Use higher `PDF_DPI` (300) for low-quality scans, but it's slower.
+- **OCR resolution trade-off**: `PDF_DPI` defaults to 300, Tesseract's recommended
+  minimum for small glyphs such as Devanagari matras. Pixel count scales with the
+  *square* of DPI, so 300 costs ~2.25× the OCR time of 200. Drop to 200 if your
+  scans are clean and indexing is too slow; going above 300 rarely helps.
+- **Changing `PDF_DPI` requires a re-index — and `remove` first**: a new DPI
+  produces different OCR text, which produces different chunk IDs. Re-indexing
+  without removing first *adds* a second copy of every page instead of replacing
+  it. Run `python app.py remove "<source>"`, then index again.
 - **Index multiple books**: Run `index` on multiple PDFs — they all go into the same database.
 - **Ask in any language**: Questions can be in Hindi, English, or mixed.
-- **Rate limits**: Free Gemini API allows ~15 requests/minute. If you hit limits, wait a minute.
+- **Rate limits vary**: Limits depend on the backend, model, region, billing tier,
+  and Google Cloud project. Check the quota assigned to your credential instead
+  of assuming a fixed requests-per-minute value.
+- **Embedding retries**: The indexer embeds up to 20 chunks per call, waits one
+  second between batches, and retries a quota-related failure once after 30
+  seconds. Projects with very low RPM limits can still receive `429` responses.
+- **Model migration**: Do not query existing vectors with a different embedding
+  model, even when both models output the same number of dimensions. Create a
+  new collection or reset and reindex every PDF.
 
 ## 🔧 Troubleshooting
 
 | Issue | Solution |
 |---|---|
-| `GEMINI_API_KEY not set` | Create `.env` file with your key |
-| OCR gives poor results | Increase `PDF_DPI` to 300 in `config.py` |
-| Rate limit errors | Wait 1-2 minutes, free API has limits |
-| `No indexed documents` | Run `python app.py index <pdf>` first |
+| `LLM_BACKEND=developer but GEMINI_API_KEY is not set` | Add the matching key to `.env` for the backend you chose |
+| `tesseract is not installed` / empty OCR output | `brew install tesseract tesseract-lang` (see step 1) |
+| Garbled Hindi from a PDF that looks fine | Expected — corrupt-layer detection should force OCR automatically |
+| OCR gives poor results | `PDF_DPI` is already 300; raising it further rarely helps. Confirm `TESSERACT_LANG` covers the script, and check whether the page was routed to `direct` rather than `ocr` |
+| `429` / rate limit errors | Check the quota for the selected backend/model/region, reduce request frequency, and retry with backoff |
+| `No indexed documents` (HTTP 503) | Run `python app.py index <pdf>` first |
