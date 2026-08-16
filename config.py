@@ -55,7 +55,10 @@ COLLECTION_NAME = "hindi_textbook"
 # ── OCR Configuration ────────────────────────────────────────────────
 OCR_LANGUAGES = ["hi", "en"]        # (legacy: EasyOCR format)
 TESSERACT_LANG = "eng+hin+san"      # Tesseract format: English + Hindi + Sanskrit
-PDF_DPI = 200                       # Resolution for PDF to image conversion
+PDF_DPI = 300                       # Resolution for PDF to image conversion
+                                    # 300 is Tesseract's recommended minimum for
+                                    # small/complex glyphs (Devanagari matras).
+                                    # Costs ~2.25x the pixels of 200 → slower OCR.
 
 # ── Text-layer spot check (language-agnostic corruption defense) ──────
 # Some PDFs have a broken font→Unicode map: the page LOOKS fine but get_text()

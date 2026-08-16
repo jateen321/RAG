@@ -17,7 +17,7 @@ import difflib
 import statistics
 import unicodedata
 
-import fitz  # PyMuPDF
+import pymupdf  # formerly imported as `fitz` (deprecated alias)
 import pytesseract
 from PIL import Image
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
@@ -42,7 +42,7 @@ def _pixmap_to_image(pix) -> Image.Image:
 
 def _ocr_page(page) -> str:
     """Rasterize one PDF page at PDF_DPI and run Tesseract on it."""
-    mat = fitz.Matrix(PDF_DPI / 72, PDF_DPI / 72)
+    mat = pymupdf.Matrix(PDF_DPI / 72, PDF_DPI / 72)
     pix = page.get_pixmap(matrix=mat)
     img = _pixmap_to_image(pix)
     text = pytesseract.image_to_string(img, lang=TESSERACT_LANG)
@@ -109,7 +109,7 @@ def extract_text_from_pdf(pdf_path: str) -> list[dict]:
         'method' is 'direct' (text layer) or 'ocr' (rasterized + Tesseract).
         Example: [{'page': 1, 'text': 'पाठ 1...', 'method': 'direct'}]
     """
-    doc = fitz.open(pdf_path)
+    doc = pymupdf.open(pdf_path)
     total_pages = len(doc)
 
     console.print(f"\n📄 Processing: [bold]{pdf_path}[/bold] ({total_pages} pages)")

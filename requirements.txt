@@ -8,7 +8,7 @@ google-genai>=1.47      # Gemini Developer API + Vertex/Agent Platform (import: 
 chromadb>=1.5           # persistent vector database
 
 # ── PDF rendering + OCR ──────────────────────────────────────────────
-pymupdf>=1.26           # PDF -> image rendering (import: fitz)
+pymupdf>=1.26           # PDF -> image rendering (import: pymupdf)
 pytesseract>=0.3.13     # Tesseract OCR wrapper — needs the `tesseract` binary
                         # installed separately (e.g. `brew install tesseract tesseract-lang`)
 pillow>=11.0            # image handling for OCR (import: PIL)
