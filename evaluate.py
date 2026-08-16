@@ -58,6 +58,15 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
             "language": item["language"],
             "retrieval_hit": rank is not None,
             "first_relevant_rank": rank,
+            # Contamination metric. hit_rate/MRR stop at the FIRST correct chunk,
+            # so they cannot see wrong-book chunks filling the other k-1 slots.
+            # This counts how much of the top-k came from the right document.
+            "source_precision": round(
+                sum(c["source"] == item["expected_source"] for c in chunks)
+                / len(chunks), 4
+            ) if chunks else 0.0,
+            # Which books actually answered — the diagnostic, not just the score.
+            "sources_returned": sorted({c["source"] for c in chunks}),
             "latency_s": round(latency, 3),
         }
 
@@ -77,7 +86,10 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
 
         rows.append(row)
         status = "hit" if rank is not None else "miss"
-        print(f"{item['id']}: {status} (rank={rank}, {latency:.3f}s)")
+        print(
+            f"{item['id']}: {status} (rank={rank}, "
+            f"src_prec={row['source_precision']:.2f}, {latency:.3f}s)"
+        )
 
     hit_count = sum(row["retrieval_hit"] for row in rows)
     reciprocal_ranks = [
@@ -89,6 +101,9 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
         "top_k": top_k,
         "retrieval_hit_rate": round(hit_count / len(rows), 4),
         "mean_reciprocal_rank": round(sum(reciprocal_ranks) / len(rows), 4),
+        "mean_source_precision": round(
+            sum(row["source_precision"] for row in rows) / len(rows), 4
+        ),
         "average_retrieval_latency_s": round(total_latency / len(rows), 3),
     }
 

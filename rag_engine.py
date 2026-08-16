@@ -12,6 +12,7 @@ from google.genai.errors import ClientError
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.markup import escape
 
 from config import LLM_MODEL
 from llm_client import get_client
@@ -66,8 +67,15 @@ def ask(question: str, chat_history: list = None, show_sources: bool = True) -> 
         console.print("\n[dim]📚 Sources found:[/dim]")
         for chunk in chunks:
             page = chunk["page"]
-            preview = chunk["text"][:80].replace("\n", " ") + "..."
-            console.print(f"   [dim]• पृष्ठ/Page {page}: {preview}[/dim]")
+            source = chunk["source"]
+            # escape(): the preview is raw OCR text, and console.print reads
+            # `[...]` as style markup — an unescaped bracket would be eaten
+            # (or raise MarkupError) instead of being shown.
+            preview = escape(chunk["text"][:80].replace("\n", " ")) + "..."
+            console.print(
+                f"   • [cyan]{escape(source)}[/cyan] "
+                f"[dim]पृष्ठ/Page {page}:[/dim] [dim]{preview}[/dim]"
+            )
         console.print()
 
     # Step 3: Build the prompt
