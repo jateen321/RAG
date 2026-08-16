@@ -246,11 +246,78 @@ def index_document(pages_text: list[dict], source_name: str) -> int:
     return len(all_chunks)
 
 
+def remove_document(source_name: str) -> int:
+    """Delete every chunk that came from one source document.
+
+    Chunks carry a "source" metadata field, so Chroma can delete them with a
+    metadata filter — no need to know the individual chunk ids. Lets you drop a
+    single document without a full ``reset``.
+
+    Args:
+        source_name: The stored source name, e.g. "CIL.pdf" (as shown by `status`).
+
+    Returns:
+        Number of chunks deleted (0 if that source isn't indexed).
+    """
+    collection = _get_collection()
+
+    # Count first: delete(where=...) doesn't report how much it removed.
+    matching = collection.get(where={"source": source_name}, include=[])["ids"]
+    if not matching:
+        return 0
+
+    collection.delete(where={"source": source_name})
+    return len(matching)
+
+
 def get_stats() -> dict:
-    """Get statistics about the indexed documents."""
+    """Get statistics about the indexed documents.
+
+    Every chunk carries {"page", "source"} metadata, so we can aggregate it into
+    a per-document breakdown. Only metadata is fetched — pulling documents or
+    embeddings back would be needlessly expensive just to count things.
+
+    Returns:
+        {
+          "total_chunks": int,
+          "db_path": str,
+          "documents": [{"source", "chunks", "pages", "first_page", "last_page"}]
+        }
+        ``documents`` is sorted by source name and is empty when nothing is indexed.
+    """
     try:
         collection = _get_collection()
         count = collection.count()
-        return {"total_chunks": count, "db_path": CHROMA_DB_PATH}
+        if not count:
+            return {"total_chunks": 0, "db_path": CHROMA_DB_PATH, "documents": []}
+
+        metadatas = collection.get(include=["metadatas"])["metadatas"] or []
+
+        # source -> set of pages it contributed (a page yields several chunks)
+        pages_by_source: dict[str, set] = {}
+        chunks_by_source: dict[str, int] = {}
+        for md in metadatas:
+            source = (md or {}).get("source", "unknown")
+            chunks_by_source[source] = chunks_by_source.get(source, 0) + 1
+            page = (md or {}).get("page")
+            if page is not None:
+                pages_by_source.setdefault(source, set()).add(page)
+
+        documents = []
+        for source in sorted(chunks_by_source):
+            pages = sorted(pages_by_source.get(source, set()))
+            documents.append({
+                "source": source,
+                "chunks": chunks_by_source[source],
+                "pages": len(pages),
+                "first_page": pages[0] if pages else None,
+                "last_page": pages[-1] if pages else None,
+            })
+
+        return {
+            "total_chunks": count,
+            "db_path": CHROMA_DB_PATH,
+            "documents": documents,
+        }
     except Exception:
-        return {"total_chunks": 0, "db_path": CHROMA_DB_PATH}
+        return {"total_chunks": 0, "db_path": CHROMA_DB_PATH, "documents": []}
