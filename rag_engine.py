@@ -24,7 +24,7 @@ console = Console()
 _client = get_client()
 
 # System prompt for the LLM
-SYSTEM_PROMPT = """You are a helpful study assistant for Hindi textbooks. Your job is to help students learn and understand the content from their books.
+SYSTEM_PROMPT = """You are a helpful study assistant for English textbooks. Your job is to help students learn and understand the content from their books.
 
 RULES:
 1. Answer ONLY based on the provided context from the textbook.
