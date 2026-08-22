@@ -43,6 +43,13 @@ CHUNK_SIZE = 800          # Target characters per chunk (soft cap: a chunk may
 CHUNK_OVERLAP = 100       # Minimum overlap between chunks (chars). Filled with
                           # WHOLE trailing sentences until this budget is met, so
                           # the overlap is boundary-clean AND a real bridge.
+MAX_CHUNK_OVERLAP = 250   # Maximum overlap (chars). Without a ceiling, a single
+                          # long trailing sentence satisfies CHUNK_OVERLAP on the
+                          # first carry-back and gets copied whole — observed
+                          # producing chunks 95% identical to their neighbour,
+                          # which then occupy two top-k slots with one idea.
+                          # The ceiling WINS over CHUNK_OVERLAP: a short bridge
+                          # is cheaper than a duplicate chunk.
 MIN_CHUNK_LENGTH = 50     # Skip chunks shorter than this
 
 # ── Retrieval Configuration ───────────────────────────────────────────

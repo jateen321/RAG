@@ -15,7 +15,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
 
 from config import (
-    EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP,
+    EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP, MAX_CHUNK_OVERLAP,
     MIN_CHUNK_LENGTH, CHROMA_DB_PATH, COLLECTION_NAME,
 )
 from llm_client import get_client
@@ -62,6 +62,26 @@ def _split_units(text: str) -> list[str]:
     return units
 
 
+def _document_id(source_name: str, source_type: str = "pdf") -> str:
+    """Stable identifier for a document, independent of filename casing.
+
+    macOS filesystems are case-insensitive, so `os.path.basename()` records
+    whatever the user *typed* ("bhagya-...") rather than what is on disk
+    ("Bhagya-..."). Hashing the casefolded name means both spellings resolve to
+    the same document, so a re-index updates the document instead of silently
+    creating a second one under a different capitalization.
+    """
+    key = f"{source_type}:{source_name.casefold()}"
+    return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+def _content_hash(text: str) -> str:
+    """Fingerprint of a chunk's text. Two chunks with the same hash hold
+    identical content — useful for spotting duplicates and for telling whether
+    a re-extraction (e.g. a DPI change) actually altered the text."""
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
 def _chunk_text(text: str, page_num: int) -> list[dict]:
     """
     Split text into overlapping chunks on natural boundaries.
@@ -69,11 +89,14 @@ def _chunk_text(text: str, page_num: int) -> list[dict]:
     Greedily packs whole sentences up to CHUNK_SIZE so a chunk never ends
     mid-word or mid-sentence. Consecutive chunks overlap by whole trailing
     sentences, carried back until at least CHUNK_OVERLAP characters are reached
-    (so a tiny marker like "(2)" can't become a useless overlap). A single unit
-    longer than CHUNK_SIZE (e.g. an OCR page with almost no punctuation) is
-    hard-split on character size as a fallback.
+    (so a tiny marker like "(2)" can't become a useless overlap) but never past
+    MAX_CHUNK_OVERLAP (so one long sentence can't be duplicated wholesale into
+    the next chunk). A single unit longer than CHUNK_SIZE (e.g. an OCR page with
+    almost no punctuation) is hard-split on character size as a fallback.
 
-    Returns list of dicts with 'text', 'page', and 'chunk_id'.
+    Returns list of dicts with 'text', 'page_number', 'chunk_index' and
+    'content_hash'. The chunk's id is assigned by ``index_document``, which is
+    the only layer that knows the document identity.
     """
     # 0. Normalize the text (NFC + strip zero-width OCR noise).
     text = _clean_text(text)
@@ -96,13 +119,11 @@ def _chunk_text(text: str, page_num: int) -> list[dict]:
         nonlocal chunk_index
         chunk = " ".join(current).strip()
         if len(chunk) >= MIN_CHUNK_LENGTH:
-            chunk_id = hashlib.md5(
-                f"p{page_num}_c{chunk_index}_{chunk[:50]}".encode()
-            ).hexdigest()
             chunks.append({
                 "text": chunk,
-                "page": page_num,
-                "chunk_id": chunk_id,
+                "page_number": page_num,
+                "chunk_index": chunk_index,
+                "content_hash": _content_hash(chunk),
             })
             chunk_index += 1
 
@@ -110,14 +131,21 @@ def _chunk_text(text: str, page_num: int) -> list[dict]:
         # +1 accounts for the space we join sentences with.
         if current and current_len + len(unit) + 1 > CHUNK_SIZE:
             flush()
-            # 3. Carry whole trailing sentences as overlap until we've
-            #    accumulated at least CHUNK_OVERLAP chars of real context.
+            # 3. Carry whole trailing sentences back as the next chunk's head:
+            #    enough to bridge context (>= CHUNK_OVERLAP), but never so much
+            #    that the next chunk is largely a copy of this one
+            #    (<= MAX_CHUNK_OVERLAP). The ceiling is checked BEFORE accepting
+            #    a sentence, so one long sentence can no longer be carried whole.
+            #    Iterating current[1:] leaves the first unit behind, so two
+            #    consecutive chunks can never be fully nested.
             overlap, olen = [], 0
-            for prev in reversed(current):
+            for prev in reversed(current[1:]):
+                if olen + len(prev) + 1 > MAX_CHUNK_OVERLAP:
+                    break          # ceiling wins over the CHUNK_OVERLAP floor
                 overlap.insert(0, prev)
                 olen += len(prev) + 1
                 if olen >= CHUNK_OVERLAP:
-                    break
+                    break          # bridge is long enough
             current, current_len = overlap, olen
         current.append(unit)
         current_len += len(unit) + 1
@@ -174,13 +202,20 @@ def _get_collection():
     return collection
 
 
-def index_document(pages_text: list[dict], source_name: str) -> int:
+def index_document(
+    pages_text: list[dict], source_name: str, source_type: str = "pdf"
+) -> int:
     """
     Index extracted text into ChromaDB.
 
     Args:
-        pages_text: List of {'page': int, 'text': str} from OCR engine.
-        source_name: Name of the source PDF file.
+        pages_text: List of {'page': int, 'text': str, 'method': str} from the
+            OCR engine. 'method' is 'direct' or 'ocr'.
+        source_name: Name of the source file, e.g. "CIL.pdf".
+        source_type: Kind of source this text came from. Only "pdf" is produced
+            today; the field exists so a future transcript/web ingester can
+            share the same collection without its chunks being indistinguishable
+            from PDF pages.
 
     Returns:
         Number of chunks indexed.
@@ -190,6 +225,12 @@ def index_document(pages_text: list[dict], source_name: str) -> int:
     all_chunks = []
     for page_data in pages_text:
         chunks = _chunk_text(page_data["text"], page_data["page"])
+        # ocr_engine records how each page was read ('direct' vs 'ocr'). Carry
+        # it onto every chunk from that page so retrieval failures can later be
+        # correlated with the extraction method that produced them.
+        method = page_data.get("method", "unknown")
+        for chunk in chunks:
+            chunk["extraction_method"] = method
         all_chunks.extend(chunks)
 
     if not all_chunks:
@@ -222,6 +263,9 @@ def index_document(pages_text: list[dict], source_name: str) -> int:
     # Step 3: Store in ChromaDB
     console.print("\n[bold]💾 Storing in vector database...[/bold]")
     collection = _get_collection()
+    before = collection.count()
+
+    doc_id = _document_id(source_name, source_type)
 
     # Add in batches (ChromaDB limit)
     batch_size = 100
@@ -229,19 +273,44 @@ def index_document(pages_text: list[dict], source_name: str) -> int:
         batch_chunks = all_chunks[i:i + batch_size]
         batch_embeddings = embeddings[i:i + batch_size]
 
-        collection.add(
-            ids=[c["chunk_id"] for c in batch_chunks],
+        # The id is derived from document + position, NOT from the chunk text.
+        # Hashing the text meant that re-extracting a page (a DPI change, an OCR
+        # fix) produced brand-new ids, so the old chunks were left behind and the
+        # index accumulated two generations of the same page. Position-derived
+        # ids + upsert make a re-index replace in place.
+        ids = [
+            f"{doc_id}_p{c['page_number']:04d}_c{c['chunk_index']:03d}"
+            for c in batch_chunks
+        ]
+
+        collection.upsert(
+            ids=ids,
             embeddings=batch_embeddings,
             documents=[c["text"] for c in batch_chunks],
             metadatas=[{
-                "page": c["page"],
-                "source": source_name,
+                "source_type": source_type,
+                "document_id": doc_id,
+                "source_name": source_name,
+                "page_number": c["page_number"],
+                "chunk_index": c["chunk_index"],
+                "extraction_method": c["extraction_method"],
+                "content_hash": c["content_hash"],
             } for c in batch_chunks],
         )
 
     total_in_db = collection.count()
+    added = total_in_db - before
     console.print(f"\n[green]✅ Indexed {len(all_chunks)} chunks![/green]")
     console.print(f"   📊 Total chunks in database: {total_in_db}")
+
+    # Report what actually landed, not just what we tried to write. A re-index
+    # that replaces existing chunks legitimately adds 0 — but silence here is
+    # what let a no-op masquerade as success.
+    if added != len(all_chunks):
+        console.print(
+            f"   [dim]ℹ️  {added} new, {len(all_chunks) - added} replaced "
+            f"existing chunks for this document.[/dim]"
+        )
 
     return len(all_chunks)
 
@@ -249,9 +318,14 @@ def index_document(pages_text: list[dict], source_name: str) -> int:
 def remove_document(source_name: str) -> int:
     """Delete every chunk that came from one source document.
 
-    Chunks carry a "source" metadata field, so Chroma can delete them with a
-    metadata filter — no need to know the individual chunk ids. Lets you drop a
-    single document without a full ``reset``.
+    Chunks carry a "document_id" metadata field, so Chroma can delete them with
+    a metadata filter — no need to know the individual chunk ids. Lets you drop
+    a single document without a full ``reset``.
+
+    Matching on document_id rather than source_name makes removal
+    case-insensitive: "bhagya-x.pdf" and "Bhagya-x.pdf" resolve to the same
+    document, which is exactly the mismatch that previously let a re-index
+    create a second copy under different capitalization.
 
     Args:
         source_name: The stored source name, e.g. "CIL.pdf" (as shown by `status`).
@@ -260,14 +334,52 @@ def remove_document(source_name: str) -> int:
         Number of chunks deleted (0 if that source isn't indexed).
     """
     collection = _get_collection()
+    doc_id = _document_id(source_name)
 
     # Count first: delete(where=...) doesn't report how much it removed.
-    matching = collection.get(where={"source": source_name}, include=[])["ids"]
+    matching = collection.get(where={"document_id": doc_id}, include=[])["ids"]
     if not matching:
         return 0
 
-    collection.delete(where={"source": source_name})
+    collection.delete(where={"document_id": doc_id})
     return len(matching)
+
+
+def get_document_chunks(source_name: str) -> list[dict]:
+    """Every stored chunk for one document, in reading order.
+
+    Matches on document_id so casing doesn't matter, and sorts by
+    (page_number, chunk_index) — Chroma returns rows in arbitrary order, but
+    consecutive chunks only make sense to look at in sequence, since the whole
+    point of inspecting them is to see how they overlap and where they break.
+
+    Args:
+        source_name: Source name as shown by `status`, e.g. "CIL.pdf".
+
+    Returns:
+        List of {'text', 'page_number', 'chunk_index', 'extraction_method',
+        'content_hash', 'chunk_id'}; empty if that document isn't indexed.
+    """
+    collection = _get_collection()
+    doc_id = _document_id(source_name)
+    got = collection.get(
+        where={"document_id": doc_id}, include=["documents", "metadatas"]
+    )
+
+    rows = []
+    for cid, text, md in zip(got["ids"], got["documents"], got["metadatas"]):
+        md = md or {}
+        rows.append({
+            "chunk_id": cid,
+            "text": text,
+            "page_number": md.get("page_number", 0),
+            "chunk_index": md.get("chunk_index", 0),
+            "extraction_method": md.get("extraction_method", "unknown"),
+            "content_hash": md.get("content_hash", ""),
+        })
+
+    rows.sort(key=lambda r: (r["page_number"], r["chunk_index"]))
+    return rows
 
 
 def get_stats() -> dict:
@@ -296,12 +408,19 @@ def get_stats() -> dict:
         # source -> set of pages it contributed (a page yields several chunks)
         pages_by_source: dict[str, set] = {}
         chunks_by_source: dict[str, int] = {}
+        methods_by_source: dict[str, dict[str, int]] = {}
         for md in metadatas:
-            source = (md or {}).get("source", "unknown")
+            md = md or {}
+            source = md.get("source_name", "unknown")
             chunks_by_source[source] = chunks_by_source.get(source, 0) + 1
-            page = (md or {}).get("page")
+            page = md.get("page_number")
             if page is not None:
                 pages_by_source.setdefault(source, set()).add(page)
+            method = md.get("extraction_method", "unknown")
+            methods_by_source.setdefault(source, {})
+            methods_by_source[source][method] = (
+                methods_by_source[source].get(method, 0) + 1
+            )
 
         documents = []
         for source in sorted(chunks_by_source):
@@ -312,6 +431,7 @@ def get_stats() -> dict:
                 "pages": len(pages),
                 "first_page": pages[0] if pages else None,
                 "last_page": pages[-1] if pages else None,
+                "methods": methods_by_source.get(source, {}),
             })
 
         return {
