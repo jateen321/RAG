@@ -2,7 +2,7 @@
 RAG Engine — Orchestrates retrieval and generation.
 
 Retrieves relevant chunks, builds a context-aware prompt,
-and generates answers using Gemini Flash (free).
+and generates answers using the configured Gemini model.
 """
 
 from typing import NoReturn
@@ -10,8 +10,6 @@ from typing import NoReturn
 from google.genai import types
 from google.genai.errors import ClientError
 from rich.console import Console
-from rich.panel import Panel
-from rich.markdown import Markdown
 from rich.markup import escape
 
 from config import LLM_MODEL
@@ -29,11 +27,64 @@ SYSTEM_PROMPT = """You are a helpful study assistant for English textbooks. Your
 RULES:
 1. Answer ONLY based on the provided context from the textbook.
 2. If the context doesn't contain enough information, say so honestly.
-3. Reply in the SAME LANGUAGE as the user's question (Hindi or English).
+3. Reply in the SAME LANGUAGE as the student's question (Hindi or English).
 4. Always mention the page number(s) where you found the information.
 5. Explain concepts clearly, as if teaching a student.
 6. If asked to summarize, provide a clear and concise summary.
 7. Use bullet points and formatting to make answers easy to read."""
+
+
+def _quota_guard(exc: ClientError) -> NoReturn:
+    """Translate a Gemini 429 (quota/rate limit) into a RuntimeError, which the
+    API layer maps to a 503. Any other ClientError propagates unchanged."""
+    if exc.code == 429:
+        raise RuntimeError(
+            "Gemini quota/rate limit reached. Please try again later."
+        ) from exc
+    raise exc
+
+
+def _build_user_message(chunks: list[dict], question: str) -> str:
+    """Build the grounding prompt. Shared by ``ask`` and ``ask_with_sources``.
+
+    Every passage is labelled with its SOURCE FILE as well as its page. Without
+    the filename the model receives several interchangeable "Page N" blocks that
+    may come from different books, so the page citations rule 4 asks for are
+    ambiguous across the corpus, and facts from unrelated documents can be
+    blended into one answer as though they shared a source.
+
+    This lives in one place because the two callers previously built the same
+    prompt independently and had already drifted apart.
+    """
+    context = "\n\n---\n\n".join(
+        f"[{c['source']} · पृष्ठ {c['page']} / Page {c['page']}]:\n{c['text']}"
+        for c in chunks
+    )
+    return f"""Context from the textbook:
+
+{context}
+
+---
+
+Student's question: {question}
+
+Please answer based on the context above."""
+
+
+def _answer_text(response) -> str:
+    """Pull the text out of a Gemini response, refusing to return an empty one.
+
+    ``response.text`` is None when the model produced no usable candidate — a
+    safety block, a recitation stop, an empty finish. Returning that silently
+    hands None to the CLI and the API as though it were an answer.
+    """
+    text = getattr(response, "text", None)
+    if not text:
+        raise RuntimeError(
+            "Gemini returned no answer text (the response was empty, blocked, "
+            "or stopped early)."
+        )
+    return text
 
 
 def ask(question: str, chat_history: list = None, show_sources: bool = True) -> str:
@@ -47,6 +98,11 @@ def ask(question: str, chat_history: list = None, show_sources: bool = True) -> 
 
     Returns:
         The generated answer string.
+
+    Raises:
+        RuntimeError: on a quota/rate limit, or when the model returned no
+            usable text. Other ClientErrors propagate unchanged. Callers must
+            handle these — they are no longer folded into the returned string.
     """
     # Step 1: Retrieve relevant chunks
     chunks = retrieve(question)
@@ -54,15 +110,7 @@ def ask(question: str, chat_history: list = None, show_sources: bool = True) -> 
     if not chunks:
         return "❌ कोई प्रासंगिक जानकारी नहीं मिली। कृपया पहले एक PDF इंडेक्स करें।\n(No relevant information found. Please index a PDF first.)"
 
-    # Step 2: Build context from chunks
-    context_parts = []
-    for i, chunk in enumerate(chunks, 1):
-        context_parts.append(
-            f"[पृष्ठ {chunk['page']} / Page {chunk['page']}]:\n{chunk['text']}"
-        )
-    context = "\n\n---\n\n".join(context_parts)
-
-    # Show sources if requested
+    # Step 2: Show sources if requested
     if show_sources:
         console.print("\n[dim]📚 Sources found:[/dim]")
         for chunk in chunks:
@@ -78,24 +126,19 @@ def ask(question: str, chat_history: list = None, show_sources: bool = True) -> 
             )
         console.print()
 
-    # Step 3: Build the prompt
-    user_message = f"""Context from the textbook:
-
-{context}
-
----
-
-Student's question: {question}
-
-Please answer based on the context above."""
-
-    # Build message list for multi-turn chat
+    # Step 3: Build the prompt (shared with ask_with_sources)
     messages = []
     if chat_history:
         messages.extend(chat_history)
-    messages.append({"role": "user", "parts": [{"text": user_message}]})
+    messages.append(
+        {"role": "user", "parts": [{"text": _build_user_message(chunks, question)}]}
+    )
 
-    # Step 4: Generate answer with Gemini (new SDK)
+    # Step 4: Generate answer with Gemini (new SDK).
+    # Failures are RAISED, not returned as answer text: a caller cannot tell a
+    # real answer from an error string, and the evaluation harness would happily
+    # score an error message as a response. This now matches ask_with_sources,
+    # which already raised.
     try:
         response = _client.models.generate_content(
             model=LLM_MODEL,
@@ -104,29 +147,10 @@ Please answer based on the context above."""
                 system_instruction=SYSTEM_PROMPT,
             ),
         )
-        answer = response.text
-    except Exception as e:
-        if "429" in str(e) or "quota" in str(e).lower():
-            answer = "⏳ Rate limit reached. Please wait a minute and try again."
-        else:
-            answer = f"❌ Error generating answer: {str(e)}"
+    except ClientError as e:
+        _quota_guard(e)                  # 429 → RuntimeError; else re-raised
 
-    return answer
-
-
-def ask_simple(question: str) -> str:
-    """Simple one-shot question without chat history or source display."""
-    return ask(question, chat_history=None, show_sources=False)
-
-
-def _quota_guard(exc: ClientError) -> NoReturn:
-    """Translate a Gemini 429 (quota/rate limit) into a RuntimeError, which the
-    API layer maps to a 503. Any other ClientError propagates unchanged."""
-    if exc.code == 429:
-        raise RuntimeError(
-            "Gemini quota/rate limit reached. Please try again later."
-        ) from exc
-    raise exc
+    return _answer_text(response)
 
 
 def ask_with_sources(question: str) -> dict:
@@ -153,32 +177,20 @@ def ask_with_sources(question: str) -> dict:
             "No indexed documents found. Index a PDF before asking questions."
         )
 
-    # Build the grounding context (same layout as `ask`).
-    context = "\n\n---\n\n".join(
-        f"[पृष्ठ {c['page']} / Page {c['page']}]:\n{c['text']}" for c in chunks
-    )
-    user_message = f"""Context from the textbook:
-
-{context}
-
----
-
-Student's question: {question}
-
-Please answer based on the context above."""
-
     try:
         response = _client.models.generate_content(
             model=LLM_MODEL,
-            contents=[{"role": "user", "parts": [{"text": user_message}]}],
+            contents=[
+                {"role": "user", "parts": [{"text": _build_user_message(chunks, question)}]}
+            ],
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
             ),
         )
-        answer = response.text
     except ClientError as e:
         _quota_guard(e)                  # 429 → RuntimeError; else re-raised
 
+    answer = _answer_text(response)
     sources = [
         {
             "page": c["page"],

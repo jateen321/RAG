@@ -188,7 +188,13 @@ def cmd_ask(question: str):
     from rag_engine import ask
 
     console.print(f"\n🔍 [bold]Question:[/bold] {question}\n")
-    answer = ask(question)
+    try:
+        answer = ask(question)
+    except Exception as e:
+        # rag_engine raises now instead of returning failures as answer text,
+        # so the CLI is where an error becomes a readable message.
+        console.print(f"[red]❌ {escape(str(e))}[/red]")
+        sys.exit(1)
 
     console.print(Panel(
         Markdown(answer),
@@ -235,8 +241,14 @@ def cmd_chat():
             console.print("[dim]👋 Goodbye! Happy learning! 📖[/dim]")
             break
 
-        # Get answer
-        answer = ask(question, chat_history=chat_history)
+        # Get answer. One failed question shouldn't end the session, and a
+        # failed turn must not enter chat_history — so `continue` before the
+        # history append below.
+        try:
+            answer = ask(question, chat_history=chat_history)
+        except Exception as e:
+            console.print(f"[red]❌ {escape(str(e))}[/red]\n")
+            continue
 
         console.print(Panel(
             Markdown(answer),
