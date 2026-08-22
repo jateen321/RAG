@@ -6,6 +6,10 @@
           {
             "type": "command",
             "command": "n=$(git status --porcelain | wc -l | tr -d ' '); [ \"$n\" -gt 0 ] && printf '{\"systemMessage\":\"⚠ %s uncommitted file(s) — consider committing\"}' \"$n\" || true"
+          },
+          {
+            "type": "command",
+            "command": "newest=$(ls -t *.py 2>/dev/null | head -1); [ -n \"$newest\" ] && [ -f FINDINGS.md ] && [ FINDINGS.md -ot \"$newest\" ] && printf '{\"systemMessage\":\"🔬 %s changed more recently than FINDINGS.md — if this session established a root cause, a measured result, or a design trade-off, record it there.\"}' \"$newest\" || true"
           }
         ]
       }
