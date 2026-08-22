@@ -198,6 +198,50 @@ Your Question → Gemini Embedding → Similarity Search → Top 5 Chunks
   filter. A weak or general question can therefore retrieve unrelated chunks.
 - All indexed PDFs share one collection. Use `remove` to delete one source or
   `reset` to rebuild the complete index.
+- **Retrieval is not rate-paced.** `indexer.py` batches embedding calls and sleeps
+  between them, but `retriever.py` sends one unpaced embedding request per query.
+  A scripted batch of questions can therefore trip a burst-rate quota even though
+  indexing the same corpus succeeds.
+
+## 🧪 Evaluation
+
+Retrieval quality is measured separately from answer quality — an end-to-end score
+cannot tell you whether a bad answer came from bad retrieval or bad generation.
+
+```bash
+python evaluate.py                      # retrieval only; --top-k defaults to 5
+python evaluate.py --top-k 10           # sweep k to see where recall saturates
+python evaluate.py --output evaluation/results_myrun.json
+python evaluate.py --generate           # ALSO generate answers (costs LLM calls)
+```
+
+> ⚠️ `evaluate.py` does **not** read `TOP_K` from `config.py` — its `--top-k` default
+> is hardcoded to 5. Changing `config.TOP_K` alters the app's behaviour but not the
+> harness's, so pass `--top-k` explicitly when comparing the two.
+
+| Metric | Meaning |
+|---|---|
+| `retrieval_hit_rate` | Fraction of questions where **some** retrieved chunk was the expected source *and* page |
+| `mean_reciprocal_rank` | Average of `1 / rank_of_first_correct_chunk` — rewards putting the answer at rank 1, not just somewhere in the top k |
+| `mean_source_precision` | Fraction of the top-k drawn from the **expected document** — catches wrong-book contamination that hit rate and MRR structurally cannot see, because both stop counting at the first correct chunk |
+| `citation_accuracy`, `average_keyword_recall` | Generation metrics, only with `--generate` |
+
+**Dataset:** `evaluation/questions.json` — 20 questions, 10 English and 10 Hindi.
+
+> ⚠️ **Known limit of the current eval set:** every question expects `CIL.pdf`.
+> Because CIL is also the majority of the indexed corpus, `source_precision` scores
+> near 1.00 for structural reasons rather than because retrieval is well-scoped. This
+> set therefore cannot measure cross-document contamination, and it contains no
+> *negative* questions (ones with no answer in the corpus) — so it cannot detect that
+> retrieval always returns `TOP_K` chunks whether or not any are relevant.
+
+Measured results, and which of them are reproducible from this repository versus
+carried over from a separate session, are tracked in **[FINDINGS.md](FINDINGS.md)**.
+Text-extraction investigations live in **[OCR_NOTES.md](OCR_NOTES.md)**.
+
+> 💡 `results_*.json` files are written into `evaluation/` locally and are **not**
+> committed, so a fresh clone reproduces numbers by re-running the harness — which
+> requires an indexed corpus and a working API key.
 
 ## 📁 Project Structure
 
@@ -212,10 +256,17 @@ RAG/
 ├── indexer.py          # Text → chunks → embeddings → ChromaDB
 ├── retriever.py        # Semantic search in ChromaDB
 ├── rag_engine.py       # Retrieve + Generate answers
-├── evaluate.py         # Retrieval evaluation harness (Hit@k, MRR, source precision)
+├── evaluate.py         # Retrieval evaluation harness (hit rate, MRR, source precision)
 ├── requirements.txt    # Python dependencies (direct only)
 ├── .env                # Your API key (private, not in git)
 ├── .env.example        # Template for .env
+├── FINDINGS.md         # Measured results + provenance tags (verified / cloud / hypothesis)
+├── OCR_NOTES.md        # Text-extraction issues log: routing, legacy fonts, corrupt layers
+├── CLAUDE.md           # Working conventions for AI-assisted sessions on this repo
+├── .claude/
+│   └── settings.json   # Repo-local hooks (uncommitted-file + README-staleness reminders)
+├── evaluation/
+│   └── questions.json  # Eval dataset; results_*.json are written locally, not committed
 ├── data/               # Drop your PDFs here
 └── chroma_db/          # Vector database (auto-created)
 ```
@@ -227,11 +278,14 @@ Edit `config.py` to tune these settings:
 | Setting | Default | Description |
 |---|---|---|
 | `CHUNK_SIZE` | 800 | Target characters per chunk (soft cap — respects boundaries) |
-| `CHUNK_OVERLAP` | 100 | Minimum overlap between chunks |
+| `CHUNK_OVERLAP` | 100 | **Minimum** overlap between chunks (floor) |
+| `MAX_CHUNK_OVERLAP` | 250 | **Maximum** overlap between chunks (ceiling). Takes precedence over the floor — prevents one long sentence being copied whole into the next chunk |
 | `MIN_CHUNK_LENGTH` | 50 | Skip chunks shorter than this |
 | `TOP_K` | 5 | Number of chunks to retrieve |
 | `PDF_DPI` | 300 | OCR scan resolution (Tesseract's recommended minimum) |
 | `TESSERACT_LANG` | `eng+hin+san` | OCR languages (English + Hindi + Sanskrit) |
+| `LAYER_CHECK_SAMPLE` | 3 | Pages OCR'd per document to spot-check the text layer |
+| `LAYER_CHECK_MIN_SIMILARITY` | 0.4 | Median OCR-vs-layer similarity below this → distrust the layer and OCR the whole document |
 | `EMBEDDING_MODEL` | `gemini-embedding-001` | Embedding model |
 | `LLM_MODEL` | `gemini-2.5-flash` | Generation model |
 
@@ -259,9 +313,14 @@ Edit `config.py` to tune these settings:
 - **Rate limits vary**: Limits depend on the backend, model, region, billing tier,
   and Google Cloud project. Check the quota assigned to your credential instead
   of assuming a fixed requests-per-minute value.
-- **Embedding retries**: The indexer embeds up to 20 chunks per call, waits one
-  second between batches, and retries a quota-related failure once after 30
-  seconds. Projects with very low RPM limits can still receive `429` responses.
+- **Embedding pacing is weaker than it looks**: The *indexer* embeds up to 20 chunks
+  per call and retries a quota-related failure once after 30 seconds. Note that
+  `_embed_texts` contains a one-second inter-batch delay that **never executes** in
+  practice: `index_document` pre-slices into batches of 20 and then calls
+  `_embed_texts(batch, batch_size=len(batch))`, so the inner loop always runs exactly
+  one iteration and its delay guard is never true. The *retriever* has no batching,
+  pacing, or retry at all. Both paths are therefore effectively unpaced, and only the
+  indexer recovers from a `429`.
 - **Model migration**: Do not query existing vectors with a different embedding
   model, even when both models output the same number of dimensions. Create a
   new collection or reset and reindex every PDF.
@@ -275,4 +334,5 @@ Edit `config.py` to tune these settings:
 | Garbled Hindi from a PDF that looks fine | Expected — corrupt-layer detection should force OCR automatically |
 | OCR gives poor results | `PDF_DPI` is already 300; raising it further rarely helps. Confirm `TESSERACT_LANG` covers the script, and check whether the page was routed to `direct` rather than `ocr` |
 | `429` / rate limit errors | Check the quota for the selected backend/model/region, reduce request frequency, and retry with backoff |
+| `429` partway through `evaluate.py` | The retriever is unpaced (see Tips). Re-run in smaller batches, or wait for the per-minute window to reset — a mid-run failure is a burst-rate limit, not an exhausted daily allowance |
 | `No indexed documents` (HTTP 503) | Run `python app.py index <pdf>` first |
