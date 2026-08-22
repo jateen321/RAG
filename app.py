@@ -29,6 +29,7 @@ except ImportError:
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.prompt import Prompt
 from rich.table import Table
 
@@ -331,6 +332,102 @@ def cmd_remove(source_name: str):
     console.print("[dim]Run `python app.py status` to see the updated index.[/dim]")
 
 
+def cmd_inspect(source: str = None):
+    """Browse the stored chunks of one indexed document.
+
+    A chunk viewer, not a document reader: it shows what retrieval actually
+    sees. The highlighted region at the head of each chunk is the text carried
+    over from the previous one, which is the only practical way to eyeball
+    whether CHUNK_OVERLAP / MAX_CHUNK_OVERLAP are behaving.
+    """
+    from indexer import get_stats, get_document_chunks
+    from config import CHUNK_SIZE
+
+    # Pick from what is INDEXED (mirrors the `index` picker): a PDF sitting in
+    # data/ unindexed has no chunks to show.
+    if source is None:
+        docs = get_stats().get("documents", [])
+        if not docs:
+            console.print("[red]❌ Nothing is indexed yet.[/red]")
+            console.print("   Run [cyan]python app.py index[/cyan] first.")
+            sys.exit(1)
+
+        table = Table(title="📚 Indexed documents", border_style="cyan",
+                      header_style="bold")
+        table.add_column("#", justify="right", style="cyan")
+        table.add_column("Document", style="green", overflow="fold")
+        table.add_column("Pages", justify="right", style="dim")
+        table.add_column("Chunks", justify="right", style="dim")
+        for i, d in enumerate(docs, 1):
+            table.add_row(str(i), d["source"], str(d["pages"]), str(d["chunks"]))
+
+        console.print()
+        console.print(table)
+        console.print()
+        choice = _ask(
+            f"Select a document [cyan][1-{len(docs)}][/cyan]",
+            choices=[str(i) for i in range(1, len(docs) + 1)],
+            show_choices=False,
+        )
+        source = docs[int(choice) - 1]["source"]
+
+    chunks = get_document_chunks(source)
+    if not chunks:
+        console.print(f"[red]❌ '{source}' is not indexed.[/red]")
+        console.print("   [dim]Run `python app.py status` to see indexed names.[/dim]")
+        sys.exit(1)
+
+    def carried_over(prev: str, text: str) -> int:
+        """Longest suffix of prev that starts text — the overlap region."""
+        for n in range(min(len(prev), len(text)), 0, -1):
+            if prev.endswith(text[:n]):
+                return n
+        return 0
+
+    pages = sorted({c["page_number"] for c in chunks})
+    dups = len(chunks) - len({c["content_hash"] for c in chunks})
+    console.print(
+        f"\n[bold]📖 {escape(source)}[/bold] — {len(chunks)} chunks, "
+        f"pages {pages[0]}–{pages[-1]}, "
+        + (f"[red]{dups} duplicate chunk(s)[/red]" if dups
+           else "[green]no duplicates[/green]")
+    )
+
+    valid = [str(p) for p in pages] + ["a", "q"]
+    while True:
+        console.print()
+        choice = _ask(
+            f"Page [cyan][{pages[0]}-{pages[-1]}][/cyan], "
+            "[cyan]a[/cyan]ll, [cyan]q[/cyan]uit",
+            choices=valid, show_choices=False, default="q",
+        )
+        if choice == "q":
+            break
+
+        selected = (chunks if choice == "a"
+                    else [c for c in chunks if c["page_number"] == int(choice)])
+
+        for c in selected:
+            # Overlap is only meaningful against the preceding chunk in reading
+            # order, which may not be the previous item in `selected`.
+            pos = chunks.index(c)
+            ov = carried_over(chunks[pos - 1]["text"], c["text"]) if pos else 0
+            console.print(
+                f"\n[bold cyan]── page {c['page_number']} · "
+                f"chunk {c['chunk_index']}[/bold cyan] "
+                f"[dim]│ {len(c['text'])}/{CHUNK_SIZE} chars │ "
+                f"{c['extraction_method']} │ {c['content_hash']}[/dim]"
+                + (f" [dim]│ {ov} carried over[/dim]" if ov else "")
+            )
+            # escape(): chunk text is raw OCR and console.print reads "[...]" as
+            # style markup — an unescaped bracket vanishes or raises MarkupError.
+            console.print(
+                f"[yellow]{escape(c['text'][:ov])}[/yellow]{escape(c['text'][ov:])}"
+            )
+
+        console.print(f"\n[dim]— {len(selected)} chunk(s) shown —[/dim]")
+
+
 def cmd_reset():
     """Clear all indexed data."""
     from config import CHROMA_DB_PATH
@@ -362,6 +459,8 @@ def main():
   [cyan]python app.py ask "question"[/cyan]      Ask a one-shot question  
   [cyan]python app.py chat[/cyan]                Start interactive chat
   [cyan]python app.py status[/cyan]              Show database statistics
+  [cyan]python app.py inspect[/cyan]             Pick a document and browse its chunks
+  [cyan]python app.py inspect <source>[/cyan]    Browse a specific document's chunks
   [cyan]python app.py remove <source>[/cyan]     Delete one document from the index
   [cyan]python app.py reset[/cyan]               Clear all indexed data
 
@@ -369,6 +468,7 @@ def main():
 
   python app.py index data/CIL.pdf
   python app.py ask "Where is Coal India Limited's corporate headquarters?"
+  python app.py inspect CIL.pdf
   python app.py remove CIL.pdf
   python app.py chat
 """)
@@ -393,6 +493,10 @@ def main():
     elif command == "status":
         cmd_status()
 
+    elif command == "inspect":
+        # No source given → show the picker, same as `index`.
+        cmd_inspect(sys.argv[2] if len(sys.argv) > 2 else None)
+
     elif command == "remove":
         if len(sys.argv) < 3:
             console.print("[red]❌ Please provide the document name to remove.[/red]")
@@ -406,7 +510,7 @@ def main():
 
     else:
         console.print(f"[red]❌ Unknown command: {command}[/red]")
-        console.print("   Valid commands: index, ask, chat, status, remove, reset")
+        console.print("   Valid commands: index, ask, chat, status, inspect, remove, reset")
         sys.exit(1)
 
 
