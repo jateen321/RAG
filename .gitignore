@@ -9,3 +9,5 @@ venv/
 evaluation/results*.json
 # CLAUDE.md
 .venv*
+CLAUDE.md
+FINDINGS.md
