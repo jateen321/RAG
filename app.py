@@ -210,6 +210,38 @@ def cmd_index_youtube(url: str):
             )
 
 
+def cmd_index_folder(folder_path: str, recursive: bool = True):
+    """Index PDF, TXT, and Markdown files beneath one local folder."""
+    from document_ingester import index_folder
+
+    console.print(
+        f"\n[bold]📂 Indexing supported documents in "
+        f"{escape(folder_path)}...[/bold]"
+    )
+    try:
+        report = index_folder(folder_path, recursive=recursive)
+    except ValueError as exc:
+        console.print(f"[red]❌ {escape(str(exc))}[/red]")
+        sys.exit(1)
+
+    console.print(Panel(
+        f"[green]Folder ingestion complete[/green]\n\n"
+        f"Files found: [bold]{report['files_found']}[/bold]\n"
+        f"Files indexed: [bold]{report['files_indexed']}[/bold]\n"
+        f"Files skipped: [bold]{report['files_skipped']}[/bold]\n"
+        f"Files failed: [bold]{report['files_failed']}[/bold]\n"
+        f"Chunks indexed: [bold]{report['chunks_indexed']}[/bold]",
+        title="✅ Done",
+        border_style="green" if not report["files_failed"] else "yellow",
+    ))
+    for result in report["results"]:
+        if result["status"] != "indexed":
+            console.print(
+                f"[yellow]⚠ {escape(result['source'])}: "
+                f"{escape(result.get('reason', result['status']))}[/yellow]"
+            )
+
+
 def cmd_ask(question: str):
     """Ask a single question."""
     from rag_engine import ask
@@ -498,6 +530,7 @@ def main():
   [cyan]python app.py index[/cyan]               Pick a PDF from data/ and index it
   [cyan]python app.py index <pdf_file>[/cyan]    Index a specific PDF
   [cyan]python app.py index-youtube <url>[/cyan] Index a YouTube video or playlist
+  [cyan]python app.py index-folder <folder>[/cyan] Recursively index PDF/TXT/Markdown files
   [cyan]python app.py ask "question"[/cyan]      Ask a one-shot question  
   [cyan]python app.py chat[/cyan]                Start interactive chat
   [cyan]python app.py status[/cyan]              Show database statistics
@@ -510,6 +543,7 @@ def main():
 
   python app.py index data/CIL.pdf
   python app.py index-youtube "https://www.youtube.com/watch?v=VIDEO_ID"
+  python app.py index-folder "/Users/example/Documents/books"
   python app.py ask "Where is Coal India Limited's corporate headquarters?"
   python app.py inspect CIL.pdf
   python app.py remove CIL.pdf
@@ -529,6 +563,13 @@ def main():
             console.print("   Usage: python app.py index-youtube <url>")
             sys.exit(1)
         cmd_index_youtube(sys.argv[2])
+
+    elif command == "index-folder":
+        if len(sys.argv) < 3:
+            console.print("[red]❌ Please provide a folder path.[/red]")
+            console.print("   Usage: python app.py index-folder <folder>")
+            sys.exit(1)
+        cmd_index_folder(sys.argv[2])
 
     elif command == "ask":
         if len(sys.argv) < 3:
@@ -561,7 +602,7 @@ def main():
     else:
         console.print(f"[red]❌ Unknown command: {command}[/red]")
         console.print(
-            "   Valid commands: index, index-youtube, ask, chat, status, "
+            "   Valid commands: index, index-folder, index-youtube, ask, chat, status, "
             "inspect, remove, reset"
         )
         sys.exit(1)

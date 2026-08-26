@@ -351,7 +351,12 @@ def index_chunks(
 
 
 def index_document(
-    pages_text: list[dict], source_name: str, source_type: str = "pdf"
+    pages_text: list[dict],
+    source_name: str,
+    source_type: str = "pdf",
+    *,
+    document_key: str | None = None,
+    source_metadata: dict | None = None,
 ) -> int:
     """
     Index extracted text into ChromaDB.
@@ -379,7 +384,13 @@ def index_document(
             chunk["extraction_method"] = method
         all_chunks.extend(chunks)
 
-    return index_chunks(all_chunks, source_name, source_type)
+    return index_chunks(
+        all_chunks,
+        source_name,
+        source_type,
+        document_key=document_key,
+        source_metadata=source_metadata,
+    )
 
 
 def _find_document_id(source_name: str) -> str | None:
@@ -392,6 +403,15 @@ def _find_document_id(source_name: str) -> str | None:
     }
     matches.discard(None)
     return next(iter(matches)) if len(matches) == 1 else None
+
+
+def is_document_indexed(source_name: str) -> bool:
+    """Return whether ChromaDB contains passages for ``source_name``."""
+    metadatas = _get_collection().get(include=["metadatas"])["metadatas"] or []
+    return any(
+        md and md.get("source_name", "").casefold() == source_name.casefold()
+        for md in metadatas
+    )
 
 
 def remove_document(source_name: str) -> int:

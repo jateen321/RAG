@@ -150,3 +150,13 @@ LAYER_CHECK_MIN_SIMILARITY = 0.4   # median OCR-vs-layer similarity below this �
 
 # ── Paths ─────────────────────────────────────────────────────────────
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+
+# Server-local folders that POST /index/folder may read. The CLI does not need
+# an allowlist because it already runs with the invoking user's permissions.
+# Use the operating system path separator (`:` on macOS/Linux, `;` on Windows)
+# to configure more than one root.
+INDEX_FOLDER_ROOTS = [
+    os.path.realpath(os.path.expanduser(root.strip()))
+    for root in os.getenv("INDEX_FOLDER_ROOTS", DATA_DIR).split(os.pathsep)
+    if root.strip()
+]
