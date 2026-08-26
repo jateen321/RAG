@@ -8,8 +8,10 @@ from unittest.mock import patch
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 
 from youtube_ingester import (  # noqa: E402
+    TranscriptChunkConfig,
     _select_transcript,
     _transcript_chunks,
+    _transcript_quality,
     validate_youtube_url,
 )
 from indexer import index_chunks  # noqa: E402
@@ -67,7 +69,16 @@ class TranscriptChunkTests(unittest.TestCase):
             SimpleNamespace(text="दूसरा वाक्य " * 20, start=4.0, duration=5.0),
             SimpleNamespace(text="third sentence " * 30, start=9.0, duration=7.0),
         ]
-        chunks = _transcript_chunks(snippets)
+        chunks = _transcript_chunks(
+            snippets,
+            TranscriptChunkConfig(
+                target_chars=400,
+                max_chars=600,
+                target_seconds=75,
+                max_seconds=120,
+                overlap_seconds=12,
+            ),
+        )
         self.assertGreaterEqual(len(chunks), 2)
         self.assertEqual(chunks[0]["start_seconds"], 0.0)
         self.assertEqual(chunks[0]["timestamp"], "0:00")
@@ -75,6 +86,43 @@ class TranscriptChunkTests(unittest.TestCase):
         self.assertEqual(
             [chunk["chunk_index"] for chunk in chunks], list(range(len(chunks)))
         )
+
+    def test_time_target_splits_sparse_transcript_and_builds_playable_urls(self):
+        snippets = [
+            SimpleNamespace(text=f"caption number {index}", start=index * 30.0, duration=4.0)
+            for index in range(8)
+        ]
+        config = TranscriptChunkConfig(
+            target_chars=10_000,
+            max_chars=12_000,
+            target_seconds=60,
+            max_seconds=90,
+            overlap_seconds=12,
+        )
+        chunks = _transcript_chunks(snippets, config, video_id="video123")
+
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(
+            chunk["end_seconds"] - chunk["start_seconds"] <= 90
+            for chunk in chunks
+        ))
+        self.assertEqual(
+            chunks[1]["timestamp_url"],
+            f"https://www.youtube.com/watch?v=video123&t={int(chunks[1]['start_seconds'])}s",
+        )
+
+    def test_quality_metrics_are_scalar_and_measure_coverage(self):
+        snippets = [
+            SimpleNamespace(text="आयुर्वेद treatment", start=0.0, duration=10.0),
+            SimpleNamespace(text="आयुर्वेद treatment", start=10.0, duration=10.0),
+        ]
+        quality = _transcript_quality(snippets, video_duration=25.0)
+
+        self.assertEqual(quality["transcript_snippet_count"], 2)
+        self.assertEqual(quality["transcript_coverage_ratio"], 0.8)
+        self.assertEqual(quality["transcript_repeated_snippet_ratio"], 0.5)
+        self.assertGreater(quality["transcript_devanagari_letter_ratio"], 0)
+        self.assertGreater(quality["transcript_latin_letter_ratio"], 0)
 
 
 class FakeCollection:

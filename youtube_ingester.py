@@ -11,7 +11,14 @@ from html import unescape
 import re
 from urllib.parse import parse_qs, urlparse
 
-from config import CHUNK_OVERLAP, CHUNK_SIZE, MAX_CHUNK_OVERLAP, MIN_CHUNK_LENGTH
+from config import (
+    MIN_CHUNK_LENGTH,
+    YOUTUBE_CHUNK_MAX_CHARS,
+    YOUTUBE_CHUNK_MAX_SECONDS,
+    YOUTUBE_CHUNK_OVERLAP_SECONDS,
+    YOUTUBE_CHUNK_TARGET_CHARS,
+    YOUTUBE_CHUNK_TARGET_SECONDS,
+)
 from indexer import _content_hash, index_chunks
 
 
@@ -27,6 +34,30 @@ class VideoResult:
     status: str
     chunks_indexed: int = 0
     reason: str | None = None
+
+
+@dataclass(frozen=True)
+class TranscriptChunkConfig:
+    """Text and time constraints for transcript chunks."""
+
+    target_chars: int = YOUTUBE_CHUNK_TARGET_CHARS
+    max_chars: int = YOUTUBE_CHUNK_MAX_CHARS
+    target_seconds: float = YOUTUBE_CHUNK_TARGET_SECONDS
+    max_seconds: float = YOUTUBE_CHUNK_MAX_SECONDS
+    overlap_seconds: float = YOUTUBE_CHUNK_OVERLAP_SECONDS
+
+    def __post_init__(self) -> None:
+        if self.target_chars <= 0 or self.target_seconds <= 0:
+            raise ValueError("Transcript chunk targets must be positive.")
+        if self.max_chars < self.target_chars:
+            raise ValueError("Transcript max_chars must be >= target_chars.")
+        if self.max_seconds < self.target_seconds:
+            raise ValueError("Transcript max_seconds must be >= target_seconds.")
+        if not 0 <= self.overlap_seconds < self.target_seconds:
+            raise ValueError(
+                "Transcript overlap_seconds must be non-negative and below "
+                "target_seconds."
+            )
 
 
 def validate_youtube_url(url: str) -> str:
@@ -80,8 +111,14 @@ def _timestamp(seconds: float) -> str:
     return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes}:{secs:02d}"
 
 
-def _transcript_chunks(snippets) -> list[dict]:
-    """Pack complete caption snippets while preserving time boundaries."""
+def _transcript_chunks(
+    snippets,
+    config: TranscriptChunkConfig | None = None,
+    *,
+    video_id: str | None = None,
+) -> list[dict]:
+    """Pack complete captions using both semantic text and temporal bounds."""
+    config = config or TranscriptChunkConfig()
     units = []
     for snippet in snippets:
         text = _clean_snippet(snippet.text)
@@ -98,10 +135,22 @@ def _transcript_chunks(snippets) -> list[dict]:
     def size(items: list[dict]) -> int:
         return sum(len(item["text"]) for item in items) + max(0, len(items) - 1)
 
+    def duration(items: list[dict]) -> float:
+        return items[-1]["end"] - items[0]["start"] if items else 0.0
+
+    def overlap_from(items: list[dict]) -> list[dict]:
+        overlap: list[dict] = []
+        for previous in reversed(items[1:]):
+            proposed = [previous, *overlap]
+            if duration(proposed) > config.overlap_seconds:
+                break
+            overlap = proposed
+        return overlap
+
     def flush() -> None:
         text = " ".join(item["text"] for item in current).strip()
         if len(text) >= MIN_CHUNK_LENGTH:
-            chunks.append({
+            chunk = {
                 "text": text,
                 "chunk_index": len(chunks),
                 "content_hash": _content_hash(text),
@@ -109,24 +158,69 @@ def _transcript_chunks(snippets) -> list[dict]:
                 "end_seconds": round(current[-1]["end"], 3),
                 "timestamp": _timestamp(current[0]["start"]),
                 "extraction_method": "youtube_transcript",
-            })
+            }
+            if video_id:
+                chunk["timestamp_url"] = (
+                    f"https://www.youtube.com/watch?v={video_id}"
+                    f"&t={max(0, int(current[0]['start']))}s"
+                )
+            chunks.append(chunk)
 
     for unit in units:
-        if current and size(current) + len(unit["text"]) + 1 > CHUNK_SIZE:
+        proposed_chars = size(current) + len(unit["text"]) + (1 if current else 0)
+        proposed_seconds = (
+            unit["end"] - current[0]["start"] if current else unit["end"] - unit["start"]
+        )
+        reached_soft_target = current and (
+            size(current) >= config.target_chars
+            or duration(current) >= config.target_seconds
+        )
+        exceeds_hard_limit = current and (
+            proposed_chars > config.max_chars
+            or proposed_seconds > config.max_seconds
+        )
+        if reached_soft_target or exceeds_hard_limit:
             flush()
-            overlap: list[dict] = []
-            for previous in reversed(current[1:]):
-                proposed = [previous, *overlap]
-                if size(proposed) > MAX_CHUNK_OVERLAP:
-                    break
-                overlap = proposed
-                if size(overlap) >= CHUNK_OVERLAP:
-                    break
-            current = overlap
+            current = overlap_from(current)
         current.append(unit)
     if current:
         flush()
     return chunks
+
+
+def _transcript_quality(snippets, video_duration: float | None = None) -> dict:
+    """Compute scalar diagnostics for deciding whether captions are usable."""
+    cleaned = [_clean_snippet(snippet.text) for snippet in snippets]
+    cleaned = [text for text in cleaned if text]
+    combined = " ".join(cleaned)
+    coverage_end = max(
+        (float(snippet.start + snippet.duration) for snippet in snippets),
+        default=0.0,
+    )
+    letters = [char for char in combined if char.isalpha()]
+    devanagari = sum("\u0900" <= char <= "\u097f" for char in letters)
+    latin = sum(("a" <= char.lower() <= "z") for char in letters)
+    repeated = len(cleaned) - len({text.casefold() for text in cleaned})
+    return {
+        "transcript_snippet_count": len(cleaned),
+        "transcript_word_count": len(combined.split()),
+        "transcript_character_count": len(combined),
+        "transcript_coverage_seconds": round(coverage_end, 3),
+        "transcript_coverage_ratio": (
+            round(min(coverage_end / video_duration, 1.0), 4)
+            if video_duration
+            else None
+        ),
+        "transcript_repeated_snippet_ratio": (
+            round(repeated / len(cleaned), 4) if cleaned else 0.0
+        ),
+        "transcript_devanagari_letter_ratio": (
+            round(devanagari / len(letters), 4) if letters else 0.0
+        ),
+        "transcript_latin_letter_ratio": (
+            round(latin / len(letters), 4) if letters else 0.0
+        ),
+    }
 
 
 def _source_name(title: str, video_id: str) -> str:
@@ -165,7 +259,7 @@ def _index_video(info: dict, playlist: dict | None = None) -> VideoResult:
 
     transcript = _select_transcript(YouTubeTranscriptApi().list(video_id))
     fetched = transcript.fetch()
-    chunks = _transcript_chunks(fetched)
+    chunks = _transcript_chunks(fetched, video_id=video_id)
     if not chunks:
         raise ValueError("The selected transcript did not contain usable text.")
 
@@ -174,6 +268,7 @@ def _index_video(info: dict, playlist: dict | None = None) -> VideoResult:
         "transcript_language": transcript.language,
         "transcript_language_code": transcript.language_code,
         "transcript_is_generated": bool(transcript.is_generated),
+        **_transcript_quality(fetched, info.get("duration")),
     })
     count = index_chunks(
         chunks,

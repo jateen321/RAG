@@ -23,13 +23,13 @@ console = Console()
 _client = get_client()
 
 # System prompt for the LLM
-SYSTEM_PROMPT = """You are a helpful study assistant. Your job is to help students learn and understand indexed PDFs and YouTube transcripts.
+SYSTEM_PROMPT = """You are a helpful study assistant. Your job is to help students learn and understand indexed documents and YouTube transcripts.
 
 RULES:
 1. Answer ONLY based on the provided context from indexed sources.
 2. If the context doesn't contain enough information, say so honestly.
 3. Reply in the SAME LANGUAGE as the student's question (Hindi or English).
-4. Cite PDF page number(s) or YouTube timestamp(s), matching the provided labels.
+4. Cite document page/section labels or YouTube timestamps, matching the provided labels.
 5. Explain concepts clearly, as if teaching a student.
 6. If asked to summarize, provide a clear and concise summary.
 7. Use bullet points and formatting to make answers easy to read."""
@@ -61,6 +61,8 @@ def _build_user_message(chunks: list[dict], question: str) -> str:
         if chunk.get("source_type") == "youtube":
             timestamp = chunk.get("timestamp") or "0:00"
             return f"{chunk['source']} · Timestamp {timestamp}"
+        if chunk.get("source_type") in {"text", "markdown"}:
+            return f"{chunk['source']} · Document section {chunk['page']}"
         return f"{chunk['source']} · पृष्ठ {chunk['page']} / Page {chunk['page']}"
 
     context = "\n\n---\n\n".join(
@@ -114,7 +116,7 @@ def ask(question: str, chat_history: list = None, show_sources: bool = True) -> 
     chunks = retrieve(question)
 
     if not chunks:
-        return "❌ कोई प्रासंगिक जानकारी नहीं मिली। कृपया पहले एक PDF इंडेक्स करें।\n(No relevant information found. Please index a PDF first.)"
+        return "❌ कोई प्रासंगिक जानकारी नहीं मिली। कृपया पहले एक दस्तावेज़ इंडेक्स करें।\n(No relevant information found. Please index a document first.)"
 
     # Step 2: Show sources if requested
     if show_sources:
@@ -125,11 +127,12 @@ def ask(question: str, chat_history: list = None, show_sources: bool = True) -> 
             # `[...]` as style markup — an unescaped bracket would be eaten
             # (or raise MarkupError) instead of being shown.
             preview = escape(chunk["text"][:80].replace("\n", " ")) + "..."
-            location = (
-                f"Timestamp {chunk.get('timestamp') or '0:00'}"
-                if chunk.get("source_type") == "youtube"
-                else f"पृष्ठ/Page {chunk['page']}"
-            )
+            if chunk.get("source_type") == "youtube":
+                location = f"Timestamp {chunk.get('timestamp') or '0:00'}"
+            elif chunk.get("source_type") in {"text", "markdown"}:
+                location = f"Document section {chunk['page']}"
+            else:
+                location = f"पृष्ठ/Page {chunk['page']}"
             console.print(
                 f"   • [cyan]{escape(source)}[/cyan] "
                 f"[dim]{location}:[/dim] [dim]{preview}[/dim]"
@@ -230,6 +233,7 @@ def ask_with_sources(question: str, top_k: int = None) -> dict:
             "preview": c["text"][:120].replace("\n", " "),
             "source_type": c.get("source_type", "unknown"),
             "timestamp": c.get("timestamp"),
+            "timestamp_url": c.get("timestamp_url"),
             "start_seconds": c.get("start_seconds"),
             "end_seconds": c.get("end_seconds"),
             "source_url": c.get("source_url"),
@@ -242,6 +246,16 @@ def ask_with_sources(question: str, top_k: int = None) -> dict:
             "transcript_language": c.get("transcript_language"),
             "transcript_language_code": c.get("transcript_language_code"),
             "transcript_is_generated": c.get("transcript_is_generated"),
+            "transcript_coverage_ratio": c.get("transcript_coverage_ratio"),
+            "transcript_repeated_snippet_ratio": c.get(
+                "transcript_repeated_snippet_ratio"
+            ),
+            "transcript_devanagari_letter_ratio": c.get(
+                "transcript_devanagari_letter_ratio"
+            ),
+            "transcript_latin_letter_ratio": c.get(
+                "transcript_latin_letter_ratio"
+            ),
             "playlist_id": c.get("playlist_id"),
             "playlist_title": c.get("playlist_title"),
             "playlist_index": c.get("playlist_index"),

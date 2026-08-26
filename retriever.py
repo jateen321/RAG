@@ -85,6 +85,7 @@ def retrieve(query: str, top_k: int = None) -> list[dict]:
             "start_seconds": md.get("start_seconds"),
             "end_seconds": md.get("end_seconds"),
             "timestamp": md.get("timestamp"),
+            "timestamp_url": md.get("timestamp_url"),
             "source_url": md.get("source_url"),
             "video_id": md.get("video_id"),
             "video_title": md.get("video_title"),
@@ -95,6 +96,16 @@ def retrieve(query: str, top_k: int = None) -> list[dict]:
             "transcript_language": md.get("transcript_language"),
             "transcript_language_code": md.get("transcript_language_code"),
             "transcript_is_generated": md.get("transcript_is_generated"),
+            "transcript_coverage_ratio": md.get("transcript_coverage_ratio"),
+            "transcript_repeated_snippet_ratio": md.get(
+                "transcript_repeated_snippet_ratio"
+            ),
+            "transcript_devanagari_letter_ratio": md.get(
+                "transcript_devanagari_letter_ratio"
+            ),
+            "transcript_latin_letter_ratio": md.get(
+                "transcript_latin_letter_ratio"
+            ),
             "playlist_id": md.get("playlist_id"),
             "playlist_title": md.get("playlist_title"),
             "playlist_index": md.get("playlist_index"),

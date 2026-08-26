@@ -17,6 +17,7 @@ pillow>=11.0            # image handling for OCR (import: PIL)
 # ── Web API ──────────────────────────────────────────────────────────
 fastapi>=0.115          # /ask, /index, /health endpoints (pydantic comes with it)
 uvicorn>=0.30           # ASGI server used to run the FastAPI app
+python-multipart>=0.0.20 # multipart parser for browser PDF uploads
 
 # ── Utilities ────────────────────────────────────────────────────────
 python-dotenv>=1.0      # load .env (import: dotenv)

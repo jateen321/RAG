@@ -52,6 +52,21 @@ MAX_CHUNK_OVERLAP = 250   # Maximum overlap (chars). Without a ceiling, a single
                           # is cheaper than a duplicate chunk.
 MIN_CHUNK_LENGTH = 50     # Skip chunks shorter than this
 
+# ── YouTube transcript chunking ──────────────────────────────────────
+# Spoken content has a temporal shape that PDF text does not. A character-only
+# limit can make a fast speaker's chunk too long in time and a slow speaker's
+# chunk too short in meaning, so YouTube chunks stop at whichever soft target
+# is reached first while retaining hard ceilings for both dimensions.
+YOUTUBE_CHUNK_TARGET_CHARS = int(os.getenv("YOUTUBE_CHUNK_TARGET_CHARS", "800"))
+YOUTUBE_CHUNK_MAX_CHARS = int(os.getenv("YOUTUBE_CHUNK_MAX_CHARS", "1200"))
+YOUTUBE_CHUNK_TARGET_SECONDS = float(
+    os.getenv("YOUTUBE_CHUNK_TARGET_SECONDS", "75")
+)
+YOUTUBE_CHUNK_MAX_SECONDS = float(os.getenv("YOUTUBE_CHUNK_MAX_SECONDS", "120"))
+YOUTUBE_CHUNK_OVERLAP_SECONDS = float(
+    os.getenv("YOUTUBE_CHUNK_OVERLAP_SECONDS", "12")
+)
+
 # ── Embedding request pacing ──────────────────────────────────────────
 # The binding constraint on a bulk index is requests-per-MINUTE, not total
 # volume: a 1877-page corpus is ~72 embedding calls, and firing them

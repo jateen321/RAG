@@ -173,7 +173,8 @@ Then open **http://127.0.0.1:8000/docs** for interactive Swagger docs.
 | `GET` | `/` | Service info |
 | `GET` | `/health` | Status + index statistics |
 | `POST` | `/ask` | Ask a grounded question — returns the answer **and its sources** |
-| `POST` | `/index` | Index a PDF already sitting in `data/` |
+| `POST` | `/index` | Index a PDF, TXT, or Markdown file already in `data/` |
+| `POST` | `/upload` | Upload and index a PDF, TXT, or Markdown file |
 | `POST` | `/index/youtube` | Index a YouTube video or playlist URL |
 
 ```bash
@@ -190,6 +191,35 @@ curl -X POST http://127.0.0.1:8000/ask \
 
 Responses carry the answer plus the chunks used as grounding context (page,
 source, distance, and preview).
+
+## 🖥️ React Web Interface
+
+The `frontend/` application provides a student-friendly interface for chat,
+source citations, document uploads, YouTube indexing, and library status.
+
+Start the API in one terminal:
+
+```bash
+source .venv/bin/activate
+uvicorn api:app --host 127.0.0.1 --port 8000
+```
+
+Start the React interface in another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev -- --host 127.0.0.1
+```
+
+Open **http://localhost:3000**. The frontend connects to
+`http://127.0.0.1:8000` by default. Copy `frontend/.env.example` to
+`frontend/.env.local` to configure a different API or site URL.
+
+PDF, UTF-8 TXT, and UTF-8 Markdown uploads are limited to 500 MB, saved inside
+`data/`, and rejected when a file with the same name already exists. Set
+`RAG_ALLOWED_ORIGINS` in `.env` if
+the frontend runs on a different origin.
 
 **Status codes:** `400` for a bad request, `503` when nothing is indexed yet or the Gemini
 quota is exhausted — a rate limit upstream becomes a "try again later" downstream, never a 500.

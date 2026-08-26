@@ -359,11 +359,9 @@ def index_document(
     Args:
         pages_text: List of {'page': int, 'text': str, 'method': str} from the
             OCR engine. 'method' is 'direct' or 'ocr'.
-        source_name: Name of the source file, e.g. "CIL.pdf".
-        source_type: Kind of source this text came from. Only "pdf" is produced
-            today; the field exists so a future transcript/web ingester can
-            share the same collection without its chunks being indistinguishable
-            from PDF pages.
+        source_name: Name of the source file, e.g. "CIL.pdf" or "notes.md".
+        source_type: Kind of source this text came from, such as "pdf", "text",
+            "markdown", or "youtube".
 
     Returns:
         Number of chunks indexed.
