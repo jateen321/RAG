@@ -5,6 +5,7 @@ Retrieves relevant chunks, builds a context-aware prompt,
 and generates answers using the configured Gemini model.
 """
 
+import time
 from typing import NoReturn
 
 from google.genai import types
@@ -153,24 +154,42 @@ def ask(question: str, chat_history: list = None, show_sources: bool = True) -> 
     return _answer_text(response)
 
 
-def ask_with_sources(question: str) -> dict:
+def ask_with_sources(question: str, top_k: int = None) -> dict:
     """
-    Answer a question and return the answer together with its sources.
+    Answer a question and return the answer, its sources, and phase timings.
 
     Programmatic sibling of ``ask`` (no rich console output). Used by the
     FastAPI ``/ask`` route and the evaluation harness.
 
+    ``top_k`` is exposed so the evaluation harness can retrieve once and score
+    several cut-offs from the same ranked list. Previously the harness called
+    ``retrieve`` itself AND called this function, which retrieved a second time
+    — doubling the embedding calls per question against a quota that is already
+    the binding constraint on a full run.
+
+    ``timings`` separates retrieval from generation so latency can be attributed
+    rather than reported as one opaque end-to-end number.
+
+    Args:
+        question: The user's question.
+        top_k: Chunks to retrieve. Defaults to ``config.TOP_K``.
+
     Returns:
-        {"answer": str, "sources": [{"page", "source", "distance", "preview"}]}
+        {"answer": str,
+         "sources": [{"page", "source", "distance", "preview", ...}],
+         "timings": {"retrieval_s", "generation_s", "total_s"}}
 
     Raises:
         RuntimeError: if nothing is indexed yet (empty / missing collection),
             so the API can surface a 503.
     """
+    started = time.perf_counter()
     try:
-        chunks = retrieve(question)      # embedding call — can raise a 429
+        kwargs = {"top_k": top_k} if top_k is not None else {}
+        chunks = retrieve(question, **kwargs)   # embedding call — can raise 429
     except ClientError as e:
         _quota_guard(e)                  # 429 → RuntimeError; else re-raised
+    retrieved_at = time.perf_counter()
 
     if not chunks:
         raise RuntimeError(
@@ -191,13 +210,24 @@ def ask_with_sources(question: str) -> dict:
         _quota_guard(e)                  # 429 → RuntimeError; else re-raised
 
     answer = _answer_text(response)
+    finished = time.perf_counter()
+
     sources = [
         {
             "page": c["page"],
             "source": c["source"],
             "distance": c["distance"],
+            "extraction_method": c.get("extraction_method", "unknown"),
             "preview": c["text"][:120].replace("\n", " "),
         }
         for c in chunks
     ]
-    return {"answer": answer, "sources": sources}
+    return {
+        "answer": answer,
+        "sources": sources,
+        "timings": {
+            "retrieval_s": round(retrieved_at - started, 3),
+            "generation_s": round(finished - retrieved_at, 3),
+            "total_s": round(finished - started, 3),
+        },
+    }
