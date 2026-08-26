@@ -344,6 +344,23 @@ before network and cold start are added.
 `aiplatform.googleapis.com/embed_content_input_tokens_per_minute_per_base_model`
 (Vertex express mode, `gemini-embedding-001`, `LLM_BACKEND=vertex`.)
 
+**The value: ~100,000 input tokens/minute.** Not published anywhere reachable --
+`serviceusage.googleapis.com` returns 403 (`PreconditionFailure` subject 110002,
+i.e. no billing account), and the 429 body carries NO numeric limit. Measured by
+bisection instead: a 250 x 1010-char request (~99,400 tokens at the measured
+2.54 chars/token for Devanagari) succeeds, and the very next request fails
+regardless of size -- so one such request consumes essentially the whole window.
+
+**Raising it requires enabling billing on the project.** Express mode is the free
+tier; the 403 above confirms no billing account is attached. Quota increases go
+through Console -> IAM & Admin -> Quotas, filtered to `aiplatform.googleapis.com`,
+and are unavailable while the project is billing-free.
+
+**Caveat on the 429 body (Vertex express):** it contains only
+`{code, message, status}` -- no `google.rpc.QuotaFailure`, no `RetryInfo`. The
+RetryInfo parsing added in `3290e16` therefore never fires on this backend
+(it degrades to exponential backoff, and does work on the Developer API).
+
 Google does not publish per-model embedding limits for express mode, and three
 doc pages fetched during this session were JS nav shells with no quota tables.
 The 429 payload is the only reliable source: `google.rpc.QuotaFailure` names the
@@ -392,6 +409,99 @@ predicate and is therefore restricted to **one content per request**; batching
 raises `ValueError`. `gemini-embedding-001` is explicitly exempted and uses the
 PREDICT path, which is why 20-per-call works today. Switching embedding models
 would silently break batching.
+
+---
+
+## 11. Latency reference (measured to 2026-08-26)
+
+Compact index of every timing measured so far, so future tuning starts from data
+rather than from re-running the same experiments. Detail and method live in
+`OCR_NOTES.md`; this is the summary sheet.
+
+### Where the time actually goes
+
+Two independent bottlenecks, with different fixes:
+
+| Stage | Bound by | Fix that works | Fix that does NOT |
+|---|---|---|---|
+| OCR | **upload bandwidth** (page image size) | grayscale encoding, parallel workers | more CPU |
+| Embedding | **input tokens/minute quota** | pacing, resumability, raising quota | bigger batches |
+
+### OCR — per page (Google Vision, 300 DPI)
+
+Encoding dominates, because latency tracks *bytes uploaded*, not page content:
+
+| Encoding | Size | Latency | Similarity vs RGB |
+|---|---|---|---|
+| RGB PNG (original) | 6437 KB | ~9.0 s | 1.0000 |
+| **Grayscale PNG (adopted)** | 1626 KB | **2.64 s** | **0.9994** |
+| JPEG q85 (rejected, lossy) | 618 KB | 1.33 s | 0.9967 |
+
+### OCR — parallelism (8 dense pages, interleaved across 3 reps)
+
+| workers | median | speedup |
+|---|---|---|
+| 1 | 32.2 s | 1.00x |
+| 2 | 12.2 s | 2.63x |
+| 4 | 11.6 s | 2.78x |
+| **8 (default)** | **9.8 s** | **3.27x** |
+
+Effective throughput at 8 workers: **~1.2 s/page**, so a 428-page scan OCRs in
+roughly 9 minutes. Sequential would be ~19 minutes.
+
+### OCR — backend medians (90 pages, warm)
+
+| backend | Gita | Arthasastra | History | $/page | failures/90 |
+|---|---|---|---|---|---|
+| tesseract | 3.31 s | 3.76 s | 5.74 s | $0 | 3 |
+| **vision** | 8.57 s* | 2.12 s | 1.84 s | $0.00150 | **0** |
+| gemini | 6.62 s | 3.96 s | 5.32 s | ~$0.0016 | 21† |
+
+\* pre-grayscale figure.  † harness lacked backoff; not a model verdict.
+
+### Embedding — quota-bound, not latency-bound
+
+Raw speed is fast; the quota is what costs time.
+
+| batch size | throughput |
+|---|---|
+| 50 | 13.0 chunks/s |
+| 100 | 17.2 chunks/s |
+| **250 (API max)** | **23.8 chunks/s** |
+
+But the effective ceiling is **~100,000 input tokens/minute** (§10). Devanagari
+measures **2.54 chars/token**, so:
+
+| | value |
+|---|---|
+| Effective embedding rate | **~254,000 chars/minute** |
+| One 250 x 1010-char request | ~99,400 tokens -- nearly the whole window |
+| Chars per page (measured, 1178 pages) | ~1,292 |
+| **Embedding floor** | **~0.24 s per 1000 chars = ~0.31 s/page** |
+
+A 500-page book is ~646,000 chars = ~254,000 tokens = **~2.5 minutes of
+quota-limited waiting minimum**, no matter how fast the network is.
+
+### Whole-file observations (folder run, 2026-08-26)
+
+| file | pages | routing | chunks | outcome |
+|---|---|---|---|---|
+| Jateen_Resume | 1 | 1 direct | 6 | 7.06 s cold / **2.56 s cached** |
+| essence-of-hinduism | 241 | 239 direct, 2 ocr | 809 | indexed |
+| मनुस्मृति-सम्पूर्ण | 509 | 505 direct, 4 ocr | 1030 | **failed at 54% embedding** |
+| SRIMAD-BHAGAVAD-GITA | 428 | **0 direct, 428 ocr** | 857 | indexed, ~$0.64 |
+
+**The router is the single biggest cost lever, and it is invisible in latency
+terms.** essence-of-hinduism and Manusmriti are 750 pages combined but sent only
+**6 pages** to Vision -- $0.009 instead of $1.13. Any change that bypasses the
+router (e.g. Vision async batch on whole PDFs) forfeits that.
+
+### Cache effects
+
+| operation | cold | cached |
+|---|---|---|
+| 12-page PDF extract | 23.3 s | **0.0 s** |
+| 1-page PDF, full index | 7.06 s | 2.56 s |
 
 ---
 
