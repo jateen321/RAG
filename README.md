@@ -216,6 +216,24 @@ source, distance, and preview).
 The `frontend/` application provides a student-friendly interface for chat,
 source citations, document uploads, YouTube indexing, and library status.
 
+### Why does the application use two ports?
+
+During development, the frontend and backend run as separate servers:
+
+- **Port 3000** runs the React frontend, which renders the user interface and
+  provides development features such as fast refresh.
+- **Port 8000** runs the Python FastAPI backend (not Flask), which handles the
+  RAG pipeline, Gemini requests, ChromaDB, uploads, and API endpoints.
+
+Keeping the servers separate makes it possible to develop and restart either
+part independently. The browser opens the frontend on
+`http://localhost:3000`, and the frontend sends API requests to
+`http://127.0.0.1:8000`.
+
+A production deployment can expose both parts through one public port or
+domain. Common approaches are to serve the built frontend from FastAPI or use
+a reverse proxy that routes `/` to the frontend and `/api/*` to FastAPI.
+
 Start the API in one terminal:
 
 ```bash

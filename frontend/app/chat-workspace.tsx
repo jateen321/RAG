@@ -24,6 +24,7 @@ type Source = {
   preview: string;
   source_type?: string;
   timestamp?: string;
+  timestamp_url?: string;
   source_url?: string;
   video_title?: string;
 };
@@ -104,6 +105,15 @@ function locationLabel(source: Source) {
   if (source.source_type === 'youtube') return source.timestamp ? `Timestamp ${source.timestamp}` : 'Video transcript';
   if (source.source_type === 'text' || source.source_type === 'markdown') return source.page ? `Document section ${source.page}` : 'Document passage';
   return source.page ? `Page ${source.page}` : 'PDF passage';
+}
+
+function sourceHref(source: Source) {
+  if (source.timestamp_url) return source.timestamp_url;
+  if (source.source_url) return source.source_url;
+  if (!['pdf', 'text', 'markdown'].includes(source.source_type || '')) return null;
+  const encodedPath = source.source.split('/').map(encodeURIComponent).join('/');
+  const pageAnchor = source.source_type === 'pdf' && source.page ? `#page=${source.page}` : '';
+  return `${API_URL}/documents/${encodedPath}${pageAnchor}`;
 }
 
 function LoadingAnswer() {
@@ -491,9 +501,13 @@ export default function ChatWorkspace() {
                           View {message.sources.length} supporting sources <span aria-hidden="true">→</span>
                         </button>
                         <div className="inline-sources">
-                          {message.sources.map((source, index) => (
-                            <div key={`${source.source}-${index}`}><strong>{index + 1}. {locationLabel(source)}</strong><span>{source.source}</span></div>
-                          ))}
+                          {message.sources.map((source, index) => {
+                            const href = sourceHref(source);
+                            const content = <><strong>{index + 1}. {locationLabel(source)}</strong><span>{source.source}</span></>;
+                            return href
+                              ? <a href={href} target="_blank" rel="noreferrer" aria-label={`Open ${source.source} at ${locationLabel(source)}`} key={`${source.source}-${index}`}>{content}</a>
+                              : <div key={`${source.source}-${index}`}>{content}</div>;
+                          })}
                         </div>
                       </>
                     )}
@@ -524,6 +538,7 @@ export default function ChatWorkspace() {
             <h2>Sources for this answer.</h2>
             <div className="source-list">
               {activeSources.map((source, index) => {
+                const href = sourceHref(source);
                 const content = (
                   <>
                     <div className="source-card-head"><span>{String(index + 1).padStart(2, '0')}</span><strong>{locationLabel(source)}</strong></div>
@@ -532,7 +547,7 @@ export default function ChatWorkspace() {
                     <small>{source.source_type === 'youtube' ? 'YouTube transcript' : source.source}</small>
                   </>
                 );
-                return source.source_url ? <a className="source-card" href={source.source_url} target="_blank" rel="noreferrer" key={`${source.source}-${index}`}>{content}</a> : <article className="source-card" key={`${source.source}-${index}`}>{content}</article>;
+                return href ? <a className="source-card" href={href} target="_blank" rel="noreferrer" aria-label={`Open ${source.source}`} key={`${source.source}-${index}`}>{content}</a> : <article className="source-card" key={`${source.source}-${index}`}>{content}</article>;
               })}
             </div>
           </>

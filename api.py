@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from config import CONVERSATION_DB_PATH, DATA_DIR, INDEX_FOLDER_ROOTS
@@ -113,6 +114,22 @@ def health() -> dict:
     from indexer import get_stats
 
     return {"status": "ok", **get_stats()}
+
+
+@app.get("/documents/{source_path:path}", response_class=FileResponse)
+def open_document(source_path: str) -> FileResponse:
+    """Open an indexed local document while keeping access inside ``data/``."""
+    try:
+        document_path = _resolve_data_document(source_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Document not found.") from exc
+
+    media_types = {
+        ".pdf": "application/pdf",
+        ".txt": "text/plain; charset=utf-8",
+        ".md": "text/markdown; charset=utf-8",
+    }
+    return FileResponse(document_path, media_type=media_types[document_path.suffix.lower()])
 
 
 @app.post("/ask")

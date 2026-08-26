@@ -38,6 +38,18 @@ class DocumentUploadValidationTests(unittest.TestCase):
                     [{"page": 1, "text": content, "method": "text"}],
                 )
 
+    def test_document_route_opens_a_nested_text_source(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            document = Path(data_dir) / "Mahabharata" / "maha09.txt"
+            document.parent.mkdir()
+            document.write_text("Mahabharata passage", encoding="utf-8")
+            with patch.object(api, "DATA_DIR", data_dir):
+                response = self.client.get("/documents/Mahabharata/maha09.txt")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "Mahabharata passage")
+        self.assertTrue(response.headers["content-type"].startswith("text/plain"))
+
     def test_rejects_non_utf8_text(self):
         with tempfile.TemporaryDirectory() as data_dir:
             path = Path(data_dir) / "notes.txt"

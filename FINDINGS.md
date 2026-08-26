@@ -326,6 +326,16 @@ before network and cold start are added.
 - Folder selection depends on browser-provided `webkitRelativePath`. A native label linked
   to the directory input is more reliable than programmatically clicking a hidden input.
 
+## 9. Application state and source navigation (2026-08-26)
+
+### 🟢 Repo-verified
+- React memory alone loses conversation history on reload. SQLite now stores threads,
+  answers, citations, timings, and timestamps across sessions.
+- A working click handler can still look broken when its destination scrolls off-screen.
+  The evidence panel now stays viewport-fixed while the conversation scrolls.
+- Document citations need a safe file-serving route, not only a source name. Nested local
+  PDF/TXT/MD sources now open without allowing paths outside `data/`.
+
 ## Main conclusion
 *(Revised 2026-08-22.)* The earlier conclusion — "retrieval experimentation is no longer
 the bottleneck, Gemini retrieval is reliable" — **does not survive §6**. It rested on

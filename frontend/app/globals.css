@@ -177,7 +177,10 @@ a.source-card:hover { border-color: #aeb9ad; background: #fffdf8; transform: tra
 
 @media (max-width: 1040px) {
   .inline-sources { display: grid; gap: 5px; margin-top: 8px; }
-  .inline-sources > div { display: flex; justify-content: space-between; gap: 14px; padding: 8px 10px; border-left: 2px solid #c8d4c6; background: #efede6; font-size: 9px; }
+  .inline-sources > a, .inline-sources > div { display: flex; justify-content: space-between; gap: 14px; padding: 8px 10px; border-left: 2px solid #c8d4c6; color: inherit; background: #efede6; font-size: 9px; text-decoration: none; }
+  .inline-sources > a { cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+  .inline-sources > a:hover { border-color: var(--orange); background: #fffdf8; transform: translateX(2px); }
+  .inline-sources > a:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
   .inline-sources span { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
   .show-sources { display: none; }
 }
