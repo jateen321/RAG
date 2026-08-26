@@ -7,6 +7,7 @@ and stores in a persistent ChromaDB collection.
 
 import re
 import time
+import json
 import hashlib
 import os
 import unicodedata
@@ -18,7 +19,7 @@ from config import (
     EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP, MAX_CHUNK_OVERLAP,
     MIN_CHUNK_LENGTH, CHROMA_DB_PATH, COLLECTION_NAME,
     EMBED_BATCH_SIZE, EMBED_BATCH_DELAY_S, EMBED_MAX_ATTEMPTS,
-    EMBED_BACKOFF_BASE_S,
+    EMBED_BACKOFF_BASE_S, EMBED_PACE_MAX_S, EMBED_PACE_DECAY_AFTER,
 )
 from llm_client import get_client
 
@@ -181,6 +182,101 @@ def _is_quota_error(exc: Exception) -> bool:
     return "429" in text or "quota" in text or "resource_exhausted" in text
 
 
+# ── Shared embedding pace ─────────────────────────────────────────────
+# Deliberately module-level, not per-call. The old code set the backoff inside
+# _embed_batch and slept a FLAT EMBED_BATCH_DELAY_S between batches, so state
+# died with each batch: a run could be throttled seven times and still charge
+# into batch eight at full speed. Quota is a property of the account over a
+# time window, not of one batch, so the pace that respects it has to outlive
+# the batch too.
+_pace_delay = EMBED_BATCH_DELAY_S
+_pace_ok_streak = 0
+
+
+def _pace_penalise() -> None:
+    """Back off the shared pace after a 429 (multiplicative, capped)."""
+    global _pace_delay, _pace_ok_streak
+    _pace_delay = min(_pace_delay * 2, EMBED_PACE_MAX_S)
+    _pace_ok_streak = 0
+
+
+def _pace_reward() -> None:
+    """Ease the pace back toward the floor after a run of clean batches.
+
+    Decay is gated on a STREAK rather than applied per success: halving after
+    every single success would undo a penalty immediately and oscillate.
+    """
+    global _pace_delay, _pace_ok_streak
+    if _pace_delay <= EMBED_BATCH_DELAY_S:
+        return
+    _pace_ok_streak += 1
+    if _pace_ok_streak >= EMBED_PACE_DECAY_AFTER:
+        _pace_delay = max(_pace_delay / 2, EMBED_BATCH_DELAY_S)
+        _pace_ok_streak = 0
+
+
+def _parse_retry_delay(value) -> float | None:
+    """Read a google.rpc.RetryInfo duration, which arrives as "38s" or {seconds}."""
+    if isinstance(value, dict):
+        return float(value.get("seconds", 0)) + float(value.get("nanos", 0)) / 1e9
+    if isinstance(value, str) and value.endswith("s"):
+        try:
+            return float(value[:-1])
+        except ValueError:
+            return None
+    return None
+
+
+def _quota_info(exc: Exception) -> dict:
+    """Pull the quota metric name and any server-supplied wait out of a 429.
+
+    google-genai puts the raw error JSON on ``APIError.details``. Google reports
+    which quota was exceeded there as a google.rpc.QuotaFailure violation, and
+    the wait it actually wants as google.rpc.RetryInfo. Both beat guessing:
+    the metric name is the ONLY reliable way to tell a requests-per-minute limit
+    (which smaller batches make worse and larger batches relieve) from a
+    tokens-per-minute limit (where batch size changes nothing at all), and it
+    also distinguishes a per-minute window from a per-day one.
+    """
+    info = {"metric": None, "retry_after": None, "raw": None}
+    details = getattr(exc, "details", None)
+    if not isinstance(details, dict):
+        return info
+    info["raw"] = details
+    error = details.get("error", details)
+    if not isinstance(error, dict):
+        return info
+    for item in error.get("details") or []:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("@type", ""))
+        if "QuotaFailure" in kind:
+            for violation in item.get("violations") or []:
+                if isinstance(violation, dict):
+                    info["metric"] = (
+                        violation.get("quotaMetric")
+                        or violation.get("quotaId")
+                        or info["metric"]
+                    )
+        elif "RetryInfo" in kind:
+            info["retry_after"] = _parse_retry_delay(item.get("retryDelay"))
+    return info
+
+
+def _is_daily_quota(metric: str | None) -> bool:
+    """True for a per-DAY allowance, which no backoff window will outlast.
+
+    Retrying a daily quota burns 10+20+40+80 = 150s per batch before failing
+    anyway, then repeats that on every remaining file. Fail fast instead.
+    """
+    return bool(metric) and any(
+        marker in metric.lower() for marker in ("per_day", "perday", "per-day", "daily")
+    )
+
+
+_quota_reported = False        # dump the full 429 payload once per process
+
+
 def _embed_batch(batch: list[str]) -> list[list[float]]:
     """Embed one batch, retrying a quota rejection with exponential backoff.
 
@@ -189,7 +285,14 @@ def _embed_batch(batch: list[str]) -> list[list[float]]:
     as a raw traceback and abandoned the whole document. Quota here is a
     per-minute window, so a single short wait is not reliably enough once that
     window has been saturated.
+
+    Backoff within a batch stays exponential, but the server's own RetryInfo
+    wins when it supplies one, and every 429 also nudges the SHARED inter-batch
+    pace (see ``_pace_penalise``) so the next batch does not charge straight
+    back into a window we already know is saturated.
     """
+    global _quota_reported
+
     delay = EMBED_BACKOFF_BASE_S
     for attempt in range(1, EMBED_MAX_ATTEMPTS + 1):
         try:
@@ -197,21 +300,49 @@ def _embed_batch(batch: list[str]) -> list[list[float]]:
                 model=EMBEDDING_MODEL,
                 contents=batch,
             )
+            _pace_reward()
             return [e.values for e in result.embeddings]
         except Exception as exc:
             if not _is_quota_error(exc):
                 raise
+            info = _quota_info(exc)
+            _pace_penalise()
+
+            if not _quota_reported:
+                _quota_reported = True
+                console.print(
+                    f"[dim]   ↳ quota metric: {info['metric'] or 'not reported'}"
+                    f"  ·  server retry hint: {info['retry_after'] or 'none'}[/dim]"
+                )
+                if info["raw"] is not None:
+                    console.print(
+                        f"[dim]   ↳ 429 payload: "
+                        f"{json.dumps(info['raw'], ensure_ascii=False)[:800]}[/dim]"
+                    )
+
+            if _is_daily_quota(info["metric"]):
+                raise RuntimeError(
+                    f"Daily embedding quota exhausted ({info['metric']}). Retrying "
+                    f"cannot help before the daily window resets — nothing was "
+                    f"written for this document. Rerun tomorrow, or raise the quota."
+                ) from exc
+
             if attempt == EMBED_MAX_ATTEMPTS:
                 raise RuntimeError(
                     f"Embedding quota still exhausted after {EMBED_MAX_ATTEMPTS} "
-                    f"attempts. Nothing was written for this document — rerun "
-                    f"the index once the per-minute quota has recovered."
+                    f"attempts (metric: {info['metric'] or 'unknown'}). Nothing was "
+                    f"written for this document — rerun the index once the "
+                    f"per-minute quota has recovered."
                 ) from exc
+
+            wait = info["retry_after"] or delay
             console.print(
                 f"[yellow]⏳ Rate limited (attempt {attempt}/"
-                f"{EMBED_MAX_ATTEMPTS}) — waiting {delay}s...[/yellow]"
+                f"{EMBED_MAX_ATTEMPTS}) — waiting {wait:g}s"
+                f"{' (server hint)' if info['retry_after'] else ''}"
+                f"; pace now {_pace_delay:g}s[/yellow]"
             )
-            time.sleep(delay)
+            time.sleep(wait)
             delay *= 2
 
 
@@ -243,9 +374,11 @@ def _embed_texts(texts: list[str], batch_size: int = None, on_progress=None) -> 
 
         # Proactive spacing between batches. Cheaper than being throttled:
         # a 1s pause costs ~1 minute over 72 batches, while one 429 costs a
-        # 10-80s backoff and risks losing the document entirely.
+        # 10-80s backoff and risks losing the document entirely. The delay is
+        # the ADAPTIVE one, so a throttle earlier in the run (or in an earlier
+        # document within the same process) still slows this batch down.
         if i + batch_size < len(texts):
-            time.sleep(EMBED_BATCH_DELAY_S)
+            time.sleep(_pace_delay)
 
     return all_embeddings
 

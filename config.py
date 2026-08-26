@@ -79,6 +79,14 @@ EMBED_BACKOFF_BASE_S = 10   # First retry waits this; each retry doubles it
                             # not enough to clear a per-minute window that had
                             # already been saturated.
 
+# Adaptive inter-batch pacing. EMBED_BATCH_DELAY_S is the FLOOR; being throttled
+# raises the working delay and sustained success decays it back toward the floor.
+# A fixed delay cannot adapt: it is either too slow when quota is free, or too
+# fast once the window is saturated -- and the old code reset to the floor after
+# every batch, so a throttle taught it nothing.
+EMBED_PACE_MAX_S = 30.0     # Ceiling for the adaptive delay
+EMBED_PACE_DECAY_AFTER = 5  # Clean batches needed before easing the delay back
+
 # ── Retrieval Configuration ───────────────────────────────────────────
 TOP_K = 5                 # Number of chunks to retrieve per query
 
