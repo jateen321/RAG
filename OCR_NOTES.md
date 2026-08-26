@@ -354,3 +354,49 @@ accept that it hides what it cannot read.
 - [ ] Wire `grayscale + Sauvola` into `_ocr_with_tesseract()` if `tesseract` is kept.
 - [ ] Ground truth is one 126-char verse on one page. Transcribe 2–3 more bounded regions
       (ideally from Arthasastra/History) before treating the CER ranking as general.
+
+## 🟢 Addendum — validating the router after the autojunk fix
+
+Re-ran `_verify_text_layer()` on four documents with the fix in place, to confirm the
+corrupt-layer detector still catches what it should:
+
+| Document | layer type | old (buggy) | fixed | verdict |
+|---|---|---|---|---|
+| मनुस्मृति-सम्पूर्ण.pdf | Unicode Devanagari | 0.0235 | **0.8571** | trust layer ✓ |
+| A_History…India.pdf | Krutidev legacy | 0.9746 | 0.9759 | trust layer ✓ |
+| CIL.pdf | English digital | 0.9173 | 0.9377 | trust layer ✓ |
+| essence-of-hinduism.pdf | English digital | 0.9981 | 0.9981 | trust layer ✓ |
+
+The History result looks alarming but is correct. `choose_method()` routes **743 of its
+769 pages to `ocr` on its own** — it detects the Krutidev gibberish unaided. Only 26 pages
+route to `direct`, and those are the **bibliography** pages: mostly English author names
+and titles, genuinely readable. The layer check only ever samples `direct`-routed pages,
+so 0.976 describes the bibliography, not the book.
+
+The division of labour is therefore: `choose_method()` catches per-page junk;
+`_verify_text_layer()` is the safety net for when `choose_method()` is *fooled* — which is
+exactly the Manusmriti case, and the case that was broken. **The 0.4 threshold still
+separates cleanly** on the evidence available (0.857 lowest clean vs nothing below it),
+though we no longer have a verified whole-document corrupt-layer example to anchor the
+low end, since Manusmriti was the presumed one.
+
+## 🔴 Hosted OCR had no retry — one transient failure aborted a whole run
+
+Hit live while running the validation above:
+
+```
+RuntimeError: Google Cloud Vision OCR failed: The service is currently unavailable.
+```
+
+A single transient 503 killed the run. `_ocr_with_google_vision()` had no retry, and the
+Gemini path had none either — which is the entire reason 21 of 90 benchmark pages failed
+with 429 RESOURCE_EXHAUSTED. `indexer.py` already paces and retries *embedding* calls
+(`EMBED_MAX_ATTEMPTS`, `EMBED_BACKOFF_BASE_S`); the OCR calls had no equivalent.
+
+**Fixed:** `_with_retry()` in `ocr_engine.py`, wrapping both hosted backends.
+`OCR_MAX_ATTEMPTS=4`, `OCR_BACKOFF_BASE_S=2` (2→4→8 s). Neither a 503 nor a 429 means the
+page is unreadable, so retrying is the correct response; without it a single blip aborts a
+multi-hour 1877-page index.
+
+Verified end-to-end afterwards: `_ocr_page()` on Gita p.275/276 via `google_vision`
+returned 1055 / 1127 chars, matching the benchmark.

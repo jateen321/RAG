@@ -13,6 +13,7 @@ Credentials. Tesseract remains available as a fully local backend.
 
 import io
 import re
+import time
 import difflib
 import statistics
 import unicodedata
@@ -26,6 +27,8 @@ from rich.console import Console
 from config import (
     GOOGLE_VISION_LANGUAGE_HINTS,
     OCR_BACKEND,
+    OCR_MAX_ATTEMPTS,
+    OCR_BACKOFF_BASE_S,
     TESSERACT_LANG,
     PDF_DPI,
     LAYER_CHECK_SAMPLE,
@@ -56,6 +59,31 @@ def _ocr_with_tesseract(img: Image.Image) -> str:
     """Run the local Tesseract backend."""
     text = pytesseract.image_to_string(img, lang=TESSERACT_LANG)
     return text.strip()
+
+
+def _with_retry(fn, what: str):
+    """Retry a hosted-OCR call with exponential backoff.
+
+    Hosted OCR fails transiently in two ways seen in practice: Vision 503
+    "service is currently unavailable", and Vertex 429 RESOURCE_EXHAUSTED under
+    per-minute quota. Neither means the page is unreadable — retrying works.
+    Without this, a single blip aborts an entire multi-hour index.
+    """
+    last = None
+    for attempt in range(OCR_MAX_ATTEMPTS):
+        try:
+            return fn()
+        except Exception as exc:                     # noqa: BLE001 - re-raised below
+            last = exc
+            if attempt == OCR_MAX_ATTEMPTS - 1:
+                break
+            wait = OCR_BACKOFF_BASE_S * (2 ** attempt)
+            console.print(
+                f"   [yellow]{what} attempt {attempt + 1}/{OCR_MAX_ATTEMPTS} "
+                f"failed ({type(exc).__name__}); retrying in {wait}s[/yellow]"
+            )
+            time.sleep(wait)
+    raise RuntimeError(f"{what} failed after {OCR_MAX_ATTEMPTS} attempts") from last
 
 
 _vision_client = None
@@ -92,14 +120,17 @@ def _ocr_with_google_vision(img: Image.Image) -> str:
     content = io.BytesIO()
     img.convert("L").save(content, format="PNG", optimize=True)
 
-    try:
+    def _call():
         client = _get_vision_client()
-        image = vision.Image(content=content.getvalue())
-        context = vision.ImageContext(language_hints=GOOGLE_VISION_LANGUAGE_HINTS)
-        response = client.document_text_detection(
-            image=image,
-            image_context=context,
+        return client.document_text_detection(
+            image=vision.Image(content=content.getvalue()),
+            image_context=vision.ImageContext(
+                language_hints=GOOGLE_VISION_LANGUAGE_HINTS
+            ),
         )
+
+    try:
+        response = _with_retry(_call, "Google Cloud Vision OCR")
     except Exception as exc:
         raise RuntimeError(
             "Google Cloud Vision OCR request failed. Confirm Application Default "
@@ -160,8 +191,8 @@ def _ocr_with_gemini(img: Image.Image) -> str:
     buf = io.BytesIO()
     img.convert("L").save(buf, format="PNG", optimize=True)
 
-    try:
-        response = _gemini_client.models.generate_content(
+    def _call():
+        return _gemini_client.models.generate_content(
             model=LLM_MODEL,
             contents=[
                 types.Part.from_bytes(data=buf.getvalue(), mime_type="image/png"),
@@ -172,6 +203,11 @@ def _ocr_with_gemini(img: Image.Image) -> str:
                 thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
+
+    # 21 of 90 benchmark pages failed with 429 RESOURCE_EXHAUSTED (Vertex
+    # express per-minute quota) purely for want of this.
+    try:
+        response = _with_retry(_call, "Gemini OCR")
     except Exception as exc:
         raise RuntimeError(
             "Gemini OCR request failed. Confirm LLM_BACKEND, the matching API "

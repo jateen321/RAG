@@ -86,6 +86,14 @@ if OCR_BACKEND not in OCR_BACKENDS:
     raise ValueError(
         f"OCR_BACKEND must be one of {OCR_BACKENDS} (got {OCR_BACKEND!r})."
     )
+# ── OCR request retry ─────────────────────────────────────────────────
+# Hosted OCR fails transiently: a 503 "service is currently unavailable" was
+# observed mid-run on 2026-08-25, and Vertex returns 429 RESOURCE_EXHAUSTED
+# under per-minute quota. Without retry ONE blip aborts a whole 1877-page
+# index, so mirror indexer.py's embedding pacing.
+OCR_MAX_ATTEMPTS = 4        # total tries per page
+OCR_BACKOFF_BASE_S = 2      # first retry waits this; each retry doubles (2→4→8)
+
 GOOGLE_VISION_LANGUAGE_HINTS = [
     language.strip()
     for language in os.getenv("GOOGLE_VISION_LANGUAGE_HINTS", "hi,sa,en").split(",")
