@@ -138,11 +138,18 @@ class FakeCollection:
             self.rows[row[0]] = row[1:]
 
     def get(self, where=None, include=None):
-        ids = [
-            row_id for row_id, (_, _, metadata) in self.rows.items()
+        matched = [
+            (row_id, metadata) for row_id, (_, _, metadata) in self.rows.items()
             if not where or all(metadata.get(key) == value for key, value in where.items())
         ]
-        return {"ids": ids}
+        result = {"ids": [row_id for row_id, _ in matched]}
+        # Chroma returns the requested columns. The fake must too: index_chunks
+        # reads metadatas to decide what is already embedded, and a fake that
+        # omitted them made every resume path fall into an except branch, so
+        # the tests passed while exercising nothing.
+        if include and "metadatas" in include:
+            result["metadatas"] = [metadata for _, metadata in matched]
+        return result
 
     def delete(self, ids=None, where=None):
         for row_id in ids or []:
@@ -159,13 +166,90 @@ class SharedIndexerTests(unittest.TestCase):
         ]
         with (
             patch("indexer._get_collection", return_value=collection),
-            patch("indexer._embed_texts", return_value=[[0.1], [0.2]]),
+            # index_chunks embeds and stores one batch at a time so a quota
+            # failure costs one batch instead of the document, so the seam to
+            # stub is _embed_batch. Patching _embed_texts here silently stopped
+            # intercepting anything and the test began making real API calls.
+            patch("indexer._embed_batch", side_effect=lambda batch: [[0.1]] * len(batch)),
         ):
             self.assertEqual(index_chunks(chunks, "book.pdf", "pdf"), 2)
 
         self.assertEqual(len(collection.rows), 2)
         self.assertTrue(any("_p0001_c000" in row_id for row_id in collection.rows))
         self.assertTrue(any("_p0002_c000" in row_id for row_id in collection.rows))
+
+    @staticmethod
+    def _chunks():
+        from indexer import _content_hash
+        return [
+            {"text": "A" * 60, "page_number": 1, "chunk_index": 0,
+             "content_hash": _content_hash("A" * 60)},
+            {"text": "B" * 60, "page_number": 2, "chunk_index": 0,
+             "content_hash": _content_hash("B" * 60)},
+        ]
+
+    def test_second_run_reembeds_nothing(self):
+        """A completed document costs zero embedding calls to re-index."""
+        collection = FakeCollection()
+        calls = []
+
+        def record(batch):
+            calls.append(len(batch))
+            return [[0.1]] * len(batch)
+
+        for _ in range(2):
+            with (
+                patch("indexer._get_collection", return_value=collection),
+                patch("indexer._embed_batch", side_effect=record),
+            ):
+                index_chunks(self._chunks(), "book.pdf", "pdf")
+
+        self.assertEqual(sum(calls), 2, "second run must embed nothing")
+        self.assertEqual(len(collection.rows), 2)
+
+    def test_resume_after_partial_failure_embeds_only_the_remainder(self):
+        """The whole point: a quota failure costs one batch, not the document."""
+        collection = FakeCollection()
+
+        # First run dies after the first chunk is stored.
+        def one_then_die(batch):
+            if collection.rows:
+                raise RuntimeError("quota exhausted")
+            return [[0.1]] * len(batch)
+
+        with (
+            patch("indexer._get_collection", return_value=collection),
+            patch("indexer._embed_batch", side_effect=one_then_die),
+            patch("indexer.EMBED_BATCH_SIZE", 1),
+        ):
+            with self.assertRaises(RuntimeError):
+                index_chunks(self._chunks(), "book.pdf", "pdf")
+
+        self.assertEqual(len(collection.rows), 1, "first batch must survive")
+
+        embedded = []
+        with (
+            patch("indexer._get_collection", return_value=collection),
+            patch("indexer._embed_batch",
+                  side_effect=lambda b: embedded.extend(b) or [[0.2]] * len(b)),
+            patch("indexer.EMBED_BATCH_SIZE", 1),
+        ):
+            index_chunks(self._chunks(), "book.pdf", "pdf")
+
+        self.assertEqual(len(embedded), 1, "resume must re-embed only the remainder")
+        self.assertEqual(len(collection.rows), 2)
+
+    def test_chunk_without_content_hash_is_never_skipped(self):
+        """Regression: `already.get(id) != chunk.get(hash)` made None == None,
+        marking an unstored chunk as already embedded and dropping it."""
+        collection = FakeCollection()
+        chunks = [{"text": "A" * 60, "page_number": 1, "chunk_index": 0}]
+        with (
+            patch("indexer._get_collection", return_value=collection),
+            patch("indexer._embed_batch", side_effect=lambda b: [[0.1]] * len(b)),
+        ):
+            index_chunks(chunks, "book.pdf", "pdf")
+        self.assertEqual(len(collection.rows), 1, "hashless chunk must still be stored")
 
 
 if __name__ == "__main__":

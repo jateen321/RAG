@@ -185,10 +185,30 @@ def indexed_file_names() -> set[str]:
     except Exception:
         # An unreadable collection must not stop ingestion.
         return set()
+    # A document is only "indexed" if it is COMPLETE. index_chunks writes each
+    # batch as it is embedded, so a run killed by quota leaves a partial
+    # document behind -- and counting that as indexed would skip it forever,
+    # leaving a book permanently half-searchable. Chunks carry `chunk_total`,
+    # so completeness is checkable; chunks written before that field existed
+    # have no total and are trusted as complete, since the old all-or-nothing
+    # path could not leave a partial document in the first place.
+    stored_counts: dict[str, int] = {}
+    expected: dict[str, int] = {}
+    names: dict[str, str] = {}
+    for md in metadatas:
+        if not md or not md.get("source_name"):
+            continue
+        doc_id = str(md.get("document_id", md["source_name"]))
+        stored_counts[doc_id] = stored_counts.get(doc_id, 0) + 1
+        names[doc_id] = str(md["source_name"]).rsplit("/", 1)[-1].casefold()
+        total = md.get("chunk_total")
+        if isinstance(total, int) and total > 0:
+            expected[doc_id] = max(expected.get(doc_id, 0), total)
+
     return {
-        str(md.get("source_name", "")).rsplit("/", 1)[-1].casefold()
-        for md in metadatas
-        if md and md.get("source_name")
+        name
+        for doc_id, name in names.items()
+        if stored_counts[doc_id] >= expected.get(doc_id, 0)
     }
 
 

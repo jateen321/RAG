@@ -414,22 +414,7 @@ def index_chunks(
         return 0
 
     console.print(f"   Created [bold]{len(chunks)}[/bold] chunks")
-    console.print("\n[bold]🧠 Generating embeddings...[/bold]")
-    texts = [chunk["text"] for chunk in chunks]
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Embedding chunks", total=len(texts))
-        embeddings = _embed_texts(
-            texts, on_progress=lambda n: progress.update(task, advance=n)
-        )
-
-    console.print("\n[bold]💾 Storing in vector database...[/bold]")
     collection = _get_collection()
     before = collection.count()
     doc_id = _document_id(document_key or source_name, source_type)
@@ -443,23 +428,88 @@ def index_chunks(
         )
         for chunk in chunks
     ]
-    for i in range(0, len(chunks), 100):
-        batch_chunks = chunks[i:i + 100]
-        collection.upsert(
-            ids=ids[i:i + 100],
-            embeddings=embeddings[i:i + 100],
-            documents=[chunk["text"] for chunk in batch_chunks],
-            metadatas=[
-                _chroma_metadata({
-                    **common_metadata,
-                    **{k: v for k, v in chunk.items() if k != "text"},
-                    "source_type": source_type,
-                    "document_id": doc_id,
-                    "source_name": source_name,
-                })
-                for chunk in batch_chunks
-            ],
+
+    # ── Resume ────────────────────────────────────────────────────────────
+    # Chunk ids are deterministic, so anything already stored for this document
+    # whose content_hash still matches does not need re-embedding. Chroma is
+    # therefore its own checkpoint -- no second on-disk format to keep in sync.
+    # The hash comparison matters: an id alone would wrongly reuse a vector for
+    # a chunk whose text changed (a re-OCR at a different DPI, say).
+    try:
+        stored = collection.get(where={"document_id": doc_id}, include=["metadatas"])
+        already = {
+            sid: (md or {}).get("content_hash")
+            for sid, md in zip(stored["ids"], stored["metadatas"] or [])
+        }
+    except Exception:                      # an unreadable collection just means
+        already = {}                       # "resume nothing", never a failure
+
+    # Resume a chunk ONLY on positive evidence: the id is present AND both
+    # hashes exist AND they match. Comparing `already.get(id) != chunk_hash`
+    # instead looks equivalent and is not -- a missing id yields None, an
+    # absent content_hash yields None, and None == None silently marks an
+    # unstored chunk as "already embedded". That skips it forever.
+    pending = [
+        position
+        for position, chunk_id in enumerate(ids)
+        if not (
+            chunks[position].get("content_hash")
+            and already.get(chunk_id)
+            and already[chunk_id] == chunks[position]["content_hash"]
         )
+    ]
+    resumed = len(chunks) - len(pending)
+    if resumed:
+        console.print(
+            f"   [dim]↩️  Resuming: {resumed}/{len(chunks)} chunks already "
+            f"embedded and stored[/dim]"
+        )
+
+    def _metadata_for(position: int) -> dict:
+        chunk = chunks[position]
+        return _chroma_metadata({
+            **common_metadata,
+            **{k: v for k, v in chunk.items() if k != "text"},
+            "source_type": source_type,
+            "document_id": doc_id,
+            "source_name": source_name,
+            # Lets a reader tell a COMPLETE document from one abandoned partway.
+            # Without it, a document that died at 54% looks indexed and gets
+            # skipped forever.
+            "chunk_total": len(chunks),
+        })
+
+    if pending:
+        console.print("\n[bold]🧠 Generating embeddings...[/bold]")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Embedding chunks", total=len(pending))
+            for start in range(0, len(pending), EMBED_BATCH_SIZE):
+                positions = pending[start:start + EMBED_BATCH_SIZE]
+                vectors = _embed_batch([chunks[i]["text"] for i in positions])
+
+                # Store THIS batch before embedding the next. Previously every
+                # batch was embedded before anything was written, so a quota
+                # failure at 54% discarded 54% of a token budget that is itself
+                # the scarce resource -- and the rerun had to spend it again.
+                # Writing as we go makes hitting the limit cost one batch.
+                collection.upsert(
+                    ids=[ids[i] for i in positions],
+                    embeddings=vectors,
+                    documents=[chunks[i]["text"] for i in positions],
+                    metadatas=[_metadata_for(i) for i in positions],
+                )
+                progress.update(task, advance=len(positions))
+
+                if start + EMBED_BATCH_SIZE < len(pending):
+                    time.sleep(_pace_delay)
+
+    console.print("\n[bold]💾 Storing in vector database...[/bold]")
 
     # Upsert replaces current positions but cannot remove positions left over
     # from an older, longer extraction. Remove those only after all new chunks
