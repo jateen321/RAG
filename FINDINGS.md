@@ -412,13 +412,36 @@ Vision (`505 direct · 4 ocr`), so the loss was entirely in the stage that is no
 yet resumable. Making the embed loop checkpoint per batch makes *hitting* the
 limit cheap, which is more robust than trying never to hit it.
 
-### 🔴 Landmine
+### 🔴 `gemini-embedding-2` is not an escape from the quota -- tested
 
-`gemini-embedding-2` matches the SDK's `t_is_vertex_embed_content_model()`
-predicate and is therefore restricted to **one content per request**; batching
-raises `ValueError`. `gemini-embedding-001` is explicitly exempted and uses the
-PREDICT path, which is why 20-per-call works today. Switching embedding models
-would silently break batching.
+Proposed on the theory that it runs on global rather than regional per-model
+limits and would bypass the bottleneck. **It does not.** Probed directly
+(script kept out of the repo; project `cloudexplore-502215`, `us-central1`):
+
+| claim | result |
+|---|---|
+| `gemini-embedding-2` is available | **404** -- not found on this project. Only `gemini-embedding-2-preview` resolves. |
+| bypasses the request bottleneck | **No.** 429 after **4 requests in 4.6 s**, naming the SAME metric `online_prediction_requests_per_base_model`. |
+| higher throughput | **No** -- it cannot batch, so a corpus needs ~1 request per chunk. |
+
+**The batching failure is silent, which makes it dangerous.** Sent 5 *distinct*
+texts, it returns **1 embedding** -- no error, no warning, four inputs dropped.
+Confirmed with distinct inputs specifically to rule out deduplication of
+identical strings. Wired naively into `index_chunks`, `upsert()` would receive
+20 ids and 1 vector: a length mismatch at best, silently misaligned vectors at
+worst.
+
+The SDK's `t_is_vertex_embed_content_model()` predicate flags the model as
+one-content-per-request and is *correct*, but its `ValueError` guard does not
+fire, because `t_contents()` first collapses a list into a single Content with
+multiple parts. `gemini-embedding-001` is explicitly exempted from that
+predicate and takes the PREDICT path, which is why 20-per-call works today.
+
+Two quota metrics exist and which one binds depends on batch size:
+`online_prediction_requests_per_base_model` (hit by many small requests, e.g.
+`EMBED_BATCH_SIZE = 20`) and `embed_content_input_tokens_per_minute_per_base_model`
+(hit by few large ones, e.g. 250 x 1010 chars). Tuning batch size trades one
+for the other; the token limit is the real ceiling.
 
 ---
 
