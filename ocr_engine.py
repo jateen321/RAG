@@ -122,12 +122,22 @@ def _ocr_with_google_vision(img: Image.Image) -> str:
 
     def _call():
         client = _get_vision_client()
-        return client.document_text_detection(
+        response = client.document_text_detection(
             image=vision.Image(content=content.getvalue()),
             image_context=vision.ImageContext(
                 language_hints=GOOGLE_VISION_LANGUAGE_HINTS
             ),
         )
+        # The in-band check MUST live inside the retried callable. Vision reports
+        # transient failures ("The service is currently unavailable") on the
+        # RESPONSE rather than by raising, so checking it outside the retry means
+        # the retry sees success and the error escapes un-retried. Observed
+        # exactly that way on 2026-08-25 before this was moved inward.
+        if response.error.message:
+            raise RuntimeError(
+                f"Google Cloud Vision OCR failed: {response.error.message}"
+            )
+        return response
 
     try:
         response = _with_retry(_call, "Google Cloud Vision OCR")
@@ -137,8 +147,6 @@ def _ocr_with_google_vision(img: Image.Image) -> str:
             "Credentials, Vision API enablement, billing, and quota."
         ) from exc
 
-    if response.error.message:
-        raise RuntimeError(f"Google Cloud Vision OCR failed: {response.error.message}")
     return response.full_text_annotation.text.strip()
 
 

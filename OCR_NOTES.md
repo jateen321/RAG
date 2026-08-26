@@ -400,3 +400,64 @@ multi-hour 1877-page index.
 
 Verified end-to-end afterwards: `_ocr_page()` on Gita p.275/276 via `google_vision`
 returned 1055 / 1127 chars, matching the benchmark.
+
+## 🟢 Threshold calibration — the low end is now anchored
+
+The previous addendum flagged that `LAYER_CHECK_MIN_SIMILARITY = 0.4` had lost its
+low-end anchor: Manusmriti was the presumed corrupt-layer example and turned out to be
+clean. Resolved by measuring documents whose layers **are** genuinely corrupt, deliberately
+bypassing `choose_method()`'s gate (they never reach the layer check in normal operation,
+because per-page routing catches them first):
+
+| Document | layer | median similarity (`autojunk=False`) |
+|---|---|---|
+| 027. Bhagya Likhne Ki Kalam | legacy font, **corrupt** | **0.0048** |
+| A_History…India (Krutidev pages) | Krutidev, **corrupt** | **0.0096** |
+| मनुस्मृति-सम्पूर्ण | Unicode, clean | **0.8571** |
+| essence-of-hinduism | English, clean | **0.9981** |
+
+Corrupt tops out at ~0.01; clean bottoms out at ~0.86. **`0.4` sits in an empty gap two
+orders of magnitude wide** — it is well placed and needs no change. The separation is real
+now, rather than the script artifact the original 0.02-vs-0.93 calibration was measuring.
+→ The "re-calibrate the threshold" open item is **closed**.
+
+## 🔴 Retry bug: the in-band error check was OUTSIDE the retry
+
+The retry added earlier did not actually fire. Vision reports transient failures **on the
+response object** rather than by raising, and the `response.error.message` check sat
+*after* `_with_retry()` returned — so the retry saw a successful call, returned, and the
+error escaped un-retried. Observed live:
+
+```
+RuntimeError: Google Cloud Vision OCR failed: The service is currently unavailable.
+  at ocr_engine.py:141   # the in-band check, outside the retry
+```
+
+**Fixed** by moving the in-band check *inside* the retried callable. Verified by injecting
+two synthetic in-band failures: the retry backed off (1s → 2s) and returned correct text
+(1055 chars on Gita p.275).
+
+Note this is the *general* shape of the bug, not a Vision quirk: **any API that reports
+errors in-band needs its success check inside the retry boundary**, or the retry is
+decorative. The same reasoning is why `_ocr_with_google_vision` checks
+`response.error.message` at all.
+
+Incidental data point: three genuine `503 The service is currently unavailable` responses
+occurred during one working session, one of them mid-test. Hosted OCR is flaky enough that
+retry is not optional for a 3653-page index.
+
+## Corpus indexing projection (google_vision default, after the fixes)
+
+| | pages |
+|---|---|
+| Text layer trusted (`direct`) | 786 |
+| Sent to Vision (`ocr`) | **3653** |
+| **Total** | 4439 |
+
+Cost: 3653 units − 1000 free = 2653 billable → **$3.98**.
+Time: ~**158 min** at ~2.6 s/page. Before the grayscale encoding fix the same run would
+have taken ~548 min — the encoding change alone saves ~6.5 hours.
+
+Of the 786 trusted pages, **505 are Manusmriti**, which the `autojunk` bug would have
+force-OCR'd — so that fix saves both money and text quality, since the clean layer is
+better than OCR of the same page.
