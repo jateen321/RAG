@@ -3,12 +3,19 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, status
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from config import DATA_DIR, INDEX_FOLDER_ROOTS
+from config import CONVERSATION_DB_PATH, DATA_DIR, INDEX_FOLDER_ROOTS
+from conversation_store import (
+    conversation_exists,
+    delete_conversation,
+    get_conversation,
+    list_conversations,
+    record_exchange,
+)
 from document_ingester import (
     SOURCE_TYPES,
     SUPPORTED_DOCUMENT_EXTENSIONS,
@@ -42,13 +49,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
+    conversation_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class IndexRequest(BaseModel):
@@ -111,12 +119,55 @@ def health() -> dict:
 async def ask_question(request: AskRequest) -> dict:
     from rag_engine import ask_with_sources
 
+    if request.conversation_id and not await run_in_threadpool(
+        conversation_exists, CONVERSATION_DB_PATH, request.conversation_id
+    ):
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
     try:
-        return await run_in_threadpool(ask_with_sources, request.question.strip())
+        question = request.question.strip()
+        result = await run_in_threadpool(ask_with_sources, question)
+        conversation_id = await run_in_threadpool(
+            record_exchange,
+            CONVERSATION_DB_PATH,
+            request.conversation_id,
+            question,
+            result["answer"],
+            result.get("sources", []),
+            result.get("timings", {}).get("total_s"),
+        )
+        return {**result, "conversation_id": conversation_id}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/conversations")
+async def conversation_history() -> dict:
+    conversations = await run_in_threadpool(
+        list_conversations, CONVERSATION_DB_PATH
+    )
+    return {"conversations": conversations}
+
+
+@app.get("/conversations/{conversation_id}")
+async def conversation_detail(conversation_id: str) -> dict:
+    conversation = await run_in_threadpool(
+        get_conversation, CONVERSATION_DB_PATH, conversation_id
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    return conversation
+
+
+@app.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_conversation(conversation_id: str) -> None:
+    deleted = await run_in_threadpool(
+        delete_conversation, CONVERSATION_DB_PATH, conversation_id
+    )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
 
 
 @app.post("/index")
@@ -146,7 +197,10 @@ async def index_file(request: IndexRequest) -> dict:
 
 
 @app.post("/upload", status_code=status.HTTP_201_CREATED)
-async def upload_document(file: UploadFile = File(...)) -> dict:
+async def upload_document(
+    file: UploadFile = File(...),
+    relative_path: str | None = Form(default=None),
+) -> dict:
     """Save and index one document, reusing an unindexed local copy if present."""
     original_name = Path(file.filename or "").name
     if not original_name or original_name in {".", ".."}:
@@ -165,16 +219,29 @@ async def upload_document(file: UploadFile = File(...)) -> dict:
 
     data_root = Path(DATA_DIR).resolve()
     data_root.mkdir(parents=True, exist_ok=True)
-    destination = (data_root / original_name).resolve()
-    if destination.parent != data_root:
+
+    path_parts = [original_name]
+    if relative_path:
+        if "\\" in relative_path:
+            raise HTTPException(status_code=400, detail="Invalid document path.")
+        path_parts = relative_path.split("/")
+        if (
+            any(part in {"", ".", ".."} for part in path_parts)
+            or path_parts[-1] != original_name
+        ):
+            raise HTTPException(status_code=400, detail="Invalid document path.")
+
+    source_name = "/".join(path_parts)
+    destination = data_root.joinpath(*path_parts).resolve()
+    if destination.parent != data_root and data_root not in destination.parents:
         raise HTTPException(status_code=400, detail="Invalid document filename.")
 
     from indexer import index_document, is_document_indexed
 
-    if await run_in_threadpool(is_document_indexed, original_name):
+    if await run_in_threadpool(is_document_indexed, source_name):
         raise HTTPException(
             status_code=409,
-            detail=f"'{original_name}' is already indexed in the library.",
+            detail=f"'{source_name}' is already indexed in the library.",
         )
 
     total = 0
@@ -182,6 +249,7 @@ async def upload_document(file: UploadFile = File(...)) -> dict:
     used_existing_file = destination.exists()
     try:
         if not used_existing_file:
+            destination.parent.mkdir(parents=True, exist_ok=True)
             with destination.open("xb") as output:
                 created_by_request = True
                 while chunk := await file.read(1024 * 1024):
@@ -200,7 +268,7 @@ async def upload_document(file: UploadFile = File(...)) -> dict:
                 detail="No readable text could be extracted from this document.",
             )
         chunks = await run_in_threadpool(
-            index_document, pages, destination.name, SOURCE_TYPES[extension]
+            index_document, pages, source_name, SOURCE_TYPES[extension]
         )
     except ValueError as exc:
         if created_by_request:
@@ -222,7 +290,7 @@ async def upload_document(file: UploadFile = File(...)) -> dict:
         await file.close()
 
     return {
-        "source": destination.name,
+        "source": source_name,
         "pages_with_text": len(pages),
         "chunks_indexed": chunks,
         "deduplicated": chunks == 0,

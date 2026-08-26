@@ -3,6 +3,7 @@ chroma_db/
 __pycache__/
 *.pyc
 data/*.pdf
+data/*.sqlite3*
 .DS_Store
 .venv
 venv/
@@ -11,3 +12,4 @@ evaluation/results*.json
 .venv*
 CLAUDE.md
 FINDINGS.md
+data/

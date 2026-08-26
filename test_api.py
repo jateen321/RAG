@@ -109,6 +109,42 @@ class DocumentUploadValidationTests(unittest.TestCase):
             "'lesson.pdf' is already indexed in the library.",
         )
 
+    def test_upload_preserves_a_folder_relative_path(self):
+        pages = [{"page": 1, "text": "Folder notes", "method": "text"}]
+        with tempfile.TemporaryDirectory() as data_dir:
+            with (
+                patch.object(api, "DATA_DIR", data_dir),
+                patch.object(api, "_extract_document", return_value=pages),
+                patch("indexer.is_document_indexed", return_value=False),
+                patch("indexer.index_document", return_value=1) as index_document,
+            ):
+                response = self.client.post(
+                    "/upload",
+                    data={"relative_path": "psychology/lesson.pdf"},
+                    files={"file": ("lesson.pdf", b"content", "application/pdf")},
+                )
+
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.json()["source"], "psychology/lesson.pdf")
+            self.assertEqual(
+                (Path(data_dir) / "psychology" / "lesson.pdf").read_bytes(),
+                b"content",
+            )
+            index_document.assert_called_once_with(
+                pages, "psychology/lesson.pdf", "pdf"
+            )
+
+    def test_upload_rejects_relative_path_traversal(self):
+        with tempfile.TemporaryDirectory() as data_dir, patch.object(api, "DATA_DIR", data_dir):
+            response = self.client.post(
+                "/upload",
+                data={"relative_path": "../lesson.pdf"},
+                files={"file": ("lesson.pdf", b"content", "application/pdf")},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "Invalid document path.")
+
     def test_folder_endpoint_rejects_a_path_outside_allowlist(self):
         with tempfile.TemporaryDirectory() as allowed, tempfile.TemporaryDirectory() as other:
             with patch.object(api, "INDEX_FOLDER_ROOTS", [allowed]):
@@ -144,6 +180,94 @@ class DocumentUploadValidationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), report)
         index_folder.assert_called_once_with(Path(allowed).resolve(), True)
+
+
+class ConversationHistoryTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(api.app)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.database_path = Path(self.temp_dir.name) / "conversations.sqlite3"
+        self.database_patch = patch.object(
+            api, "CONVERSATION_DB_PATH", str(self.database_path)
+        )
+        self.database_patch.start()
+
+    def tearDown(self):
+        self.database_patch.stop()
+        self.temp_dir.cleanup()
+
+    @staticmethod
+    def answer(answer: str = "Kolkata is in West Bengal.") -> dict:
+        return {
+            "answer": answer,
+            "sources": [
+                {
+                    "source": "geography.pdf",
+                    "page": 4,
+                    "distance": 0.12,
+                    "preview": "Kolkata is the capital of West Bengal.",
+                }
+            ],
+            "timings": {"total_s": 1.25},
+        }
+
+    def test_successful_answers_are_persisted_and_loaded(self):
+        with patch("rag_engine.ask_with_sources", return_value=self.answer()):
+            response = self.client.post(
+                "/ask", json={"question": "Where is Kolkata?"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        conversation_id = response.json()["conversation_id"]
+
+        history = self.client.get("/conversations")
+        self.assertEqual(history.status_code, 200)
+        self.assertEqual(len(history.json()["conversations"]), 1)
+        self.assertEqual(
+            history.json()["conversations"][0]["title"], "Where is Kolkata?"
+        )
+
+        detail = self.client.get(f"/conversations/{conversation_id}")
+        self.assertEqual(detail.status_code, 200)
+        exchange = detail.json()["exchanges"][0]
+        self.assertEqual(exchange["question"], "Where is Kolkata?")
+        self.assertEqual(exchange["answer"], "Kolkata is in West Bengal.")
+        self.assertEqual(exchange["sources"][0]["source"], "geography.pdf")
+        self.assertEqual(exchange["total_seconds"], 1.25)
+
+    def test_existing_conversation_accepts_more_exchanges_and_can_be_deleted(self):
+        with patch("rag_engine.ask_with_sources", return_value=self.answer()):
+            first = self.client.post("/ask", json={"question": "First question"})
+            conversation_id = first.json()["conversation_id"]
+            second = self.client.post(
+                "/ask",
+                json={
+                    "question": "Follow-up question",
+                    "conversation_id": conversation_id,
+                },
+            )
+
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()["conversation_id"], conversation_id)
+        detail = self.client.get(f"/conversations/{conversation_id}")
+        self.assertEqual(len(detail.json()["exchanges"]), 2)
+
+        deleted = self.client.delete(f"/conversations/{conversation_id}")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(
+            self.client.get(f"/conversations/{conversation_id}").status_code, 404
+        )
+
+    def test_unknown_conversation_is_rejected_before_asking_gemini(self):
+        with patch("rag_engine.ask_with_sources") as ask_with_sources:
+            response = self.client.post(
+                "/ask",
+                json={"question": "Hello", "conversation_id": "missing"},
+            )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "Conversation not found.")
+        ask_with_sources.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -150,6 +150,10 @@ LAYER_CHECK_MIN_SIMILARITY = 0.4   # median OCR-vs-layer similarity below this �
 
 # ── Paths ─────────────────────────────────────────────────────────────
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+CONVERSATION_DB_PATH = os.getenv(
+    "CONVERSATION_DB_PATH",
+    os.path.join(os.path.dirname(__file__), "data", "conversations.sqlite3"),
+)
 
 # Server-local folders that POST /index/folder may read. The CLI does not need
 # an allowlist because it already runs with the invoking user's permissions.
