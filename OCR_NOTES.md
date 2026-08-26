@@ -165,3 +165,192 @@ Same pages, same rasterization (DPI 200). `engword%` measured on the OCR output:
 - [ ] Get/confirm a clean Unicode-Hindi PDF to test the untested Hindi-trust branch.
 - [ ] Decide handling for legacy-font PDFs (027): OCR, or map the legacy font to Unicode?
 - [ ] Wire `choose_method` into `ocr_engine.py` (compare with stashed version); re-index; re-check chunk quality.
+
+---
+
+# 2026-08-25 — Three-backend OCR bake-off (tesseract vs google_vision vs gemini)
+
+Harness: `benchmark_ocr.py --compare` / `--backend gemini`. Each page is rasterized
+**once** at `PDF_DPI=300` and the identical image handed to every backend, so
+rasterization is never charged twice. Raw per-page text + timings are saved in
+`evaluation/ocr_compare_*.json` and `evaluation/ocr_gemini_*.json`.
+
+Corpus: 90 pages — Gita 250–299 (50), Arthasastra 300–319 (20), History 300–319 (20).
+
+## 🔴 KEYSTONE CORRECTION: the Manusmriti "corrupt text layer" finding was an artifact
+
+The earlier §"Manusmriti — corrupt Devanagari text layer fools the router" is **wrong**,
+and so was the calibration derived from it.
+
+`difflib.SequenceMatcher` defaults to `autojunk=True`: for any sequence of ≥200 elements
+it treats every element occurring in >1% of the sequence as *junk* and excludes it from
+matching. That heuristic is tuned for source-code diffs. **Devanagari has a small
+effective alphabet**, so on a page of Hindi roughly 23 characters cover ~83% of the text —
+and all of them get discarded.
+
+Measured on the same three sample pages `_verify_text_layer()` picks:
+
+| Document | shipped (`autojunk=True`) | correct (`autojunk=False`) |
+|---|---|---|
+| मनुस्मृति-सम्पूर्ण.pdf | **0.0235** → "corrupt, force OCR" | **0.8571** → clean, trust layer |
+| essence-of-hinduism.pdf | 0.9981 | 0.9981 |
+| CIL.pdf | 0.9173 | 0.9377 |
+
+Manusmriti's text layer is **not corrupt** — it agrees with OCR at 0.86. The English
+documents are barely affected, which is exactly why the old `0.02 vs 0.93` looked
+"strongly bimodal": that spread was measuring **script**, not corruption.
+
+Consequences that were live in production:
+- `LAYER_CHECK_MIN_SIMILARITY = 0.4` was calibrated against a false bimodality.
+- **Every clean Unicode-Devanagari PDF was being force-OCR'd** — for Manusmriti, 509
+  needless OCR calls that *replace a clean text layer with noisier OCR output*.
+- The open item "test the untested Hindi-trust branch" would have failed for this reason.
+
+**Fixed** in `ocr_engine._verify_text_layer()` (`autojunk=False`). The same bug was
+present in the new benchmark's agreement metric and is fixed there too — it had reported
+two near-identical pages as 0.008 similar when the true value is 0.979.
+→ **Action: `LAYER_CHECK_MIN_SIMILARITY` needs re-calibrating now that the scale changed.**
+
+## 🟢 Vision latency is upload-bound, not OCR-bound
+
+Vision's per-page time on the Gita was bimodal: 23 pages at ~1.7 s, 27 pages at ~9.0 s,
+for the *same* amount of text (982 vs 1018 mean chars). The split tracks PNG size, not
+page content — the scan mixes two encodings (981 KB vs 6474 KB).
+
+Measured on Gita p.250/254/255 (baseline = the 6.4 MB RGB PNG the pipeline was sending):
+
+| Encoding | Size | Vision latency | Text similarity vs baseline |
+|---|---|---|---|
+| RGB PNG (was shipping) | 6437 KB | ~9.0 s | 1.0000 |
+| **Grayscale PNG** | 1626 KB | **2.64 s** | **0.9994** |
+| JPEG q95 | 1114 KB | 2.09 s | 0.9982 |
+| JPEG q85 | 618 KB | 1.33 s | 0.9967 |
+
+Colour carries no information an OCR engine uses. **Adopted grayscale PNG** in both
+`ocr_engine._ocr_with_google_vision()` and `benchmark_ocr._ocr_vision()`: ~3.4× faster for
+0.9994 similarity, and lossless in the ways that matter. JPEG is faster still but lossy,
+and the fidelity cost is not worth it for a corpus built once.
+
+Also fixed: `_ocr_with_google_vision()` constructed a new `ImageAnnotatorClient()` **per
+page**, so every page paid credential lookup + TLS setup. Now built once and reused.
+
+## 🟢 Latency / cost / quality across 90 pages
+
+| Document | backend | warm median | mean | chars | script_runs | failed pages | $/page |
+|---|---|---|---|---|---|---|---|
+| Gita 250–299 | tesseract | 3.31 s | 3.53 s | 49924 | 10.6 | **2** | $0 |
+| | vision | 8.57 s* | 5.79 s | 50082 | 4.9 | 0 | $0.00150 |
+| | gemini | 6.62 s | 11.73 s | 48945 | 4.3 | 1† | $0.00181 |
+| Arthasastra 300–319 | tesseract | 3.76 s | 3.48 s | 33303 | 11.1 | 0 | $0 |
+| | vision | 2.12 s | 2.01 s | 33624 | 1.6 | 0 | $0.00150 |
+| | gemini | 3.96 s | 4.13 s | 18081 | 0.5 | **10†** | $0.00127 |
+| History 300–319 | tesseract | 5.74 s | 5.31 s | 67812 | 10.4 | 1 | $0 |
+| | vision | 1.84 s | 2.35 s | 72129 | 5.7 | 0 | $0.00150 |
+| | gemini | 5.32 s | 5.42 s | 33888 | 3.5 | **10†** | $0.00182 |
+
+\* measured *before* the grayscale fix — expect ~2.6 s now.
+† **All 21 Gemini failures were `429 RESOURCE_EXHAUSTED`** (Vertex express-mode quota),
+in contiguous runs. The benchmark has no retry/backoff, unlike `indexer.py`'s embedding
+path. This is a **harness limitation, not a model verdict** — the Arthasastra and History
+Gemini aggregates are *not* comparable, since half the pages are missing.
+
+**Reliability is the sharpest separator.** Tesseract raised `TesseractError (-5)` on
+**3 of 90 pages** (Gita 261, 293; History 312), returning an empty page with no
+indication anything was lost. Vision failed 0 of 90.
+
+Note `chars` is **volume, not quality** — on show-through pages a higher count is
+plausibly *worse*. Gemini's `script_runs` is not comparable to the other two: it emits
+clean blocks because it *reformats*, not because it read the layout correctly.
+
+Pairwise agreement (tesseract vs vision, `autojunk=False`): Gita median 0.918,
+Arthasastra 0.949, History 0.980.
+
+## 🟢 Accuracy on hand-transcribed ground truth (Gita p.275, verse 11.34, 126 chars)
+
+| backend | CER | errors |
+|---|---|---|
+| tesseract | **3.97%** | `जेतासि`→`नेतासि`, `सपत्नान्`→`सपलान्` |
+| google_vision | **0.00%** | — |
+| gemini | **0.00%** | — |
+
+The `सपत्नान्` failure is instructive: in this typeface the `त्न` conjunct is drawn as a
+ligature that closely resembles `ल` (verified by zooming the scan 3×).
+
+Whole-page behaviour on the same page — **Gemini was best overall**, beating Vision on
+both of Vision's errors:
+
+| detail | tesseract | vision | gemini |
+|---|---|---|---|
+| show-through bleed line | ✗ hallucinated `॥ < स Ht SEK HH 20 Yi Das` | ✓ ignored | ✓ ignored |
+| `बहुत-से-मेरे` hyphens | ✓ | ✗ dropped | ✓ |
+| `(34)` marker position | ✓ | ✗ relocated | ✓ |
+| `काँपता` | ✗ `Higa` | ✓ | ✓ |
+| Devanagari numeral `।।३४।।` | ✗ `1138` | ✓ | ✓ |
+
+## ⚠️ Gemini reads the page — but silently drops what it cannot read
+
+BG 11.34 is one of the most-quoted verses in Sanskrit literature, so a perfect
+transcription could just be recitation from memory. Control: located `जेतासि रणे` via
+Vision's word bounding boxes, whited out those two words, re-sent the identical prompt.
+
+| run | `जेतासि रणे` in output? |
+|---|---|
+| original | present |
+| masked | **absent** |
+
+So it is genuinely reading pixels, and the Gita accuracy numbers are meaningful.
+
+**But** it did *not* emit `[ILLEGIBLE]` as the prompt explicitly instructs — it just
+closed the gap silently. Tesseract produces detectable garbage and Vision produces
+detectable misordering; an LLM produces *fluent plausible text* and *invisible holes*.
+Quiet data loss is harder to catch downstream than noise. **Do not default to `gemini`
+for bulk indexing.**
+
+## 🟢 Can Tesseract be tuned to beat Vision? Time yes, quality no.
+
+Sweep on Gita p.275, scored by how much of the ground-truth verse is missing
+(GT aligned against the whole page, so line-filtering cannot skew it):
+
+| config | sec | GT miss | show-through line? |
+|---|---|---|---|
+| baseline `eng+hin+san` psm3 | 3.17 | 3.17% | ✗ present |
+| `--oem 1` (LSTM only) | 3.12 | 3.17% | ✗ present |
+| `--psm 6` | 4.13 | 4.76% | ✓ gone |
+| `--psm 4` | 3.09 | 3.17% | ✗ present |
+| `hin+eng` (drop `san`) | 2.59 | 5.56% | ✗ present |
+| `hin` only | 2.00 | 5.56% | ✗ present |
+| Sauvola threshold | 2.69 | 8.73% | ✓ gone |
+| **grayscale + Sauvola** | **2.19** | **3.17%** | ✓ gone |
+| gray + Sauvola + oem1 + `hin+eng` | **1.73** | 5.56% | ✓ gone |
+| *google_vision (reference)* | *10.39* | ***0.00%*** | *✓ gone* |
+
+- **Time: yes.** `grayscale + -c thresholding_method=2` is 1.4× faster than baseline
+  (2.19 s vs 3.17 s) at identical verse accuracy, and dropping to `hin+eng` + `--oem 1`
+  reaches 1.73 s. Against grayscale-optimised Vision (~2.6 s), tuned Tesseract is
+  genuinely competitive on wall-clock — and it stays $0.
+- **Quality: no.** No configuration reached Vision's 0.00%. The floor is ~3.17%.
+- **Sauvola is a real but mixed win.** It eliminates the show-through hallucination and
+  repairs `नेतासि`→`जेतासि`, but introduces new damage: `हतांस्त्वं`→`हतास्त्वं` (anusvara
+  lost) and the English `Do you kill` → `Do $०प् प्ा11`. Net GT miss unchanged.
+- Language stacking costs real time: `eng+hin+san` → `hin` alone is 3.17 s → 2.00 s, at
+  the price of accuracy.
+
+## Recommendation
+
+`google_vision` as the default (now the shipped default): best accuracy per rupee, zero
+failures in 90 pages, and ~2.6 s/page after the grayscale fix. `tesseract` when offline
+or cost-constrained — pair it with `grayscale + Sauvola`, and **handle `TesseractError`,
+because it will silently lose pages**. `gemini` for difficult layouts where hyphenation
+and block order matter, but never unattended: add retry/backoff for 429 first, and
+accept that it hides what it cannot read.
+
+## Open / next steps (from this session)
+- [ ] **Re-calibrate `LAYER_CHECK_MIN_SIMILARITY`** — the 0.4 threshold predates the
+      `autojunk` fix and the similarity scale has changed.
+- [ ] Add retry/backoff to the Gemini OCR path (mirror `indexer.py`'s embedding pacing)
+      and re-run Arthasastra/History for a fair three-way comparison.
+- [ ] Handle `TesseractError` in `ocr_engine` — currently a crash yields an empty page
+      silently.
+- [ ] Wire `grayscale + Sauvola` into `_ocr_with_tesseract()` if `tesseract` is kept.
+- [ ] Ground truth is one 126-char verse on one page. Transcribe 2–3 more bounded regions
+      (ideally from Arthasastra/History) before treating the CER ranking as general.

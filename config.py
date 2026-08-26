@@ -52,6 +52,18 @@ MAX_CHUNK_OVERLAP = 250   # Maximum overlap (chars). Without a ceiling, a single
                           # is cheaper than a duplicate chunk.
 MIN_CHUNK_LENGTH = 50     # Skip chunks shorter than this
 
+# ── Embedding request pacing ──────────────────────────────────────────
+# The binding constraint on a bulk index is requests-per-MINUTE, not total
+# volume: a 1877-page corpus is ~72 embedding calls, and firing them
+# back-to-back trips the quota long before the day's allowance is touched.
+EMBED_BATCH_SIZE = 20       # Chunks per embed_content call
+EMBED_BATCH_DELAY_S = 1.0   # Pause between successive batches (proactive pacing)
+EMBED_MAX_ATTEMPTS = 5      # Total tries per batch before giving up
+EMBED_BACKOFF_BASE_S = 10   # First retry waits this; each retry doubles it
+                            # (10 → 20 → 40 → 80s). A single fixed 30s wait was
+                            # not enough to clear a per-minute window that had
+                            # already been saturated.
+
 # ── Retrieval Configuration ───────────────────────────────────────────
 TOP_K = 5                 # Number of chunks to retrieve per query
 
@@ -60,6 +72,25 @@ CHROMA_DB_PATH = os.path.join(os.path.dirname(__file__), "chroma_db")
 COLLECTION_NAME = "hindi_textbook"
 
 # ── OCR Configuration ────────────────────────────────────────────────
+OCR_BACKEND = os.getenv("OCR_BACKEND", "google_vision").strip().lower()
+# Three backends, measured 2026-08-25 over 90 pages (see OCR_NOTES.md):
+#   "google_vision" — hosted dense-document OCR. Best accuracy/cost balance and
+#                     the only one that never failed a page. ~$1.50/1000 pages.
+#   "tesseract"     — fully local, $0, no network. Lower Devanagari accuracy and
+#                     it CRASHED on 3 of 90 pages, returning nothing at all.
+#   "gemini"        — multimodal LLM. Accuracy comparable to Vision, ~1.3x its
+#                     cost, but it SILENTLY OMITS regions it cannot read rather
+#                     than flagging them. Quiet data loss; not a safe default.
+OCR_BACKENDS = ("google_vision", "tesseract", "gemini")
+if OCR_BACKEND not in OCR_BACKENDS:
+    raise ValueError(
+        f"OCR_BACKEND must be one of {OCR_BACKENDS} (got {OCR_BACKEND!r})."
+    )
+GOOGLE_VISION_LANGUAGE_HINTS = [
+    language.strip()
+    for language in os.getenv("GOOGLE_VISION_LANGUAGE_HINTS", "hi,sa,en").split(",")
+    if language.strip()
+]
 OCR_LANGUAGES = ["hi", "en"]        # (legacy: EasyOCR format)
 TESSERACT_LANG = "eng+hin+san"      # Tesseract format: English + Hindi + Sanskrit
 PDF_DPI = 300                       # Resolution for PDF to image conversion

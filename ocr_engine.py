@@ -5,13 +5,13 @@ For each page we FIRST look at the embedded text layer and let
 text_quality.choose_method() decide how to extract it:
 
     "direct"  → the text layer is clean → use it as-is (fast, no OCR)
-    "ocr"     → no/garbled text layer → rasterize the page and run Tesseract
+    "ocr"     → no/garbled text layer → rasterize and run the selected OCR backend
 
-Tesseract is a binary (installed via Homebrew) called through the pytesseract
-wrapper. Unlike EasyOCR there is no large model to preload — each page is a
-fresh call to the engine with lang=TESSERACT_LANG (eng+hin+san).
+Google Cloud Vision is the default OCR backend and uses Application Default
+Credentials. Tesseract remains available as a fully local backend.
 """
 
+import io
 import re
 import difflib
 import statistics
@@ -24,7 +24,12 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
 
 from config import (
-    TESSERACT_LANG, PDF_DPI, LAYER_CHECK_SAMPLE, LAYER_CHECK_MIN_SIMILARITY,
+    GOOGLE_VISION_LANGUAGE_HINTS,
+    OCR_BACKEND,
+    TESSERACT_LANG,
+    PDF_DPI,
+    LAYER_CHECK_SAMPLE,
+    LAYER_CHECK_MIN_SIMILARITY,
 )
 from text_quality import choose_method
 
@@ -40,13 +45,153 @@ def _pixmap_to_image(pix) -> Image.Image:
     return img
 
 
-def _ocr_page(page) -> str:
-    """Rasterize one PDF page at PDF_DPI and run Tesseract on it."""
+def _render_page(page) -> Image.Image:
+    """Rasterize one PDF page at PDF_DPI into an RGB PIL image."""
     mat = pymupdf.Matrix(PDF_DPI / 72, PDF_DPI / 72)
     pix = page.get_pixmap(matrix=mat)
-    img = _pixmap_to_image(pix)
+    return _pixmap_to_image(pix).convert("RGB")
+
+
+def _ocr_with_tesseract(img: Image.Image) -> str:
+    """Run the local Tesseract backend."""
     text = pytesseract.image_to_string(img, lang=TESSERACT_LANG)
     return text.strip()
+
+
+_vision_client = None
+
+
+def _get_vision_client():
+    """Build the Vision client once and reuse it.
+
+    The previous code constructed ImageAnnotatorClient() inside the per-page
+    function, so every page paid credential lookup and TLS setup.
+    """
+    global _vision_client
+    if _vision_client is None:
+        from google.cloud import vision
+        _vision_client = vision.ImageAnnotatorClient()
+    return _vision_client
+
+
+def _ocr_with_google_vision(img: Image.Image) -> str:
+    """Run Cloud Vision dense-document OCR using ADC authentication."""
+    try:
+        from google.cloud import vision
+    except ImportError as exc:
+        raise RuntimeError(
+            "Google Cloud Vision OCR requires google-cloud-vision. "
+            "Install it with: .venv/bin/python -m pip install -r requirements.txt"
+        ) from exc
+
+    # Encode GRAYSCALE, not RGB. Vision's latency on these scans is dominated by
+    # UPLOAD SIZE, not OCR difficulty: measured 2026-08-25 on Gita p.250/254/255,
+    # a 6.4 MB RGB PNG took ~9.0 s while the same page as a 1.6 MB grayscale PNG
+    # took 2.64 s — a 3.4x speed-up for 0.9994 text similarity. Colour carries no
+    # information an OCR engine uses, so this is free.
+    content = io.BytesIO()
+    img.convert("L").save(content, format="PNG", optimize=True)
+
+    try:
+        client = _get_vision_client()
+        image = vision.Image(content=content.getvalue())
+        context = vision.ImageContext(language_hints=GOOGLE_VISION_LANGUAGE_HINTS)
+        response = client.document_text_detection(
+            image=image,
+            image_context=context,
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            "Google Cloud Vision OCR request failed. Confirm Application Default "
+            "Credentials, Vision API enablement, billing, and quota."
+        ) from exc
+
+    if response.error.message:
+        raise RuntimeError(f"Google Cloud Vision OCR failed: {response.error.message}")
+    return response.full_text_annotation.text.strip()
+
+
+_gemini_client = None
+
+# Transcription, not interpretation. Every rule here exists because the model
+# otherwise "helps": translating, correcting spelling, or adding a preamble.
+_GEMINI_OCR_PROMPT = """Transcribe ALL text visible in this scanned book page, exactly as printed.
+
+Rules:
+- Reproduce the text character-for-character. Do NOT translate, correct,
+  modernize, complete, or normalize spelling.
+- Preserve the original line breaks and reading order of the printed blocks.
+- Include Devanagari numerals and dandas exactly as printed.
+- If any part of the page is blank, obscured, or unreadable, write [ILLEGIBLE]
+  at that position. Do NOT guess what belongs there.
+- Output ONLY the transcribed text. No preamble, no commentary, no translation.
+"""
+
+
+def _ocr_with_gemini(img: Image.Image) -> str:
+    """Run multimodal-LLM OCR (config.LLM_MODEL) on the page image.
+
+    ⚠ This backend's failure mode differs IN KIND from the other two. Tesseract
+    emits detectable garbage and Vision misorders blocks, but an LLM can emit
+    fluent, plausible text that was never on the page — and, measured here, it
+    SILENTLY DROPS regions it cannot read instead of writing [ILLEGIBLE] as the
+    prompt asks. Verified 2026-08-25 by whiting out two words of a printed verse:
+    the model omitted them without any marker. Quiet data loss is harder to
+    detect downstream than noise, so prefer 'google_vision' for bulk indexing.
+
+    thinking_budget=0 matters: 2.5-flash reasons by default and thinking tokens
+    bill at the OUTPUT rate, buying nothing for transcription.
+    """
+    global _gemini_client
+    try:
+        from google.genai import types
+    except ImportError as exc:
+        raise RuntimeError(
+            "Gemini OCR requires google-genai. "
+            "Install it with: .venv/bin/python -m pip install -r requirements.txt"
+        ) from exc
+
+    from llm_client import get_client
+    from config import LLM_MODEL
+
+    if _gemini_client is None:
+        _gemini_client = get_client()
+
+    buf = io.BytesIO()
+    img.convert("L").save(buf, format="PNG", optimize=True)
+
+    try:
+        response = _gemini_client.models.generate_content(
+            model=LLM_MODEL,
+            contents=[
+                types.Part.from_bytes(data=buf.getvalue(), mime_type="image/png"),
+                _GEMINI_OCR_PROMPT,
+            ],
+            config=types.GenerateContentConfig(
+                temperature=0,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            "Gemini OCR request failed. Confirm LLM_BACKEND, the matching API "
+            "key, and per-minute quota."
+        ) from exc
+
+    return (response.text or "").strip()
+
+
+_OCR_BACKENDS = {
+    "tesseract": _ocr_with_tesseract,
+    "google_vision": _ocr_with_google_vision,
+    "gemini": _ocr_with_gemini,
+}
+
+
+def _ocr_page(page) -> str:
+    """Rasterize one PDF page and run the configured OCR backend."""
+    img = _render_page(page)
+    return _OCR_BACKENDS[OCR_BACKEND](img)
 
 
 def _norm(s: str) -> str:
@@ -83,7 +228,17 @@ def _verify_text_layer(doc) -> bool:
     for i in sample:
         layer = _norm(doc[i].get_text().strip())
         ocr = _norm(_ocr_page(doc[i]))
-        ratios.append(difflib.SequenceMatcher(None, layer, ocr).ratio())
+        # autojunk=False is REQUIRED for Devanagari. difflib's default discards
+        # any element occurring in >1% of a 200+ element sequence as "junk" — a
+        # source-code heuristic. Devanagari's small effective alphabet means ~23
+        # characters cover ~83% of a Hindi page, so ALL of them get discarded and
+        # a CLEAN layer scores ~0.02. Measured 2026-08-25 on मनुस्मृति: 0.0235
+        # with the default vs 0.8571 without it. English is barely affected,
+        # which is why the original 0.02-vs-0.93 calibration looked bimodal —
+        # it was measuring SCRIPT, not corruption.
+        ratios.append(
+            difflib.SequenceMatcher(None, layer, ocr, autojunk=False).ratio()
+        )
 
     median = statistics.median(ratios)
     trusted = median >= LAYER_CHECK_MIN_SIMILARITY
@@ -113,6 +268,7 @@ def extract_text_from_pdf(pdf_path: str) -> list[dict]:
     total_pages = len(doc)
 
     console.print(f"\n📄 Processing: [bold]{pdf_path}[/bold] ({total_pages} pages)")
+    console.print(f"   🧠 OCR backend: [bold cyan]{OCR_BACKEND}[/bold cyan]")
 
     # Language-agnostic defense: is the embedded text layer trustworthy?
     trust_layer = _verify_text_layer(doc)

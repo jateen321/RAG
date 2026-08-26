@@ -1,0 +1,1329 @@
+{
+  "summary": {
+    "pdf": "SRIMAD-BHAGAVAD-GITA.pdf",
+    "pages": 50,
+    "page_range": [
+      250,
+      299
+    ],
+    "dpi": 300,
+    "raster_total_s": 14.608,
+    "raster_mean_s": 0.292,
+    "avg_megapixels": 5.46,
+    "avg_png_kb": 3947,
+    "backends": {
+      "tesseract": {
+        "cold_first_page_s": 3.321,
+        "warm_median_s": 3.309,
+        "ocr_total_s": 169.502,
+        "ocr_mean_s": 3.531,
+        "total_chars": 49924,
+        "mean_chars": 998,
+        "mean_script_runs": 10.6,
+        "errors": 2,
+        "marginal_usd": 0.0
+      },
+      "vision": {
+        "cold_first_page_s": 10.243,
+        "warm_median_s": 8.57,
+        "ocr_total_s": 289.291,
+        "ocr_mean_s": 5.786,
+        "total_chars": 50082,
+        "mean_chars": 1002,
+        "mean_script_runs": 4.9,
+        "errors": 0,
+        "vision_units": 50,
+        "usd_if_free_tier_exhausted": 0.075,
+        "free_units_per_month": 1000
+      }
+    },
+    "agreement_mean": 0.8762,
+    "agreement_median": 0.918,
+    "lowest_agreement_pages": [
+      {
+        "page": 261,
+        "agreement": 0.0,
+        "tesseract": 0,
+        "vision": 816
+      },
+      {
+        "page": 293,
+        "agreement": 0.0,
+        "tesseract": 0,
+        "vision": 1024
+      },
+      {
+        "page": 263,
+        "agreement": 0.6343,
+        "tesseract": 996,
+        "vision": 907
+      },
+      {
+        "page": 288,
+        "agreement": 0.8248,
+        "tesseract": 648,
+        "vision": 842
+      },
+      {
+        "page": 267,
+        "agreement": 0.8431,
+        "tesseract": 976,
+        "vision": 970
+      }
+    ]
+  },
+  "pages": [
+    {
+      "page": 250,
+      "raster_s": 0.396,
+      "megapixels": 5.4,
+      "png_kb": 6437,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.321,
+          "chars": 897,
+          "words": 176,
+          "devanagari_ratio": 0.623,
+          "script_runs": 13,
+          "text": "मृगाणां च\n\nमृगेन्द्रोऽहं वैनतेयश्च पक्षिणाम्‌ । । २०।।\n\nमैं दैत्यों में yale ओर गणना करने वालों का समय\nहूँ तथा पशुओं में मृगराज सिंह और पक्षियों में गरुड\nहू ।। ३० ।।\n\nAmong the Daityas, Iam the great devotee\nPrahlada; and among reckoners, I am Time.\n\nSo among quadrupeds, I am the lion; and\namong birds, I am Garuda. (30)\n\nVI) ८2८ Sy ~\nYY eZ CLE = 44८ 4\n\n[==\n\n` पवनः पवतामस्मि रामः शस्रभृतामहम्‌ |\nझषाणां मकरश्चास्मि स्रोतसामस्मि जाहवी । । 9 ।।\n\nमैं पवित्र करने वालों में वायु और शखधारियों में\n° | श्रीराम हूँ तथा मछलियों में मगर हूँ और नदियों में\n. | श्रीभागीरथी गंगाजी हूँ 1139 ।।\n\nड, Among purifiers, I am the wind; among\nwarriors, I am Sri Rama. Among fishes, I am\n\nthe shark; and among streams, I am the\nGanges. (31)\n\nसर्गाणामादिरन्तश्च मध्यं चैवाहमर्जुन |\n\nस अध्यात्मविद्या विद्यानां वादः प्रवदतामहम्‌ । । ₹२।। ९ j\ni\n\nSW\n<© + क्र 1 > ७३३३२ स च WH SSS SSS SS oN ५4\n\n४2222 (~ =\n\nदशम अध्याय 246\n\n"
+        },
+        "vision": {
+          "ocr_s": 10.243,
+          "chars": 828,
+          "words": 147,
+          "devanagari_ratio": 0.679,
+          "script_runs": 5,
+          "text": "प्रह्लादश्चास्मि दैत्यानां कालः कलयतामहम् ।\nमृगाणां च मृगेन्द्रोऽहं वैनतेयश्च पक्षिणाम् । । ३० ॥\nमैं दैत्यों में प्रह्लाद और गणना करने वालों का समय\nहूँ तथा पशुओं में मृगराज सिंह और पक्षियों में गरुड\nहूँ ।। ३० ।।\nAmong the Daityas, I am the great devotee\nPrahlada ; and among reckoners, I am Time.\nSo among quadrupeds, I am the lion; and\namong birds, I am Garuda.\nपवनः पवतामस्मि रामः शस्त्रभृतामहम् ।\nझषाणां मकरश्चास्मि स्रोतसामस्मि जाह्नवी । । ३१ । ।\n(30)\nमैं पवित्र करने वालों में वायु और शस्त्रधारियों में\nश्रीराम हूँ तथा मछलियों में मगर हूँ और नदियों में\nश्रीभागीरथी गंगाजी हूँ ।। ३१ ।।\nAmong purifiers, I am the wind; among\nwarriors, I am Sri Rama. Among fishes, I am\nthe shark; and among streams, I am the\nGanges.\nसर्गाणामादिरन्तश्च मध्यं चैवाहमर्जुन ।\nअध्यात्मविद्या विद्यानां वादः प्रवदतामहम् ।। ३२ ।।\n(31)\nदशम अध्याय\n246"
+        }
+      },
+      "agreement": 0.8655
+    },
+    {
+      "page": 251,
+      "raster_s": 0.416,
+      "megapixels": 5.51,
+      "png_kb": 6639,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.727,
+          "chars": 924,
+          "words": 167,
+          "devanagari_ratio": 0.47,
+          "script_runs": 7,
+          "text": "भी मैं ही हूँ । मैं विद्याओं में अध्यात्मविद्या अर्थात्‌ ब्रह्म\nविद्या और परस्पर विवाद करने वालों का तत्त्वनिर्णय\nके लिये किया जाने वाला वाद हूँ || ३२ ।।\n\nArjuna, I am the beginning and the\nmiddle and the end of all creations. Of sciences,\nI am the science of the soul, or metaphysics;\nin disputants, I am the right type of\nreasoning (32)\n\nअक्षराणामकारोऽस्मि दन्दः सामासिकस्य F |\nअहमेवाक्षयः कालो धाताहं विश्वतोमुखः । । ३।।\nमैं अक्षरों मेँ अकार हूँ और समासो में ढन्नामक\nसमास हूँ। अक्षय काल अ थत्‌ काल का भी महाकाल\nतथा सब ओर मुखवाला, विराट्‌ स्वरूप, सबका\nधारण-पोषण करने वाला भी मैं ही हूँ 1133 ।।\nAmong the sounds represented by the various\nletters, I am ‘A’(the sound represented by the\nfirst letter of the alphabet); of the different\nkinds of compounds in grammar, I am the\ncopulative compound. Iam verily the endless\n\nTime (the devourer of Time, God); I am\nthe sustainer of all, having My face on all\n\n247 श्रीमद्भगवद्गीता\n"
+        },
+        "vision": {
+          "ocr_s": 9.152,
+          "chars": 1003,
+          "words": 183,
+          "devanagari_ratio": 0.501,
+          "script_runs": 7,
+          "text": "हे अर्जुन ! सृष्टियों का आदि और अन्त तथा मध्य\nभी मैं ही हूँ। मैं विद्याओं में अध्यात्मविद्या अर्थात् ब्रह्म\nविद्या और परस्पर विवाद करने वालों का तत्त्वनिर्णय\nके लिये किया जाने वाला वाद हूँ ।। ३२ ।।\nArjuna, I am the beginning and the\nmiddle and the end of all creations. Of sciences,\nI am the science of the soul, or metaphysics;\nin disputants, I am the right type of\nreasoning.\n(32)\nadb\nअक्षराणामकारोऽस्मि द्वन्द्वः सामासिकस्य च । vo\nअहमेवाक्षयः कालो धाताहं विश्वतोमुखः ।। ३३ ।।\nमैं अक्षरों में अकार हूँ और समासों में द्वन्द्वनामक\nसमास हूँ। अक्षय काल अर्थात् काल का भी महाकाल\nतथा सब ओर मुखवाला, विराट् स्वरूप, सबका\nधारण-पोषण करने वाला भी मैं ही हूँ ।। ३३ ।।\nAmong the sounds represented by the various\nletters, I am 'A' (the sound represented by the\nfirst letter of the alphabet); of the different\nkinds of compounds in grammar, I am the\ncopulative compound. I am verily the endless\nTime (the devourer of Time, God); I am\nthe sustainer of all, having My face on all\nsides.\nToad (33)\n247\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9381
+    },
+    {
+      "page": 252,
+      "raster_s": 0.152,
+      "megapixels": 5.38,
+      "png_kb": 1000,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.355,
+          "chars": 1127,
+          "words": 224,
+          "devanagari_ratio": 0.503,
+          "script_runs": 16,
+          "text": "8,122: 8022 ae न Te ~ (€ (७\n\nगा = श्वाहमुद्‌भवश्च ]\n।. | कीर्तिः श्रीर्वाक्च नारीणां स्मृतिर्मेधा धृतिः क्षमा । ।। | «|\n॥ में सबका नाश करने वाला मृत्यु और उत्पन्न होने | i\n\n° | वालों का उत्पत्ति हेतु हूँ तथा feat में कीर्ति, श्री, वाक्‌, | =\n। | स्मृति, मेधा, धृति और क्षमा हूँ 11 ३४ ।। ५\n) lam the all-destroying Death thatsnatches (>\n| all, and the origin of all that shall be born. | |\nAmong women, I am Kirti, Sri, Vak, Smrti, : |\n\n> | Medha,DhrtiandKsama (the goddesses presiding | «|\n| over glory, prosperity, speech, memory, | |\nUi) <~ steadfastness and forbearance | |\n(५ respectively). (34) Q\n| बृहत्साम तथा साम्नां गायत्री छन्दसामहम्‌ । |\n\n(> मासानां मार्गशीर्षोऽहमृतूनां कुसुमाकरः ।।२८।। `\n| तथा गायन करने योग्य श्रुतियों में मै बृहत्साम और |...\n\n{ छन्दो में (= महीनों में 1\nˆ | छन्दो में गायत्री छन्द हूँ तथा महीनों मेँ मार्गशीर्ष ओर ¦.\n| ऋतुं में वसन्त मैं हू ।। २५ I\nLikewise among the Srutis that can be 4\n| sung, I am the variety known as Brhatsama; | |\n< while among the Vedic hymns, lam the hymn | _\n॥ known as Gayatri. Again, among the twelve ue\n\nmonths of the Hindu calendar; lam the month\n\nदज्ञम अध्याय 248\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.744,
+          "chars": 996,
+          "words": 167,
+          "devanagari_ratio": 0.514,
+          "script_runs": 5,
+          "text": "मृत्युः\nसर्वहर श्चाहमुद्भवश्च\nभविष्यताम् ।\nकीर्तिः श्रीर्वाक्च नारीणां स्मृतिर्मेधा धृतिः क्षमा ।। ३४ ।।\nमैं सबका नाश करने वाला मृत्यु और उत्पन्न होने\nवालों का उत्पत्ति हेतु हूँ तथा स्त्रियों में कीर्ति, श्री, वाक्,\nस्मृति, मेधा, धृति और क्षमा हूँ ।। ३४ ।।\nI am the all-destroying Death that snatches\nall, and the origin of all that shall be born.\nAmong women, I am Kirti, Sri, Vak, Smrti,\nMedha, Dhrti and Ksama (the goddesses presiding\nover glory, prosperity, speech, memory,\nintelligence, steadfastness and forbearance\nrespectively ).\nबृहत्साम तथा साम्नां गायत्री छन्दसामहम् ।\nमासानां मार्गशीर्षोऽहमृतूनां कुसुमाकरः ।। ३३५॥\n(34)\nतथा गायन करने योग्य श्रुतियों में मैं बृहत्साम और\nछन्दों में गायत्री छन्द हूँ तथा महीनों में मार्गशीर्ष और\nऋतुओं में वसन्त मैं हूँ ।। ३५ ।।\nLikewise among the Srutis that can be\nsung, I am the variety known as Brhatsama;\nwhile among the Vedic hymns, I am the hymn\nknown as Gayatri. Again, among the twelve\nmonths of the Hindu calendar; Iam the month\nदशम अध्याय\n248"
+        }
+      },
+      "agreement": 0.8677
+    },
+    {
+      "page": 253,
+      "raster_s": 0.356,
+      "megapixels": 5.52,
+      "png_kb": 997,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.062,
+          "chars": 855,
+          "words": 139,
+          "devanagari_ratio": 0.607,
+          "script_runs": 4,
+          "text": "©\n\n= as ‘“Margasirsa’ (corresponding\napproximately to November); (and) among\nthe six seasons (successively appearing in\nIndia in course of a year) I am the vernal\nseason. (35)\n\nदूतं छलयतामस्मि तेजस्तेजस्विनामहम्‌ |\n जयोऽसिमि व्यवसायोऽसिमि सत्वं सत्त्ववतामहम्‌ । । २६।।\n\nमैं छल करने वालों में जूआ और प्रभावशाली पुरुषों\nका प्रभाव हूँ। मैं जीतने वालों का विजय हूँ, निश्चय\nकरने वालों का निश्चय और सात्त्विक पुरुषों का\nसात्त्विक भाव हूँ || ३६ ||\n\n[am gambling among deceitful practices,\nand the glory of the glorious. Iam the victory\n\nof the victorious, the resolve of the resolute,\nthe goodness of the good. (36)\n\nवृष्णीनां वासुदेवोऽस्मि पाण्डवानां धनजयः।\nमुनीनामप्यहं व्यासः कवीनामुशना. कविः | 13911\n\nवृष्णिवंशियों में वासुदेव अर्थात्‌ मैं स्वयं तेरा सखा,\n\nपाण्डवों मे धनञ्जय र | तू, मुनियो में वेदव्यास ओर .\n\nकवियों मेँ शुक्राचार्य कवि भी मैं ही हूँ 1130 ।।\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.766,
+          "chars": 871,
+          "words": 142,
+          "devanagari_ratio": 0.623,
+          "script_runs": 4,
+          "text": "known as 'Margasirsa' (corresponding\napproximately to November); (and) among\nthe six seasons (successively appearing in\nIndia in course of a year) I am the vernal\nseason.\nद्यूतं छलयतामस्मि तेजस्तेजस्विनामहम्\nजयोऽस्मि व्यवसायोऽस्मि सत्त्वं सत्त्ववतामहम् ।। ६ ।।\n(35)\nमैं छल करने वालों में जूआ और प्रभावशाली पुरुषों\nका प्रभाव हूँ। मैं जीतने वालों का विजय हूँ, निश्चय\nकरने वालों का निश्चय और सात्त्विक पुरुषों का\nसात्त्विक भाव हूँ ।। ३६ ।।\nI am gambling among deceitful practices,\nand the glory of the glorious. I am the victory\nof the victorious, the resolve of the resolute,\nthe goodness of the good.\nवृष्णीनां वासुदेवोऽस्मि पाण्डवानां धनजयः ।\nमुनीनामप्यहं व्यासः कवीनामुशना कविः ।। ३७ ॥\n(36)\nवृष्णिवंशियों में वासुदेव अर्थात् मैं स्वयं तेरा सखा,\nगण्डवों में धनञ्जय अर्थात् तू, मुनियों में वेदव्यास और\nकवियों में शुक्राचार्य कवि भी मैं ही हूँ ।। ३७ ।।\n249\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9266
+    },
+    {
+      "page": 254,
+      "raster_s": 0.395,
+      "megapixels": 5.4,
+      "png_kb": 6413,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 4.428,
+          "chars": 903,
+          "words": 191,
+          "devanagari_ratio": 0.611,
+          "script_runs": 14,
+          "text": "— LYS 2\n\n(७ | among the sons of Pandu, Vyasa among the\n_ Sages, and the sage Sukracarya among the\n\nदण्डो दमयतामस्मि नीतिरस्मि जिगीषताम्‌।\nमौन चैवास्मि गुह्यानां ज्ञानं ज्ञानवतामहम्‌ | । ३८।।\n\n<<\n\n2\n\n<<< - ५ 7\nSS WSs ६४;\n\nमैं दमन करने वालों का दण्ड अर्थात्‌ दमन करने\nकी शक्ति हू, जीतने की इच्छा वालों की नीति हूँ, गुप्त\nरखने योग्य भावों का रक्षक मौन हूँ और ज्ञानवानों का\n\nwa\n\nतत्त्व ज्ञान मैं ही हूँ || ३८ ।।\n\nI am the subduing power in rulers; I am\nrighteousness in those who seek to conquer.\nOf things to be kept secret, Iam the custodian\nin the shape of reticence; and I am the wisdom\nof the wise. (38)\n\n[A SSS) $\n\nयच्चापि सर्वभूतानां बीजं तदहमर्जुन ।\nन तदस्ति विना यत्स्यान्मया भूतं चराचरम्‌ । । २६।।\n\nऔर हे अर्जुन ! जो सब भूतों की उत्पत्ति का कारण\nहै, वह भी मैं ही हूँ; क्योकि ऐसा चर ओर अचर कोई\nभूत नहीं है, जो मुझसे रहित हो ।। 3€ ।।\n\n22% ESS\n\n> KE = ५ = <अ स्स = Wows SS SS == (OF S Wf Yr\n\nJ YZ\n\n(न\n\n"
+        },
+        "vision": {
+          "ocr_s": 8.889,
+          "chars": 832,
+          "words": 164,
+          "devanagari_ratio": 0.619,
+          "script_runs": 4,
+          "text": "I am Krsna among the Vrsnis, Arjuna\namong the sons of Pandu, Vyasa among the\nsages, and the sage Sukracarya among the\nwise.\nदण्डो दमयतामस्मि नीतिरस्मि जिगीषताम् ।\nमौनं चैवास्मि गुह्यानां ज्ञानं ज्ञानवतामहम् ।। ३॥\n(37)\nमैं दमन करने वालों का दण्ड अर्थात् दमन करने\nकी शक्ति हूँ, जीतने की इच्छा वालों की नीति हूँ, गुप्त\nरखने योग्य भावों का रक्षक मौन हूँ और ज्ञानवानों का\nतत्त्व ज्ञान मैं ही हूँ ।। ३८ ।।\nI am the subduing power in rulers; I am\nrighteousness in those who seek to conquer.\nOf things to be kept secret, I am the custodian\nin the shape of reticence; and I am the wisdom\nof the wise.\nयच्चापि सर्वभूतानां बीजं तदहमर्जुन ।\nन तदस्ति विना यत्स्यान्मया भूतं चराचरम् ।। ३६॥\n(38)\nऔर हे अर्जुन ! जो सब भूतों की उत्पत्ति का कारण\nहै, वह भी मैं ही हूँ; क्योंकि ऐसा चर और अचर कोई\nभी भूत नहीं है, जो मुझसे रहित हो ।। ३६ ।।\nदशम अध्याय\n250"
+        }
+      },
+      "agreement": 0.8796
+    },
+    {
+      "page": 255,
+      "raster_s": 0.391,
+      "megapixels": 5.55,
+      "png_kb": 6479,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 5.426,
+          "chars": 1295,
+          "words": 245,
+          "devanagari_ratio": 0.783,
+          "script_runs": 11,
+          "text": "=\n\nWh Pm\n<=\nSS\n\n=wyyy\n\nSa --\n~ २२\n\n< =\n<\n\n८ 4\n\n22222 < स Wy ५,\n(र १५३ Got\n<<\n\na wee Live Oj ५22\n\n= Iam even that which is the seed of\nall life. For there is no creature, moving or\ninert, which exists without Me. (39)\n\nप्रसंग — उन्नीसवें श्लोक में भगवान्‌ ने अपनी दिव्य विभूतियों को अनन्त बतलाकर प्रधानता से\nउनका वर्णन करने की प्रतिज्ञा की थी, उसके अनुसार बीसवें से उनतालीसवें श्लोक तक उनका वर्णन\nकिया । अब पुनः अपनी दिव्य विभूतियों की अनन्तता दिखलाते हुए उनका उपसंहार करते हैं-\n\nनान्तोऽस्ति मम दिव्यानां विभूतीनां परतप |\nएष तूदेशतः प्रोक्तो विभूतेर्विस्तरो मया । । ४०।।\n\nहे परंतप ! मेरी दिव्य विभूतियोँ का अन्त नहीं है,\nमैंने अपनी विभूतियों का यह विस्तार तो तेरे लिये\nएकदेश से अर्थात्‌ संक्षेप से कहा है || ४० ।।\n\nArjuna, there is no limit to My divine\n\nmanifestation. This is only a brief description\nby Me of the extent of My glory. (40)\n\nप्रसंग — अठारहवें श्लोक में अर्जुन ने भगवान्‌ से उनकी विभूति और योग शक्ति का वर्णन करने\nकी प्रार्थना की थी, उसके अनुसार भगवान्‌ अपनी दिव्य विभूतियों का वर्णन समाप्त करके अब संक्षेप\nमैं अपनी योग शक्ति का वर्णन करते हैं-\n\n यद्यदिभूतिमत्सत्त्वं श्रीमदूर्जितमेव वा।\nतत्तदेवावगच्छ त्वं मम॒ तेजोंऽशसंभवम्‌ । । ४१।।\n\nजो-जो भी विभूति युक्त अर्थात्‌ एेश्वर्य युक्त, कान्ति\nयुक्त और शक्ति युक्त वस्तु हे, उस-उसको तू मेरे तेज\nके अंश की ही अभिव्यक्ति जान ।। ४१ I\n\nMj\n\n"
+        },
+        "vision": {
+          "ocr_s": 10.146,
+          "chars": 1213,
+          "words": 220,
+          "devanagari_ratio": 0.806,
+          "script_runs": 4,
+          "text": "Arjuna, I am even that which is the seed of\nall life. For there is no creature, moving or\ninert, which exists without Me.\n-\n(39)\nप्रसंग – उन्नीसवें श्लोक में भगवान् ने अपनी दिव्य विभूतियों को अनन्त बतलाकर प्रधानता से\nउनका वर्णन करने की प्रतिज्ञा की थी, उसके अनुसार बीसवें से उनतालीसवें श्लोक तक उनका वर्णन\nकिया। अब पुनः अपनी दिव्य विभूतियों की अनन्तता दिखलाते हुए उनका उपसंहार करते हैं-\nनान्तोऽस्ति मम दिव्यानां विभूतीनां परंतप ।\nएष तूद्देशतः प्रोक्तो विभूतेर्विस्तरो मया । ।॥\nहे परंतप ! मेरी दिव्य विभूतियों का अन्त नहीं है,\nमैंने अपनी विभूतियों का यह विस्तार तो तेरे लिये\nएकदेश से अर्थात् संक्षेप से कहा है ।। ४० ।।\nArjuna, there is no limit to My divine\nmanifestation. This is only a brief description\nby Me of the extent of My glory.\n(40)\nप्रसंग - अठारहवें श्लोक में अर्जुन ने भगवान् से उनकी विभूति और योग शक्ति का वर्णन करने\nकी प्रार्थना की थी, उसके अनुसार भगवान् अपनी दिव्य विभूतियों का वर्णन समाप्त करके अब संक्षेप\nमें अपनी योग शक्ति का वर्णन करते हैं-\nयद्यद्विभूतिमत्सत्त्वं श्रीमदूर्जितमेव वा ।\nतत्तदेवावगच्छ त्वं मम तेजोऽशसंभवम् । । ४१॥\n।। ।।\nजो-जो भी विभूति युक्त अर्थात् ऐश्वर्य युक्त, कान्ति\nयुक्त और शक्ति युक्त वस्तु है, उस-उसको तू मेरे तेज\nके अंश की ही अभिव्यक्ति जान ।। ४१ ।।\n251\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9333
+    },
+    {
+      "page": 256,
+      "raster_s": 0.153,
+      "megapixels": 5.41,
+      "png_kb": 983,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 1.459,
+          "chars": 821,
+          "words": 147,
+          "devanagari_ratio": 0.681,
+          "script_runs": 4,
+          "text": "Every such being as is glorious, brilliant\nand powerful, know that to be a part\nmanifestation of My glory. (41)\n\nप्रसंग - इस प्रकार मुख्य-मुख्य वस्तुओं में अपनी योग शक्ति रूपी तेज के अंश की अभिव्यक्ति का\nवर्णन करके अब भगवान्‌ यह बतला रहे हैं कि समस्त जगत्‌ मेरी योग शक्ति के एक अंश से ही धारण\nकिया हुआ है-\n\nअथवा बहुनैतेन किं ज्ञातेन तवार्जुन।\nविष्टभ्याहमिदं कृत्स्नमेकांशेन स्थितो जगत्‌ । । ४२।।\n\nअथवा हे अर्जुन ! इस बहुत जानने से तेरा क्या\nप्रयोजन है । मैं इस सम्पूर्ण जगत्‌ को अपनी योग शक्ति\nके एक अंशमात्र से धारण करके स्थित हूँ || ४२ ।।\n\nOr, what will you gain by knowing all this\nin detail, Arjuna? Suffice it to say that I stand\nholding this entire universe by a fraction of\nMy Yogic power. (42)\n\nॐ तत्सदिति श्रीमद्भगवद्गीतासूपनिषल्सु ब्रह्मविद्यायां योगशाल श्रीकृष्णार्जुनसंवादे\nविभूतियोगो नाम दशमोऽध्यायः ।। १० ।।\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.871,
+          "chars": 841,
+          "words": 155,
+          "devanagari_ratio": 0.687,
+          "script_runs": 8,
+          "text": "Every such being as is glorious, brilliant\nand powerful, know that to be a part\nmanifestation of My glory.\n(41)\nप्रसंग - इस प्रकार मुख्य-मुख्य वस्तुओं में अपनी योग शक्ति रूपी तेज के अंश की अभिव्यक्ति का\nवर्णन करके अब भगवान् यह बतला रहे हैं कि समस्त जगत् मेरी योग शक्ति के एक अंश से ही धारण\nकिया हुआ है-\nअथवा बहुनैतेन किं ज्ञातेन तवार्जुन ।\nविष्टभ्याहमिदं कृत्स्नमेकांशेन स्थितो जगत् । । ४२॥\nअथवा हे अर्जुन ! इस बहुत जानने से तेरा क्या\nप्रयोजन है । मैं इस सम्पूर्ण जगत् को अपनी योग शक्ति\nके एक अंशमात्र से धारण करके स्थित हूँ ।। ४२ ।।\nOr, what will you gain by knowing all this\nin detail, Arjuna ? Suffice it to say that I stand\nholding this entire universe by a fraction of\nMy Yogic power.\nतत्सदिति श्रीमद्भगवद्गीतासूपनिषत्सु ब्रह्मविद्यायां योगशास्त्रे श्रीकृष्णार्जुनसंवादे\nविभूतियोगो नाम दशमोऽध्यायः ।। १० ।।\np\n(42)\nदशम अध्याय\nO\nकि के\n252"
+        }
+      },
+      "agreement": 0.9644
+    },
+    {
+      "page": 257,
+      "raster_s": 0.426,
+      "megapixels": 5.55,
+      "png_kb": 6737,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.442,
+          "chars": 1022,
+          "words": 189,
+          "devanagari_ratio": 0.824,
+          "script_runs": 9,
+          "text": "षे ` << < ॐ 992 OSS XV\n\\ ससस 2222 55 Z\n\n°\n\n°\n\nइस अध्याय में अर्जुन के प्रार्थना करने पर भगवान्‌ ने उनको अपने विश्व रूप के दर्शन करवाये\nहै । अध्याय के अधिकांश में केवल विश्व रूप का और उनके स्तवन का ही प्रकरण है, इसलिये इस अध्याय\nका नाम विश्व रूप दर्शन योग' रखा गया है।\n\nछल 1\n\nप्रसंग - ग्यारहवें अध्याय में आरम्भ में पहले चार श्लोकों में भगवान्‌ की और उनके उपदेश की\nप्रशंसा करते हुए अर्जुन उनसे विश्व रूप का दर्शन कराने के लिय प्रार्थना करते हैं-\n\n| अर्जुन उवाच\nमदनुग्रहाय परमं गुद्यमध्यात्मसज्नितम्‌ |\nयत्त्वयोक्तं वचस्तेन मोहोऽयं विगतो मम।। १।।\n\nअर्जुन बोले -मुञ् पर अनुग्रह करने के लिये आपने\n\ni जो परम गोपनीय अध्यात्मविषयक वचन अर्थात्‌\n& उपदेश कहा, उससे मेरा यह अज्ञान नष्ट हो गया\n\n£222222\n\nArjuna said : Thanks to the most profound\nwords of spiritual wisdom that You have spoken\nout of kindness to me, this delusion of mine\nhas entirely disappeared. (1)\n\nभवाप्ययो हि भूतानां श्रुतो विस्तरशो मया।\nत्वत्तः कमलपत्राक्ष माहात्म्यमपि चाव्ययम्‌ । । २।।\n\n| क्योकि हे कमलनेत्र ! मैंने आपसे भूतो की उत्पत्ति\n\n253 श्रीमद्भगवद्गीता\n"
+        },
+        "vision": {
+          "ocr_s": 9.531,
+          "chars": 1039,
+          "words": 187,
+          "devanagari_ratio": 0.805,
+          "script_runs": 7,
+          "text": "ॐ श्रीपरमात्मने नमः\nएकादशोऽध्यायः\nPOROTIS\nइस अध्याय में अर्जुन के प्रार्थना करने पर भगवान् ने उनको अपने विश्व रूप के दर्शन करवाये\nहैं। अध्याय के अधिकांश में केवल विश्व रूप का और उनके स्तवन का ही प्रकरण है, इसलिये इस अध्याय\nका नाम विश्व रूप दर्शन योग' रखा गया है।\n-\nFoals bue jayrried to\nप्रसंग – ग्यारहवें अध्याय में आरम्भ में पहले चार श्लोकों में भगवान् की और उनके उपदेश की\nप्रशंसा करते हुए अर्जुन उनसे विश्व रूप का दर्शन कराने के लिय प्रार्थना करते हैं-\nअर्जुन उवाच\nमदनुग्रहाय परमं गुह्यमध्यात्मसंज्ञितम् ।\nयत्त्वयोक्तं वचस्तेन मोहोऽयं विगतो मम ।। १ । ।\nकठि\nअर्जुन बोले- मुझ पर अनुग्रह करने के लिये आपने\nजो परम गोपनीय अध्यात्मविषयक वचन अर्थात्\nउपदेश कहा, उससे मेरा यह अज्ञान नष्ट हो गया\nहै ।। १ ।।\nbus Twoley\n(& Arjuna said : Thanks to the most profound\nwords of spiritual wisdom that You have spoken\nout of kindness to me, this delusion of mine\nhas entirely disappeared.\nभवाप्ययौ हि भूतानां श्रुतौ विस्तरशो मया ।\nत्वत्तः कमलपत्राक्ष माहात्म्यमपि चाव्ययम् ।। २॥\n(1)\nक्योंकि हे कमलनेत्र ! मैंने आपसे भूतों की उत्पत्ति\n253\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9121
+    },
+    {
+      "page": 258,
+      "raster_s": 0.141,
+      "megapixels": 5.0,
+      "png_kb": 867,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 1.781,
+          "chars": 834,
+          "words": 155,
+          "devanagari_ratio": 0.689,
+          "script_runs": 8,
+          "text": "ATT प्रलय वस्तारपू\nमहिमा भी सुनी है ।। २ ।।\nFor, Krsna, I have heard from You in detail\n\nan account of the evolution and dissolution\nof beings, and also Your immortal glory. (2)\n\nएवमेतद्यथात्थ त्वमात्मानं परमेश्वर ।\nद्रष्टुमिच्छामि ते रूपमैश्वरं पुरुषोत्तम ।। ३।।\n\nहे परमेश्वर | आप अपने को जैसा कहते हैं, यह\nठीक ऐसा ही है; परंतु हे पुरुषोत्तम आपके ज्ञान,\nऐश्वर्य, शक्ति, बल, वीर्य और तेजसे युक्त ऐश्वर-रूप\nको मैं प्रत्यक्ष देखना चाहता हूँ 113 ।।\n\n(न) Your divine form possessed of wisdom, glory,\nenergy, strength, valour and effulgence, O\nbest of persons! (3)\n\n|\n(he\n\nJ\n\nमन्यसे यदि तच्छक्यं मया द्रष्टुमिति प्रभो।\nयोगेश्वर ततो मे त्वं दर्शयात्मानमव्ययम्‌ । । ४।।\n\nहे प्रभो ! यदि मेरे दारा आपका वह रूप देखा जाना ( |\nशक्य है-पेसा आप मानते हैं, तो हे योगेश्वर उस 1\nअविनाशी स्वरूप का मुझे दर्शन कराइये ।। ४ ।। |\nला (4 Oe ग\n\n254\n\nस -ज!\n\n<=\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.55,
+          "chars": 841,
+          "words": 158,
+          "devanagari_ratio": 0.716,
+          "script_runs": 5,
+          "text": "और प्रलय विस्तारपूर्वक सुने हैं तथा आपकी अविनाशी\nमहिमा भी सुनी है ।। २ ।।\nFor, Krsna, I have heard from You in detail\nan account of the evolution and dissolution\nof beings, and also Your immortal glory. (2)\nएवमेतद्यथात्थ\nत्वमात्मानं\nपरमेश्वर ।\nद्रष्टुमिच्छामि ते रूपमैश्वरं पुरुषोत्तम । । ३ ॥\nहे परमेश्वर ! आप अपने को जैसा कहते हैं, यह\nठीक ऐसा ही है; परंतु हे पुरुषोत्तम ! आपके ज्ञान,\nऐश्वर्य, शक्ति, बल, वीर्य और तेजसे युक्त ऐश्वर- रूप\nको मैं प्रत्यक्ष देखना चाहता हूँ ।। ३ ।।\nYour divine form possessed of wisdom, glory,\nenergy, strength, valour and effulgence, 0\nbest of persons !\n200\nमन्यसे यदि तच्छक्यं मया द्रष्टुमिति प्रभो ।\nयोगेश्वर ततो मे त्वं दर्शयात्मानमव्ययम् । । ४ । ।\n(3)\nहे प्रभो ! यदि मेरे द्वारा आपका वह रूप देखा जाना\nशक्य है-ऐसा आप मानते हैं, तो हे योगेश्वर ! उस\nअविनाशी स्वरूप का मुझे दर्शन कराइये ।। ४ ।।\nएकादश अध्याय\n254"
+        }
+      },
+      "agreement": 0.9255
+    },
+    {
+      "page": 259,
+      "raster_s": 0.133,
+      "megapixels": 5.12,
+      "png_kb": 859,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.025,
+          "chars": 1047,
+          "words": 201,
+          "devanagari_ratio": 0.784,
+          "script_runs": 14,
+          "text": "# >\n\nके ¢ = then, O Lord of Yoga, reveal to me श्ठण्क |\nभ imperishable form. (4) | (ग)\n¢ प्रसंग — परम श्रद्धालु और परम प्रेमी अर्जुन के इस प्रकार प्रार्थना करने पर तीन श्लोकों में भगवान्‌ ॥\nअपने विश्व रूप का वर्णन करते हुए उसे देखने के लिये अर्जुन को जादा देते हैं- 6\n( श्रीभगवानुवाच ४\n; é पश्य मे पार्थ रूपाणि शतशोऽथ सहस्रशः | I\n(क)\n| नानाविधानि दिव्यानि नानावर्णाकृतीनि च|| ५।।\n& श्रीभगवान्‌ बोले -हे पार्थ ! अब तू मेरे सैकड़ों-हजारों 9\n> नाना प्रकार के और नाना वर्ण तथा नाना आकृति वाले `\né अलौकिक रूपों को देख ।। ५ ।। |\n§ Sri Bhagavan said: Arjuna, behold | ~\npresently in hundreds and thousands, My\n; ॐ multifarious divine forms, of various colours A\n© and shapes. (ह) | ¢\n\n—\n\nपश्यादित्यान्वसृून्रुद्रानशिनौ मरुतस्तथा।\nबहून्यदृष्टपूर्वाणि पश्याश्चर्याणि भारत।। ६।।\nम भरतवंशी अर्जुन ! मुझमें आदित्यो को अर्थात्‌\nअदिति के दादश पुत्रों को, आठ वसुओं को, एकादश\nरुद्रौ को, दोनों अश्विनी कुमारों को और उनचास\nमरुद्गणोँ को देख तथा और भी बहुत-से पहले न देखे\nहुए आश्चर्यमय रूपों को देख ।। ६ ।।\nO— 9 OL. FO ee\n\n255 श्रीमद्षगवद्गीता\n\n'\n\nक्वन्‌\n\nron ek heer\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.681,
+          "chars": 981,
+          "words": 172,
+          "devanagari_ratio": 0.759,
+          "script_runs": 4,
+          "text": "Krsna, if You think that it can be seen by\nme, then, O Lord of Yoga, reveal to me Your\nimperishable form.\nप्रसंग\n-\n(4)\nपरम श्रद्धालु और परम प्रेमी अर्जुन के इस प्रकार प्रार्थना करने पर तीन श्लोकों में भगवान्\nअपने विश्व रूप का वर्णन करते हुए उसे देखने के लिये अर्जुन को आज्ञा देते हैं-\nश्रीभगवानुवाच\nपश्य मे पार्थ रूपाणि शतशोऽथ सहस्रशः ।\nनानाविधानि दिव्यानि नानावर्णाकृतीनि च ।। ५ ॥\nश्रीभगवान् बोले - हे पार्थ! अब तू मेरे सैकड़ों-हजारों\nनाना प्रकार के और नाना वर्ण तथा नाना आकृति वाले\nअलौकिक रूपों को देख || ५ ||\nSri Bhagavan said: Arjuna, behold\npresently in hundreds and thousands, My\nmultifarious divine forms, of various colours\nand shapes.\n(5)\nपश्यादित्यान्वसून्रुद्रानश्विनौ मरुतस्तथा ।\nबहून्यदृष्टपूर्वाणि पश्याश्चर्याणि भारत ।। ६ ।\nहे भरतवंशी अर्जुन ! मुझमें आदित्यों को अर्थात्\nअदिति के द्वादश पुत्रों को, आठ वसुओं को, एकादश\nरुद्रों को, दोनों अश्विनी कुमारों को और उनचास\nमरुद्गणों को देख तथा और भी बहुत-से पहले न देखे\nहुए आश्चर्यमय रूपों को देख ।। ६ ।।\n255\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.8946
+    },
+    {
+      "page": 260,
+      "raster_s": 0.142,
+      "megapixels": 5.38,
+      "png_kb": 1049,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.639,
+          "chars": 1241,
+          "words": 245,
+          "devanagari_ratio": 0.604,
+          "script_runs": 12,
+          "text": "ea in Me, Arjuna, the twelve sons of |. ‘\nAditi, the eight Vasus, the eleven Rudras (gods\n5 | of destruction), the two Asvinikumaras (the\n|_| twin-born physicians of gods) and the fortynine\n| Maruts (winds-gods), and witness many more\n\nelse you desire to see. (7)\n\n© wonderful forms never seen before. (6)\n\né इहैकस्थं जगत्कृत्स्नं पश्याद्य सचराचरम्‌ |\n\n| मम देहे गुडाकेश यच्चान्यदुद्षटुमिच्छसि ।। ७।। | `\n() हे अर्जुन ! अब इस मेरे शरीर में एक जगह स्थित |.\n\n7 चराचरसहित सम्पूर्णं जगत्‌ को देख तथा और भी जो | |\n५ | कछ देखना चाहता हो सौ देख lle || (i\n|| Arjuna, behold as concentrated within this || |\nbody of Mine the entire creation consisting of 1\n', | bothanimate and inanimate beings,and whatever | |\n\nप्रसंग - इस प्रकार तीन श्लोकों में बार-बार अपना अद्भुत रूप देखने के लिये आज्ञा देने पर भी\nजब अर्जुन भगवान्‌ के रूप को नहीं देख सके तब उसके न देख सकने के कारण को जानने वाले अन्तर्यामी\nभगवान्‌ अर्जुन को दिव्यदृष्टि देने की इच्छा करके कहने लगे-\n\na\n\nक >\nन्व >\n\n~\n\nत\niy\n\n5 न तु मां शक्यसे द्रष्टुमनेनैव स्वचक्षुषा।\n| दिव्यं ददामि ते चक्षुः पश्य मे योगमैश्वरम्‌ । । II |\n( परन्तु मुझको तू इन अपने प्राकृत नेत्रों द्वारा देखने ॐ)\n\nमें निःसंदेह समर्थ नहीं है; इसी से मैं तुझे दिव्य अर्थात्‌ ;\nअः 0 =-= hile “7 Go Oe Or भ\n\n- ~ ==\n\nएकादा ध्याय 256\n"
+        },
+        "vision": {
+          "ocr_s": 1.796,
+          "chars": 1110,
+          "words": 198,
+          "devanagari_ratio": 0.615,
+          "script_runs": 4,
+          "text": "Behold in Me, Arjuna, the twelve sons of\nAditi, the eight Vasus, the eleven Rudras (gods\nof destruction), the two Asvinikumaras (the\ntwin-born physicians of gods) and the fortynine\nMaruts (winds-gods), and witness many more\nwonderful forms never seen before.\nइहैकस्थं जगत्कृत्स्नं पश्याद्य सचराचरम् ।\nमम देहे गुडाकेश यच्चान्यद्रष्टुमिच्छसि । । ७॥\n(6)\nहे अर्जुन ! अब इस मेरे शरीर में एक जगह स्थित\nचराचरसहित सम्पूर्ण जगत् को देख तथा और भी जो\nकुछ देखना चाहता हो सो देख ।। ७ ।।\nArjuna, behold as concentrated within this\nbody of Mine the entire creation consisting of\nboth animate and inanimate beings, and whatever\nelse you desire to see.\n-\n(7)\nप्रसंग इस प्रकार तीन श्लोकों में बार-बार अपना अद्भुत रूप देखने के लिये आज्ञा देने पर भी\nजब अर्जुन भगवान् के रूप को नहीं देख सके तब उसके न देख सकने के कारण को जानने वाले अन्तर्यामी\nभगवान् अर्जुन को दिव्यदृष्टि देने की इच्छा करके कहने लगे-\nनकार\n55719\nन तु मां शक्यसे द्रष्टुमनेनैव स्वचक्षुषा ।\nदिव्यं ददामि ते चक्षुः पश्य मे योगमैश्वरम् ।। ८॥\nपरन्तु मुझको तू इन अपने प्राकृत नेत्रों द्वारा देखने\nमें निःसंदेह समर्थ नहीं है; इसी से मैं तुझे दिव्य अर्थात्\nएकादश अध्याय\n256"
+        }
+      },
+      "agreement": 0.8986
+    },
+    {
+      "page": 261,
+      "raster_s": 0.423,
+      "megapixels": 5.54,
+      "png_kb": 6312,
+      "backends": {
+        "tesseract": {
+          "ocr_s": null,
+          "chars": 0,
+          "words": 0,
+          "devanagari_ratio": 0.0,
+          "script_runs": 0,
+          "text": "",
+          "error": "TesseractError: (-5, '')"
+        },
+        "vision": {
+          "ocr_s": 8.744,
+          "chars": 816,
+          "words": 148,
+          "devanagari_ratio": 0.611,
+          "script_runs": 9,
+          "text": "अलौकिक चक्षु देता हूँ; उससे तू मेरी ईश्वरीय योग\nशक्ति को देख ।। ८ ।।\nBut surely you cannot see Me with these\nhuman eyes of yours; therefore; I vouchsafe\nto you the divine eye. With this you behold My\ndivine power of Yoga.\n-\n(8)\nप्रसंग – अर्जुन को दिव्य दृष्टि देकर भगवान् ने जिस प्रकार का अपना दिव्य विराट् स्वरूप दिखलाया\nथा, अब पाँच श्लोकों द्वारा सञ्जय उसका वर्णन करते हैं-\nTATE\nसञ्जय उवाच\nndou\nएवमुक्त्वा ततो राजन्महायोगेश्वरो हरिः ।\nदर्शयामास पार्थाय परमं रूपमैश्वरम् ।।६॥\nसञ्जय बोले - हे राजन् ! महायोगेश्वर और सब\nपापों के नाश करने वाले भगवान् ने इस प्रकार कहकर\nउसके पश्चात् अर्जुन को परम ऐश्वर्य युक्त दिव्य स्वरूप\nदिखलाया ।। ६ ।।\nnivib\nSañjaya said : My lord ! having spoken thus,\nSri Krsna, the supreme Master of Yoga, forthwith\nrevealed to Arjuna His supremely glorious\ndivine Form.\n(9)\n257\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.0
+    },
+    {
+      "page": 262,
+      "raster_s": 0.25,
+      "megapixels": 5.4,
+      "png_kb": 1039,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.977,
+          "chars": 1021,
+          "words": 200,
+          "devanagari_ratio": 0.624,
+          "script_runs": 12,
+          "text": "a\n\n| अनेकदिव्याभरणं दिव्यानेकोद्यतायुधम्‌ । । १०।। |\nदिव्यमाल्याम्बरधरं दिव्यगन्धानुलेपनम्‌ | ||\nसर्वाश्चर्यमयं देवमनन्तं विश्वतोमुखम्‌ 19911 3\n\neo\n\nअनेक मुख और नेत्रों से युक्त, अनेक अद्भुत दर्शनों\nवाले, बहुत-से दिव्य भूषणों से युक्त और बहुत-से दिव्य | ~.\n\nrf\n\n| | greit को हाथों में उठाये हुए, दिव्य माला ओर gat\n« को धारण किये हुए और दिव्यः गन्ध का सारे शरीर में +\n| लेप किये हुए, सब प्रकार के आश्चर्यो से युक्त, सीमा\n_ | रहित और सब ओर मुख किये हुए विरा स्वरूप | ~\n| परमदेव परमेश्वर को अर्जुन ने देखा ।। १०-99 ।।\n(£ Arjuna saw the supreme Deity possessing.)\nmany mouths and eyes, presenting many a x\n| | wonderful sight, decked with many divine `\n| ornaments, wielding many uplifted divine | =\n| | weapons, wearing divine garlands and = @\n| | besmeared all over with divine sandal-pastes, |\n+ | full of all wonders, infinite and having faces | ~\n| | on all sides. (10,11): |\n(9 | प्रसंग - उपर्युक्त विराट्‌ स्वरूप परमदेव परमेश्वर का प्रकाश कैसा था, अब उसका वर्णन किया जाता (>\n| 9 3 ५\n\n1; ) IC 9 = Se -\n\nएकादश अध्याय 258\n"
+        },
+        "vision": {
+          "ocr_s": 1.994,
+          "chars": 943,
+          "words": 150,
+          "devanagari_ratio": 0.661,
+          "script_runs": 3,
+          "text": "अनेकवक्त्रनयनमनेकाद्भुतदर्शनम्\nअनेकदिव्याभरणं\n।\nदिव्यानेकोद्यतायुधम् ।। १० ।।\nदिव्यमाल्याम्बरधरं दिव्यगन्धानुलेपनम् ।\n1. सर्वाश्चर्यमयं देवमनन्तं विश्वतोमुखम् ।। ११ ।।\nअनेक मुख और नेत्रों से युक्त, अनेक अद्भुत दर्शनों\nवाले, बहुत-से दिव्य भूषणों से युक्त और बहुत-से दिव्य\nशस्त्रों को हाथों में उठाये हुए, दिव्य माला और वस्त्रों\nको धारण किये हुए और दिव्य गन्ध का सारे शरीर में\nलेप किये हुए, सब प्रकार के आश्चर्यों से युक्त, सीमा\nरहित और सब ओर मुख किये हुए विराट् स्वरूप\nपरमदेव परमेश्वर को अर्जुन ने देखा ।। १०-११ ।।\nArjuna saw the supreme Deity possessing\nmany mouths and eyes, presenting many a\nwonderful sight, decked with many divine\nornaments, wielding many uplifted divine\nweapons, wearing divine garlands and clothes,\nbesmeared all over with divine sandal-pastes,\nfull of all wonders, infinite and having faces\non all sides.\n(10,11)\nप्रसंग उपर्युक्त विराट् स्वरूप परमदेव परमेश्वर का प्रकाश कैसा था, अब उसका वर्णन किया जाता\nएकादश अध्याय\n258"
+        }
+      },
+      "agreement": 0.8901
+    },
+    {
+      "page": 263,
+      "raster_s": 0.145,
+      "megapixels": 5.55,
+      "png_kb": 967,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.547,
+          "chars": 996,
+          "words": 200,
+          "devanagari_ratio": 0.653,
+          "script_runs": 12,
+          "text": "(0) 9) न = LO ype ¬ (७\n\n== bursting forth all at once in the heavens,\neven that would hardly approach the splendour\nof the mighty Lord. (12)\n\n=:\n\noe\n\n\\ 1 सूर्यसहस्रस्य भवेद्युगपदुत्थिता। 1\n«| यदि भाः सदशी सा स्याद्भासस्तस्य महात्मनः॥ | १९॥॥._| ˆ\nध आकाश में हजार सूर्यो के एक साथ उदय होने से |.\n© | उत्पन्न जो प्रकाश हो, वह भी उस विश्व रूप परमात्मा | . ५\n| के प्रकाश के सदृश कदाचित्‌ ही हो 1192 11 mY\n5 | If there be the effulgence of a thousand (@\n\n॥ प्रसंग - भगवान्‌ के उस प्रकाशमय अद्भुत स्वरूप में अर्जुन ने सारे विश्व को किस प्रकार देखा, | ' `\n\nहै | अब यह बतलाया जाता है- a),\n| तत्रैकस्थं जगत्कृत्स्नं प्रविभक्तमनेकधा । i\n6 अपश्यद्देवदेवस्थ शरीरे पाण्डवस्तदा ।1%।।\n( पाण्डु पुत्र अर्जुन ने उस समय अनेक प्रकार से |.\n& | विभक्त अर्थात्‌ पृथक्‌-पृथक्‌ सम्पूर्ण जगत्‌ को देवों के 4\n| देव श्रीकृष्ण भगवान्‌ के उस शरीर में एक जगह स्थित |\n21 | देखा 1192 II 5\n4 |\n\nj Concentrated at one place in the person S|\n\nof that supreme Deity, Arjuna then beheld\nthe whole universe with its manifold\ndivisions.\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.708,
+          "chars": 907,
+          "words": 162,
+          "devanagari_ratio": 0.676,
+          "script_runs": 7,
+          "text": "259\nदिवि सूर्यसहस्रस्य भवेद्युगपदुत्थिता ।\nयदि भाः सदृशी सा स्याद्भासस्तस्य महात्मनः ।। १२ ।।\nआकाश में हजार सूर्यों के एक साथ उदय होने से\nउत्पन्न जो प्रकाश हो, वह भी उस विश्व रूप परमात्मा\nके प्रकाश के सदृश कदाचित् ही हो ।। १२ ।।\nIf there be the effulgence of a thousand\nsuns bursting forth all at once in the heavens,\neven that would hardly approach the splendour\nof the mighty Lord.\nho\n(12)\nप्रसंग - भगवान् के उस प्रकाशमय अद्भुत स्वरूप में अर्जुन ने सारे विश्व को किस प्रकार देखा,\nअब यह बतलाया जाता है-\nतत्रैकस्थं जगत्कृत्स्नं प्रविभक्तमनेकधा ।\nअपश्यद्देवदेवस्य शरीरे पाण्डवस्तदा ।। १३ ।।\nपाण्डु पुत्र अर्जुन ने उस समय अनेक प्रकार से\nविभक्त अर्थात् पृथक्-पृथक् सम्पूर्ण जगत् को देवों के\nदेव श्रीकृष्ण भगवान् के उस शरीर में एक जगह स्थित\nदेखा ।। १३ ।।\nConcentrated at one place in the person\nof that supreme Deity, Arjuna then beheld\nthe whole universe with its manifold.\ndivisions.\nि\n(13)\nP\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.6343
+    },
+    {
+      "page": 264,
+      "raster_s": 0.16,
+      "megapixels": 5.53,
+      "png_kb": 1037,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.422,
+          "chars": 1133,
+          "words": 237,
+          "devanagari_ratio": 0.831,
+          "script_runs": 11,
+          "text": "क) aie * = दर . £ 4 ~ ४ fe\n\nप्रसंग - इस प्रकार अर्जुन द्वारा rears | का विगाट्‌ रूप देखे जाने के पश्चात्‌ क्या हुआ, इस जिज्ञासा\nपर कहते हैं-\n\n“| ततः स विस्मयाविष्टो दृष्टरोमा धनज्जयः। :\n| प्रणम्य शिरसा देवं कृताञ्जलिरभाषत । । %।। ५\n| उसके अनन्तर वह आश्चर्य से चकित और पुलकित | :\n| शरीर, अर्जुन प्रकाशमय विश्व रूप परमात्मा को |.\n^ | श्रद्धा-भक्ति सहित सिर से प्रणाम करके हाथ जोड़कर @\n| | बोला ।। १४ 1 ॥\n^| Then Arjuna, full of wonder and with the | ^\n| | hair standing on end, reverentially bowed |\n| his head to the divine Lord, and with joined |.\nSi | palms addressed Him thus. (14) |\n४ प्रसंग = उपर्युक्त प्रकार से हर्ष और आश्चर्य से चकित अर्जुन अब भगवान्‌ के विश्व रूप में दीख\n> पड़ने वाले दृश्यों का वर्णन करते हुए उस विश्व रूप का स्तवन करते हैं- |\n{ अर्जुन उवाच \\\n| | पश्यामि देवांस्तव देव देहे सर्वास्तथा भूतविशेषसंघान्‌ | A\n| ब्रह्माणमीशं कमलासनस्थमृष्षी श्व सर्वानुरगांश्च दिव्यान्‌ । । ५।।\n|\n¢ | अर्जुन बोले-छे देव ! मैं आपके शरीर में सम्पूर्ण |“\n| देवों को तथा अनेक भूतों के समुदायों को, कमल के |.\n+ | आसन पर विराजित ब्रह्मा को, महादेव को और सम्पूर्ण 5,\n| ऋषियों को तथा दिव्य सर्पो को देखता हूँ 11 १५ ।। |\n\nएकादश अध्याय 260\n"
+        },
+        "vision": {
+          "ocr_s": 1.761,
+          "chars": 1006,
+          "words": 182,
+          "devanagari_ratio": 0.846,
+          "script_runs": 3,
+          "text": "-\nप्रसंग – इस प्रकार अर्जुन द्वारा भगवान् का विराट् रूप देखे जाने के पश्चात् क्या हुआ, इस जिज्ञासा\nपर कहते हैं-\n-\nततः स विस्मयाविष्टो हृष्टरोमा धनञ्जयः ।\nप्रणम्य शिरसा देवं कृताञ्जलिरभाषत ।। १४ ।।\nउसके अनन्तर वह आश्चर्य से चकित और पुलकित\nशरीर, अर्जुन प्रकाशमय विश्व रूप परमात्मा को\nश्रद्धा-भक्ति सहित सिर से प्रणाम करके हाथ जोड़कर\nबोला ।। १४ ।।\nThen Arjuna, full of wonder and with the\nhair standing on end, reverentially bowed.\nhis head to the divine Lord, and with joined\npalms addressed Him thus.\n(14)\nप्रसंग उपर्युक्त प्रकार से हर्ष और आश्चर्य से चकित अर्जुन अब भगवान् के विश्व रूप में दीख\nपड़ने वाले दृश्यों का वर्णन करते हुए उस विश्व रूप का स्तवन करते हैं-\nअर्जुन उवाच\nपश्यामि देवांस्तव देव देहे सर्वांस्तथा भूतविशेषसंघान् ।\nब्रह्माणमीशं कमलासनस्थमृषींश्च सर्वानुरगांश्च दिव्यान् ।। १५ ।।\nअर्जुन बोले - हे देव ! मैं आपके शरीर में सम्पूर्ण\nदेवों को तथा अनेक भूतों के समुदायों को, कमल के\nआसन पर विराजित ब्रह्मा को, महादेव को और सम्पूर्ण\nऋषियों को तथा दिव्य सर्पों को देखता हूँ ।। १५ ।।\nएकादश अध्याय\n260"
+        }
+      },
+      "agreement": 0.9101
+    },
+    {
+      "page": 265,
+      "raster_s": 0.419,
+      "megapixels": 5.46,
+      "png_kb": 6718,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 4.768,
+          "chars": 1032,
+          "words": 191,
+          "devanagari_ratio": 0.561,
+          "script_runs": 15,
+          "text": "2\n\n९ क\n\nOe,\n\nsek\n\nYe\n\nन)\n\n= all gods and hosts of different ~\nBrahma throned on his lotus-seat, Siva and\nall Rsis and celestial serpents. (15)\n\nअनेकबाहूदरवक्त्रनेत्र पश्यामि तवां सर्वतोऽनन्तरूपम्‌ ।\nनान्तं न मध्यं न पुनस्तवादिं पश्यामि विश्वेश्वर विश्वरूप । । १६।।\nहे सम्पूर्ण विश्व के स्वामिन्‌ ! आपको अनेक भुजा,\nपेट, मुख ओर नेत्रं से युक्त तथा सब ओर से अनन्त\n\nरूपों वाला देखता ele विश्व रूप ! मै आपके न अन्त ©\n\nको देखता हूँ, न मध्य को और न आदि को\nही ।। १६ II\n\nO lord of the universe, I see You endowed\nwith numerous arms, bellies, mouths, and\neyes and having innumerable forms extended\non all sides. I see neither Your beginning nor\nmiddle, nor even Your end, manifested as You\nare in the form of the universe. (16)\n\nकिरीटिनं गदिनं चक्रिणं च तेजोराशिं सर्वतो दीप्तिमन्तम्‌ ।\nपश्यामि त्वा दुर्निरीक्ष्यं समन्तादीप्तानलार्कदयुतिमप्रमेयम्‌ । । १७।।\n\nआपको मैं मुकुट युक्त, गदायुक्त और चक्र युक्त तथा\nसब ओर से प्रकाशमान तेज के पुञ्ज, प्रज्वलित अग्नि\n\nArjuna said: Lord, I behold within Your |\n\n|\n।\n1\n\n< | fa lil ह\n\n~\n\nmes ZL\nYESS +. सू\n"
+        },
+        "vision": {
+          "ocr_s": 9.389,
+          "chars": 992,
+          "words": 172,
+          "devanagari_ratio": 0.586,
+          "script_runs": 4,
+          "text": "pArjuna said: Lord, I behold within Your\nbody all gods and hosts of different beings,\nBrahma throned on his lotus-seat, Siva and\nall Rsis and celestial serpents.\n(15)\nअनेकबाहूदरवक्त्रनेत्रं पश्यामि त्वां सर्वतोऽनन्तरूपम् ।\nनान्तं न मध्यं न पुनस्तवादिं पश्यामि विश्वेश्वर विश्वरूप ।। १६ ।।\nहे सम्पूर्ण विश्व के स्वामिन् ! आपको अनेक भुजा,\nपेट, मुख और नेत्रों से युक्त तथा सब ओर से अनन्त\nरूपों वाला देखता हूँ । हे विश्व रूप ! मैं आपके न अन्त\nको देखता हूँ, न मध्य को और न आदि को\nही ।। १६ ।।\nO lord of the universe, I see You endowed\nwith numerous arms, bellies, mouths, and\neyes and having innumerable forms extended\non all sides. I see neither Your beginning nor\nmiddle, nor even Your end, manifested as You\nare in the form of the universe.\n(16)\nकिरीटिनं गदिनं चक्रिणं च तेजोराशिं सर्वतो दीप्तिमन्तम् ।\nपश्यामि त्वां दुर्निरीक्ष्यं समन्ताद्दीप्तानलार्कद्युतिमप्रमेयम् ।। १७ ।।\nआपको मैं मुकुट युक्त, गदायुक्त और चक्र युक्त तथा\nसब ओर से प्रकाशमान तेज के पुञ्ज, प्रज्वलित अग्नि\n261\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9058
+    },
+    {
+      "page": 266,
+      "raster_s": 0.367,
+      "megapixels": 5.39,
+      "png_kb": 6395,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.031,
+          "chars": 940,
+          "words": 190,
+          "devanagari_ratio": 0.491,
+          "script_runs": 18,
+          "text": "और सूर्य के सदृश ज्योतियुक्त, कठिनता से देखे जाने\n\n+ | योग्य और सब ओर से अप्रमेय स्वरूप देखता श\n|| दं ।। १७ ।।\niy I see You endowed with diadems, clubs and Sj\n|| discuses, amass of splendour flamingallround, | | |\n| having the brilliance ofa blazing fire and the iG\nWY) sun, hard to gaze at and immeasurable on all Y\n\nsides. (17)\n\nग H-\n\na\noo\n\nत्वमक्षरं परमं वेदितव्यं त्वमस्य विश्वस्य परं निधानम्‌।\nत्वमव्ययः शाश्वतधर्मगोप्ता सनातनस्त्वं पुरुषो मतो T1196 1\n\n4\n\nआप ही जानने योग्य परम अक्षर अर्थात्‌ परब्रह्म\nपरमात्मा हैं, आप ही इस जगत्‌ के परम आश्रय हैं, आप\nही अनादि धर्म के रक्षक हैं और आप ही अविनाशी\nसनातन पुरुष हैं। ऐसा मेरा मत है ।। १८ ।।\n\n+<\n\n22 G ८ ८\nSW ८८८८ GEEZ\n< सस स भ # र\n\nॐ;\n\nर\n4\nक्व\n\n<<<\n\nYou are the supreme indestructible worthy\n\n` of being known; You are the ultimate refuge | i\nof this universe. You are, again, the protector |\n\n५ , of the ageless Dharma; I consider You to be |. «१\n| the eternal imperishable Being. (18) |.\n\n"
+        },
+        "vision": {
+          "ocr_s": 9.051,
+          "chars": 832,
+          "words": 155,
+          "devanagari_ratio": 0.505,
+          "script_runs": 5,
+          "text": "और सूर्य के सदृश ज्योतियुक्त, कठिनता से देखे जाने\nयोग्य और सब ओर से अप्रमेय स्वरूप देखता\nहूँ ।। १७ ।।\nI see You endowed with diadems, clubs and\ndiscuses, a mass of splendour flaming all round,\nhaving the brilliance of a blazing fire and the\nsun, hard to gaze at and immeasurable on all\nsides.\n(17)\nत्वमक्षरं परमं वेदितव्यं त्वमस्य विश्वस्य परं निधानम् ।\nत्वमव्ययः शाश्वतधर्मगोप्ता सनातनस्त्वं पुरुषो मतो मे ।। १८ ।।\nआप ही जानने योग्य परम अक्षर अर्थात् परब्रह्म\nपरमात्मा हैं, आप ही इस जगत् के परम आश्रय हैं, आप\nही अनादि धर्म के रक्षक हैं और आप ही अविनाशी\nसनातन पुरुष हैं । ऐसा मेरा मत है ।। १८ ।।\nYou are the supreme indestructible worthy\nof being known; You are the ultimate refuge\nof this universe. You are, again, the protector\nof the ageless Dharma ; I consider You to be\nthe eternal imperishable Being.\nfic (18)\nएकादश अध्याय\n262"
+        }
+      },
+      "agreement": 0.9027
+    },
+    {
+      "page": 267,
+      "raster_s": 0.154,
+      "megapixels": 5.47,
+      "png_kb": 1008,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.302,
+          "chars": 976,
+          "words": 195,
+          "devanagari_ratio": 0.589,
+          "script_runs": 11,
+          "text": "(ॐ हि Pare anche KO)\n\nआपको आदि, अन्त और मध्य से रहित; अनन्त\nˆ | सामर्थ्य से युक्त, अनन्त भुजावाले, चन्द्र-सूर्यरूप नेतो `\n| वाले, प्रज्वलित अग्नि रूप मुखवाले और अपने तेज॒\n०] से इस जगत्‌ को संतप्त करते हुए देखता हूँ. ।। 9€ ।। KG\n\n| I see You without beginning, middle or | 4\nend, possessing unlimited prowess and endowed\n\n- with numberless arms,havingthemoonand —\n| the sun for Your eyes, and blazing fire for\n: Your mouth, and scorching this universe by ie\n~ Your radiance. (19) |\nयावापुथिव्योरिदमन्तर . | |\n\nहि व्याप्तं त्वयैकेन दिशश्च सर्वाः। hs\n\n| FRAGA रूपमुग्रं तदेदं लोकत्रयं प्रव्यधितं महात्मन्‌ । । २०।। ड\nहे महात्मन्‌ ! यह स्वर्ग और पृथ्वी के बीच का सम्पूर्ण |\n\n। | आकाश तथा सब दिशाएँ एक आपसे ही परिपूर्ण हैं; `\n_ | तथा आपके इस अलौकिक और भयंकर रूप को\n। | देखकर तीनों लोक अति व्यथा को प्राप्त हो रहे |.\n(| हैं 11२० || :\n| Yonder space between heaven and earth |.\n\nand all the quarters are entirely filled by You |.\n(9), =-= 9 oe 0) 4 eet 7 हा Ye ए >\n\n263 शीमद्भगवदगीता\n"
+        },
+        "vision": {
+          "ocr_s": 1.895,
+          "chars": 970,
+          "words": 160,
+          "devanagari_ratio": 0.676,
+          "script_runs": 5,
+          "text": "अनादिमध्यान्तमनत्नवीर्यमनन्तबाहुं शशिसूर्यनेत्रम् ।\nपश्यामि त्वां दीप्तहुताशवक्त्रं स्वतेजसा विश्वमिदं तपन्तम् ।। १६ ।।\nआपको आदि, अन्त और मध्य से रहित, अनन्त\nसामर्थ्य से युक्त, अनन्त भुजावाले, चन्द्र-सूर्यरूप नेत्रों\nवाले, प्रज्वलित अग्नि रूप मुखवाले और अपने तेज\nसे इस जगत् को संतप्त करते हुए देखता हूँ ।। १६ ।।\nI see You without beginning, middle or\nend, possessing unlimited prowess and endowed\nwith numberless arms, having the moon and\nthe sun for Your eyes, and blazing fire for\nYour mouth, and scorching this universe by\nYour radiance.\n(19)\nद्यावापृथिव्योरिदमन्तरं हि व्याप्तं त्वयैकेन दिशश्च सर्वाः ।\nदृष्ट्वाद्भुत रूपमुग्रं तवेदं लोकत्रयं प्रव्यथितं महात्मन् ।। २० ।।\nहे महात्मन् ! यह स्वर्ग और पृथ्वी के बीच का सम्पूर्ण\nआकाश तथा सब दिशाएँ एक आपसे ही परिपूर्ण हैं;\nतथा आपके इस अलौकिक और भयंकर रूप को\nदेखकर तीनों लोक अति व्यथा को प्राप्त हो रहे\nहैं ।। २० ।।\nYonder space between heaven and earth\nand all the quarters are entirely filled by You\n263\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.8431
+    },
+    {
+      "page": 268,
+      "raster_s": 0.402,
+      "megapixels": 5.31,
+      "png_kb": 7021,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.458,
+          "chars": 1104,
+          "words": 208,
+          "devanagari_ratio": 0.65,
+          "script_runs": 8,
+          "text": "Se ei\n\nalone. Seeing this transcendent, dreadful form\nof Yours, O Soul of the universe, all the three\n\n¢ orlds feel greatly alarmed (20)\n| e e\n& अमी हि तां सुरसंघा विशन्ति केचिदृभीताः प्राज्जलयो TT |\n/ स्वस्तीटयुक्त्वा महर्षिसिद्वसंघाः स्तुवन्ति तां स्तुतिमिः पुष्कलामिः ।। २१।।\n| वेदी देवताओं के समूह आप में प्रवेश करते हैं और\n|| कुछ भयभीत होकर हाथ जोड़ आपके नाम और गुणों\n| का उच्चारण करते हैं तथा महर्षि और सिद्धं कं समुदाय |.\n° “कल्याण हो” ऐसा कहकर उत्तम-उत्तम स्तोत्रों द्वारा | ।\n। | आपकी स्तुति करते हैं ।। २१ ।। |\nक | Yonder hosts of gods are entering You; ! Ps\nsome with palms joined out of fear are (\n| wttering Your names and glories Multitudes . |.\n»* | 9fMaharsis and Siddhas, saying ‘Let there be |\n“i peace’, are extolling You by means of excéllent |\nhymns (21) `| +\n। | रुद्रादित्या वसवो ये च साध्या विश्वेऽश्िनौ मरुतश्चोष्मपाश्च | ‘\n6 गन्ध्वयक्षासुरसिद्धसंधा वीक्षन्ते त्वां विस्मिताश्चैव सर्वे ।। २२।। | ^\n| | जो ग्यारह सुद्र और बारह आदित्य तथा आठ वायु, |\ne | साध्यगण, विश्वेदेव, अश्विनीकुमार तथा मरुद्गण और |,\nपितरों का समुदाय तथा गन्धर्व, यक्ष, राक्षस जर सिद्धां | |.\n\nएकादश अध्याय 264\n"
+        },
+        "vision": {
+          "ocr_s": 9.873,
+          "chars": 1018,
+          "words": 166,
+          "devanagari_ratio": 0.663,
+          "script_runs": 4,
+          "text": "alone. Seeing this transcendent, dreadful form\nof Yours, O Soul of the universe, all the three\nworlds feel greatly alarmed.\n(20)\nअमी हि त्वां सुरसंघा विशन्ति केचिद्भीताः प्राञ्जलयो गृणन्ति ।\nस्वस्तीत्युक्त्वा महर्षिसिद्धसंघाः स्तुवन्ति त्वां स्तुतिभिः पुष्कलाभिः ।। २१ ।।\nवे ही देवताओं के समूह आप में प्रवेश करते हैं और\nकुछ भयभीत होकर हाथ जोड़ आपके नाम और गुणों\nका उच्चारण करते हैं तथा महर्षि और सिद्धों के समुदाय\n'कल्याण हो' ऐसा कहकर उत्तम उत्तम स्तोत्रों द्वारा\nआपकी स्तुति करते हैं ।। २१ ।।\nYonder hosts of gods are entering You;\nsome with palms joined out of fear are\nuttering Your names and glories. Multitudes.\nof Maharsis and Siddhas, saying 'Let there be\npeace', are extolling You by means of excellent\nhymns.\n(21)\nरुद्रादित्या वसवो ये च साध्या विश्वेऽश्विनौ मरुतश्चोष्मपाश्च ।\nगन्धर्वयक्षासुरसिद्धसंघा वीक्षन्ते त्वां विस्मिताश्चैव सर्वे ।। २२ ।।\nजो ग्यारह रुद्र और बारह आदित्य तथा आठ वायु,\nसाध्यगण, विश्वेदेव, अश्विनीकुमार तथा मरुद्गण और\nपितरों का समुदाय तथा गन्धर्व, यक्ष, राक्षस और सिद्धों\nएकादश अध्याय\n264"
+        }
+      },
+      "agreement": 0.9184
+    },
+    {
+      "page": 269,
+      "raster_s": 0.151,
+      "megapixels": 5.4,
+      "png_kb": 929,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 5.491,
+          "chars": 1037,
+          "words": 201,
+          "devanagari_ratio": 0.759,
+          "script_runs": 20,
+          "text": "te oo ४ ~ 1 ere ५2 £. ए as अ = es द कक न न =\n5 aa ff = ae STE 1 हु ee ee ee ee है ee नः\n\nके समुदाय हैं-वे सब ही विस्मित होकर आपको देखते |.\nहैं || २२ ।।\n\nरूपं महत्ते बहुवक्त्रनेत्रं महाबाहो बहुबाहूरुपादम्‌।\nबहूदरं बहुद॑ष्ट्राकरालं दृष्ट्वा लोकाः प्रवयथितास्तथाहम्‌ | २२।। | '*\n\nहे महाबाहो ! आपके बहुत मुख और नेत्रों वाले, |»\nबहुत हाथ, जंघा और पैरोंवाले, बहुत उदरों वाले और [४\nबहुत-सी cet के कारण अत्यन्त विकराल महान्‌ रूप |\nको देखकर सब लोग व्याकूुल हो रहे हैं तथा मैं भी\nव्याकुल हो रहा हूँ 1123 ।।\n\nLord, seeing this stupendous and dreadful\nForm of Yours possessing numberous mouths\nand eyes, many arms, thighs and feet, many\n\nbellies and many teeth, the worlds are terror-\nstruck; so am I. (23)\n\nनभःस्पृशं दीप्तमनेकवर्ण॑ व्यात्ताननं दीप्तविशालनेत्रम्‌ |\nदृष्ट्वा हि तां प्रययितान्तरातमा धृतिं न विन्दामि शमं च विष्णो | । २४।।\n\nक्योंकि हे विष्णो ! आकाश को स्पर्श करने वाले,\nदेदीप्यमान, अनेक वर्णौ से युक्तं तथा फैलाये हुए मुख\nओर प्रकाशमान विशाल Ast से युक्त आपको देखकर\n८ । भयभीत अन्तःकरण वाला मैं धीरज और शान्ति नहीं\n| | पाता हूँ ।। २४ ।।\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.856,
+          "chars": 955,
+          "words": 167,
+          "devanagari_ratio": 0.803,
+          "script_runs": 3,
+          "text": "के समुदाय हैं - वे सब ही विस्मित होकर आपको देखते\nहैं ।। २२ ।।\nरूपं महत्ते बहुवक्त्रनेत्रं महाबाहो बहुबाहूरुपादम् ।\nबहूदरं बहुदंष्ट्राकरालं दृष्ट्वा लोकाः प्रव्यथितास्तथाहम् ।। २३ ।।\nहे महाबाहो ! आपके बहुत मुख और नेत्रों वाले,\nबहुत हाथ, जंघा और पैरोंवाले, बहुत उदरों वाले और\nबहुत-सी दाढ़ों के कारण अत्यन्त विकराल महान् रूप\nको देखकर सब लोग व्याकुल हो रहे हैं तथा मैं भी\nव्याकुल हो रहा हूँ ।। २३ ।।\nLord, seeing this stupendous and dreadful\nForm of Yours possessing numberous mouths\nand eyes, many arms, thighs and feet, many\nbellies and many teeth, the worlds are terror-\nstruck ; so am I.\n(23)\nनभःस्पृशं दीप्तमनेकवर्णं व्यात्ताननं दीप्तविशालनेत्रम् ।\nदृष्ट्वा हि त्वां प्रव्यथितान्तरात्मा धृतिं न विन्दामि शमं च विष्णो ।। २४ । ।\nक्योंकि हे विष्णो ! आकाश को स्पर्श करने वाले,\nदेदीप्यमान, अनेक वर्णों से युक्त तथा फैलाये हुए मुख\nऔर प्रकाशमान विशाल नेत्रों से युक्त आपको देखकर\nभयभीत अन्तःकरण वाला मैं धीरज और शान्ति नहीं\nपाता हूँ ।। २४ ।।\n265\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.8967
+    },
+    {
+      "page": 270,
+      "raster_s": 0.38,
+      "megapixels": 5.48,
+      "png_kb": 6674,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.233,
+          "chars": 1090,
+          "words": 183,
+          "devanagari_ratio": 0.559,
+          "script_runs": 10,
+          "text": "‘| G\n\nLord, seeing Your Form reaching the heavens,\neffulgent, multi-coloured, having its mouth\nwide open and possessing large flaming eyes,\nI, with my inmost self frightened, have lost\nself-control and find no peace. (24)\n\nदंष्ट्राकरालानि च ते मुखानि दृष्ट्वैव कालानलसबिभानि ।\nदिशो न जाने न लभे च शर्म प्रसीद देवेश जगन्निवास । । ।।\n\nasl के कारण विकराल और प्रलयकालकी अग्नि\nके समान प्रज्वलित आपके Fear को देखकर मैं दिशाओं\nको नहीं जानता हूँ और सुख भी नहीं पाता हूँ | इसलिये\nहे देवेश ! हे जगन्निवास ! आप प्रसन्न हों || २५ II\n\nSeeing Your faces frightful on account of\ntheir teeth, and flaring like the fire at the\ntime of universal destruction, I am utterly\nbewildered and find no happiness; therefore,\nbe kind to me, O Lord of celestials and ReSting-\nplace of the universe. (25)\n\nअमी च तवां धृतराष्ट्रस्य पुत्राः सर्वे सहैवावनिपालसधैः |\nभीष्मो द्रोणः सूतपुत्रस्तथासौ सहास्मदीयेरपि योधमुख्यैः । । २६।।\nवक्त्राणि ते त्वरमाणा विशन्ति दष्ट्राकरालानि भयानकानि |\nकेचिदिलग्ना दशनान्तरेषु संदृश्यन्ते वर्णितैरु्तमागेः । । २७।।\n\n“fi\n0\n\nवे सभी धृतराष्ट्र के पुत्र राजाओं के समुदाय सहित\n\nएकादश अध्याय 266\n"
+        },
+        "vision": {
+          "ocr_s": 9.357,
+          "chars": 1084,
+          "words": 178,
+          "devanagari_ratio": 0.58,
+          "script_runs": 4,
+          "text": "Lord, seeing Your Form reaching the heavens,\neffulgent, multi-coloured, having its mouth\nwide open and possessing large flaming eyes,\nI, with my inmost self frightened, have lost\nself-control and find no peace.\n(24)\nदंष्ट्राकरालानि च ते मुखानि दृष्ट्वैव कालानलसन्निभानि ।\nदिशो न जाने न लभे च शर्म प्रसीद देवेश जगन्निवास ।। २५ ।।\nदाढ़ों के कारण विकराल और प्रलयकालकी अग्नि\nके समान प्रज्वलित आपके मुखों को देखकर मैं दिशाओं\nको नहीं जानता हूँ और सुख भी नहीं पाता हूँ । इसलिये\nहे देवेश ! हे जगन्निवास ! आप प्रसन्न हों ।। २५ ।।\nSeeing Your faces frightful on account of\ntheir teeth, and flaring like the fire at the\ntime of universal destruction, I am utterly\nbewildered and find no happiness; therefore,\nbe kind to me, O Lord of celestials and Resting-\nplace of the universe.\n(25)\nअमी च त्वां धृतराष्ट्रस्य पुत्राः सर्वे सहैवावनिपालसंघैः\nभीष्मो द्रोणः सूतपुत्रस्तथासौ सहास्मदीयैरपि योधमुख्यैः ।। २६ ।।\nवक्त्राणि ते त्वरमाणा विशन्ति दंष्ट्राकरालानि भयानकानि ।\nकेचिद्विलग्ना दशनान्तरेषु संदृश्यन्ते चूर्णितैरुत्तमागैः ।। २७ ।।\nवे सभी धृतराष्ट्र के पुत्र राजाओं के समुदाय सहित\nएकादश अध्याय\n266"
+        }
+      },
+      "agreement": 0.9668
+    },
+    {
+      "page": 271,
+      "raster_s": 0.392,
+      "megapixels": 5.45,
+      "png_kb": 6152,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 5.457,
+          "chars": 1266,
+          "words": 242,
+          "devanagari_ratio": 0.688,
+          "script_runs": 8,
+          "text": "<= = WY; रो > स > न SSS: ZASSS SS >\nAOD yy ~ SS ©\n\noS ~ NO\n, en प्रवेश कर रहे हैं और भीष्म पितामह, द्रोणाचाय॑ |].\n\nतथा वह कर्ण और हमारे पक्षके भी प्रधान योद्धाओं\nके सहित सब-के-सब आपके दाढ़ों के कारण विकराल\nभयानक मुखों में बड़े वेग से दौड़ते हुए प्रवेश कर रहे\nहैं और कई एक चूर्ण हुए सिरोंसहित आपके दाँतों के\nबीच में लगे हुए दीख रहे हैं 11 २६-२७ ।।\n\nAll those sons of Dhrtarastra with hosts of\nkings are entering You. Bhisma, Drona and\nyonder Karna, with the principal warriors on\nour side as well, are rushing headlong into\nYour fearful mouths looking all the more terrible\n-on account of their teeth; some are seen stuck\nup in the gaps between Your teeth with their\nheads crushed. (26,27)\n\nप्रसंग - दोनों सेनाओं के योद्धाओं को अर्जुन किस प्रकार भगवान्‌ के विकराल मुखों में प्रविष्ट\nहोते देख रहे हैं, अब दो श्लोकों में उसका पहले नदियों के जल के दृष्टान्त से और तदनन्तर पतंगे के\nदृष्टन्त से स्पष्टीकरण कर रहे हैं-\n\nयथा नदीनां बहवोऽम्बुवेगाः समुद्रमेवाभिमुखा द्रवन्ति।\nतथा तवामी नरलोकवीरा विशन्ति वक्त्राण्यभिविज्वलन्ति | । २८।।\n\nजैसे नदियों के बहुत-से जल के प्रवाह स्वाभाविक\nही समुद्र के ही सम्मुख दौड़ते हैं अर्थात्‌ समुद्र में प्रवेश\nकरते हैं, वैसे ही वे नरलोक के वीर भी आपके प्रज्वलित\nप्रवेश कर रहे हैं || २८ ।।\n\n522 LL you} ~अ\nस == ८ “~^\n~~\n\n4\n\n267 श्रीमद्भगवदगीता\n"
+        },
+        "vision": {
+          "ocr_s": 9.393,
+          "chars": 1181,
+          "words": 216,
+          "devanagari_ratio": 0.715,
+          "script_runs": 3,
+          "text": "आपमें प्रवेश कर रहे हैं और भीष्म पितामह, द्रोणाचार्य\nतथा वह कर्ण और हमारे पक्षके भी प्रधान योद्धाओं\nके सहित सब-के-सब आपके दाढ़ों के कारण विकराल\nभयानक मुखों में बड़े वेग से दौड़ते हुए प्रवेश कर रहे\nहैं और कई एक चूर्ण हुए सिरोंसहित आपके दाँतों के\nबीच में लगे हुए दीख रहे हैं ।। २६-२७ ।।\nAll those sons of Dhrtarastra with hosts of\nkings are entering You. Bhisma, Drona and\nyonder Karna, with the principal warriors on\nour side as well, are rushing headlong into\nYour fearful mouths looking all the more terrible\non account of their teeth; some are seen stuck\nup in the gaps between Your teeth with their\nheads crushed.\n(26,27)\n-\nप्रसंग – दोनों सेनाओं के योद्धाओं को अर्जुन किस प्रकार भगवान् के विकराल मुखों में प्रविष्ट\nहोते देख रहे हैं, अब दो श्लोकों में उसका पहले नदियों के जल के दृष्टान्त से और तदनन्तर पतंगें के\nदृष्टान्त से स्पष्टीकरण कर रहे हैं-\nयथा नदीनां बहवोऽम्बुवेगाः समुद्रमेवाभिमुखा द्रवन्ति ।\nतथा तवामी नरलोकवीरा विशन्ति वक्त्राण्यभिविज्वलन्ति ।। २८ ।।\n-\nजैसे नदियों के बहुत से जल के प्रवाह स्वाभाविक\nही समुद्र के ही सम्मुख दौड़ते हैं अर्थात् समुद्र में प्रवेश\nकरते हैं, वैसे ही वे नरलोक के वीर भी आपके प्रज्वलित\nमुखों में प्रवेश कर रहे हैं ।। २८ ।।\n267\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9418
+    },
+    {
+      "page": 272,
+      "raster_s": 0.153,
+      "megapixels": 5.5,
+      "png_kb": 1031,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 1.642,
+          "chars": 931,
+          "words": 161,
+          "devanagari_ratio": 0.659,
+          "script_runs": 6,
+          "text": "As the myriad streams of rivers rush\ntowards the sea alone, so do those warriors\nof the mortal world enter Your flaming\nmouths. (28)\n\nयथा प्रदीप्तं ज्वलनं पतंगा विशन्ति नाशाय समृद्धवेगाः।\nतथैव नाशाय विशन्ति लोकास्तवापि वक्त्राणि समृद्धवेगाः । । २६।।\n\nजैसे पतंग मोहवश नष्ट होने के लिये प्रज्वलित\nअग्नि में अतिवेग से दौड़ते हुए प्रवेश करते हैं, वैसे ही\nये सब लोग भी अपने नाश के लिये आपके मुखो में\nअतिवेग से दौड़ते हुए प्रवेश कर रहे हैं || २६ II\n\nAs moths rush with great speed into\nthe blazing fire for extinction out of their\nfolly, even so all these people are with great\n\nrepidity entering Your mouths to meet their\ndoom. (29)\n\nप्रसंग - दोनों सेनाओं के लोगों के प्रवेश का दृष्टान्त द्वारा वर्णन करके अब उन लोगों को भगवान्‌ ५\nकिस प्रकार नष्ट कर रहे हैं, इसका वर्णन किया जाता है- > |\n\nलेलिह्यसे ग्रसमानः समन्ताल्लोकान्समग्रान्वदनैर्ज्वलद्भिः। NG\nतेजोभिरापूर्य जगत्समग्रं भासस्तवोग्राः प्रतपन्ति विष्णो ।। २०।। |...\n\nएकादश अध्याय 268\n"
+        },
+        "vision": {
+          "ocr_s": 1.982,
+          "chars": 1019,
+          "words": 181,
+          "devanagari_ratio": 0.697,
+          "script_runs": 4,
+          "text": "As the myriad streams of rivers rush\ntowards the sea alone, so do those warriors\nof the mortal world enter Your flaming\nmouths.\n(28)\nयथा प्रदीप्तं ज्वलनं पतंगा विशन्ति नाशाय समृद्धवेगाः ।\nतथैव नाशाय विशन्ति लोकास्तवापि वक्त्राणि समृद्धवेगाः ।। २६ ।।\nजैसे पतंग मोहवश नष्ट होने के लिये प्रज्वलित\nअग्नि में अतिवेग से दौड़ते हुए प्रवेश करते हैं, वैसे ही\nये सब लोग भी अपने नाश के लिये आपके मुखों में\nअतिवेग से दौड़ते हुए प्रवेश कर रहे हैं ।। २६ ।।\nAs moths rush with great speed into\nthe blazing fire for extinction out of their\nfolly, even so all these people are with great\nrepidity entering Your mouths to meet their\ndoom.\n(29)\n-\nप्रसंग – दोनों सेनाओं के लोगों के प्रवेश का दृष्टान्त द्वारा वर्णन करके अब उन लोगों को भगवान्\nकिस प्रकार नष्ट कर रहे हैं, इसका वर्णन किया जाता है-\nलेलिह्यसे ग्रसमानः समन्ताल्लोकान्समग्रान्वदनैर्ज्वलद्भिः ।\nतेजोभिरापूर्य जगत्समग्रं भासस्तवोग्राः प्रतपन्ति विष्णो ।। ३० ।।\nआप उन सम्पूर्ण लोकों को प्रज्वलित मुखों द्वारा ग्रास\nकरते हुए सब ओर से बार-बार चाट रहे हैं, हे विष्णो !\nएकादश अध्याय\n268"
+        }
+      },
+      "agreement": 0.9295
+    },
+    {
+      "page": 273,
+      "raster_s": 0.155,
+      "megapixels": 5.47,
+      "png_kb": 1008,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 5.075,
+          "chars": 1248,
+          "words": 238,
+          "devanagari_ratio": 0.696,
+          "script_runs": 6,
+          "text": "सम्पूर्ण जगत्‌ को तेज के द्वारा\nपरिपूर्ण करके तपा रहा है ।। ३० |!\n\nSwallowing through Your blazing mouths;\nYou are licking all those people on all\nsides. Lord, Your terrible splendours are\nburning the entire universe, filling it with\nradiance. (30)\n\nप्रसंग - अर्जुन ने तीसरे और चौथे श्लोकँ में भगवान्‌ से अपने ऐश्वर्यमय रूप का दर्शन कराने\nके लिये प्रार्थना की थी, उसी के अनुसार भगवान्‌ ने अपना विश्व रूप अर्जुन को दिखलाया; उनके मन\nमें इस बात के जानने की इच्छा उत्पन्न हो गयी कि ये श्रीकृष्ण वस्तुतः कौन हैं ? तवा इस महान्‌ उग्र स्वरूप\nके द्वारा अब ये क्या करना चाहते हैं ? इसीतिये वे भगवान्‌ से पूछ रहे है-\n\nआख्याहि मे को भवानुग्ररूपो नमोऽस्तु ते देववर प्रसीद।\nविज्ञातुमिच्छामि भवन्तमा न हि प्रजानामि तव प्रवृत्तिम्‌ । । ३१।।\n\nमुझे बतलाइये कि आप उग्ररूप वाले कौन हैं ? हे\nदेवों में श्रेष्ठ आपको नमस्कार हो | आप प्रसन्न होइये |\nआदि पुरुष आपको मैं विशेष रूप से जानना चाहता\nहूँ, क्योंकि मैं आपकी प्रवृत्ति को नहीं जानता 1139 ।।\nTell me who You are with a form so terrible.\nMy obeisance to You, O best of gods; be kind to\n\nme, I wish to know You, the Primal Being, in\nparticular; for I know not Your purpose. (31)\n\nप्रसंग - इस प्रकार अर्जुन के पूछने पर भगवान्‌ अपने उग्ररूप घारण करने का कारण बतलाते हुए\nप्रश्नानुसार उत्तर देते हैं-\n\nन Seale erate a, Se\n\n"
+        },
+        "vision": {
+          "ocr_s": 2.147,
+          "chars": 1262,
+          "words": 241,
+          "devanagari_ratio": 0.718,
+          "script_runs": 5,
+          "text": "आपका उग्र प्रकाश सम्पूर्ण जगत् को तेज के द्वारा\nपरिपूर्ण करके तपा रहा है ।। ३० ।।\nSwallowing through Your blazing mouths;\nYou are licking all those people on all\nsides. Lord, Your terrible splendours are\nburning the entire universe, filling it with\nradiance.\n(30)\n-\nप्रसंग अर्जुन ने तीसरे और चौथे श्लोकों में भगवान् से अपने ऐश्वर्यमय रूप का दर्शन कराने\nके लिये प्रार्थना की थी, उसी के अनुसार भगवान् ने अपना विश्व रूप अर्जुन को दिखलाया; उनके मन\nमें इस बात के जानने की इच्छा उत्पन्न हो गयी कि ये श्रीकृष्ण वस्तुतः कौन हैं ? तथा इस महान् उग्र स्वरूप\nके द्वारा अब ये क्या करना चाहते हैं ? इसीलिये वे भगवान् से पूछ रहे हैं-\nआख्याहि मे को भवानुग्ररूपो नमोऽस्तु ते देववर प्रसीद ।\nविज्ञातुमिच्छामि भवन्तमाद्यं न हि प्रजानामि तव प्रवृत्तिम् ।। ३१ ।।\nमुझे बतलाइये कि आप उग्ररूप वाले कौन हैं ? हे\nदेवों में श्रेष्ठ ! आपको नमस्कार हो । आप प्रसन्न होइये ।\nआदि पुरुष आपको मैं विशेष रूप से जानना चाहता\nहूँ, क्योंकि मैं आपकी प्रवृत्ति को नहीं जानता ।। ३१ ।।\nTell me who You are with a form so terrible.\nMy obeisance to You, O best of gods; be kind to\nme, I wish to know You, the Primal Being, in\nparticular; for I know not Your purpose. (31)\n-\nप्रसंग इस प्रकार अर्जुन के पूछने पर भगवान् अपने उग्ररूप धारण करने का कारण बतलाते हुए\nप्रश्नानुसार उत्तर देते हैं-\n269\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9581
+    },
+    {
+      "page": 274,
+      "raster_s": 0.387,
+      "megapixels": 5.48,
+      "png_kb": 6355,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 4.968,
+          "chars": 1300,
+          "words": 248,
+          "devanagari_ratio": 0.789,
+          "script_runs": 17,
+          "text": "श्रीभगवानुवाच ्\n\nकालोऽस्मि लोकक्षयकृत्यवृद्धो लोकान्‌ समाहर्तुमिह प्रवृत्तः | |\nऋतेऽपि तवां न भविष्यन्ति सर्वे येऽवस्थिताः प्रत्यनीकेषु योधाः । । ३२।।\n\nश्रीभगवान्‌ बोले -मैं लोकों का नाश करने वाला\nबढ़ा हुआ महाकाल हू | इस समय इन लोकों को नष्ट\nकरने के लिये प्रवृत्त हुआ हूँ | इसलिये जो प्रतिपक्षियों\nकी सेना में स्थित योद्धा लोग हैं वे सब तेरे बिना भी\nनहीं रहेंगे अर्थात्‌ तेरे युद्ध न करने पर भी इन सबका\nनाश हो जायेगा || ३२ ।।\n\nSri Bhagavan said: I am inflamed Kala\n(the eternal Time-Spirit), the destroyer of the\nworlds. [am out to exterminate these people.\n\nEven without you all those warriors arrayed\nin the enemy’s camp must die. (32)\n\nZZ ZIONS WSC ES >\n~ सस 23०) >> 99223 29%;\n॥\n\nन\n\nCA\n\nSS\n>\n\n८८८ Uy, द\n\nSSS\n\n=\n\n“py\n\nSS\n\nप्रसंग - इस प्रकार अर्जुन के प्रश्न का उत्तर देकर अब भगवान्‌ दो श्लोकों द्वारा युद्ध करने में सब\nप्रकार से लाभ दिखलाकर अर्जुन को युद्ध के लिये उत्साहित करते हुए आज्ञा देते हैं-\n\nतस्मात्त्वमुत्तिष्ठ यशो लभस्व भित्वा शत्रून्‌ भूट्श्व राज्य समृद्धम्‌ ।\nमयैवैते निहताः पूर्वमेव निमित्तमात्रं भव सव्यसाचिन्‌ 1 ३३।।\n\nअतएव तू उठ ! यश प्राप्त कर और शत्नुओं को\nजीतकर धन-धान्य से सम्पन्न राज्य को भोग। ये सब\nशूरवीर पहले ही से मेरे ही द्वारा मारे हुए हैं। हे\nसव्यसाचिन्‌ ! तू तो केवल निमित्तमात्र बन जा ।। ३३ ।।\n\nPHS NSO\n\n= ~ य ~ ASN 777,\nSS VY ८ फल 2922 tl अब ८222 Ya\n\nएकादश अध्याय 270\n"
+        },
+        "vision": {
+          "ocr_s": 8.949,
+          "chars": 1153,
+          "words": 215,
+          "devanagari_ratio": 0.823,
+          "script_runs": 3,
+          "text": "श्रीभगवानुवाच\nकालोऽस्मि लोकक्षयकृत्प्रवृद्धो लोकान् समाहर्तुमिह प्रवृत्तः ।\nऋतेऽपि त्वां न भविष्यन्ति सर्वे येऽवस्थिताः प्रत्यनीकेषु योधाः ।। ३२ । ।\nश्रीभगवान् बोले- मैं लोकों का नाश करने वाला\nबढ़ा हुआ महाकाल हूँ । इस समय इन लोकों को नष्ट\nकरने के लिये प्रवृत्त हुआ हूँ। इसलिये जो प्रतिपक्षियों\nकी सेना में स्थित योद्धा लोग हैं वे सब तेरे बिना भी\nनहीं रहेंगे अर्थात् तेरे युद्ध न करने पर भी इन सबका\nनाश हो जायेगा ।। ३२ ।।\nSri Bhagavan said : I am inflamed Kala\n(the eternal Time - Spirit), the destroyer of the\nworlds. I am out to exterminate these people.\nEven without you all those warriors arrayed\nin the enemy's camp must die.\nप्रसंग\n-\n(32)\nइस प्रकार अर्जुन के प्रश्न का उत्तर देकर अब भगवान् दो श्लोकों द्वारा युद्ध करने में सब\nप्रकार से लाभ दिखलाकर अर्जुन को युद्ध के लिये उत्साहित करते हुए आज्ञा देते हैं-\nतस्मात्त्वमुत्तिष्ठ यशो लभस्व जित्वा शत्रून् भुङ्क्ष्व राज्य समृद्धम् ।\nमयैवैते निहताः पूर्वमेव निमित्तमात्रं भव सव्यसाचिन् । । ३३ । ।\nअतएव तू उठ ! यश प्राप्त कर और शत्रुओं को\nजीतकर धन-धान्य से सम्पन्न राज्य को भोग । ये सब\nशूरवीर पहले ही से मेरे ही द्वारा मारे हुए हैं । हे\nसव्यसाचिन् ! तू तो केवल निमित्तमात्र बन जा ।। ३३ ।।\nएकादश अध्याय\n270"
+        }
+      },
+      "agreement": 0.9162
+    },
+    {
+      "page": 275,
+      "raster_s": 0.445,
+      "megapixels": 5.44,
+      "png_kb": 6120,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.657,
+          "chars": 1074,
+          "words": 189,
+          "devanagari_ratio": 0.641,
+          "script_runs": 9,
+          "text": "॥ < स Ht SEK HH 20 Yi Das\nThere fore, do you arise and win glory; \\\nconquering foes, enjoy the affluent kingdom.\nThese warriors stand already slain by Me; be\nyou only an instrument, Arjuna. (33)\n\nद्रोणं च भीष्मं च जयद्रथं च कर्णं तथान्यानपि योधवीरान्‌ ।\nमया हतांस्त्वं जहि मा व्यथिष्ठा युध्यस्व नेतासि रणे सपलान्‌ || ३४।।\n\nद्रोणाचार्य जर भीष्म पितामह तथा जयद्रथ ओर\nकर्ण तथा और भी बहुत-से-मेरे द्वारा मारे हुए शूरवीर\nयोद्धाओं को तू मार भय मत कर । निस्सन्देह तू युद्ध\nमें वैरियों को जीतेगा । इसलिये युद्ध कर 1138 ।।\n\nDo youkill Drona and Bhismaand Jayadratha\nand Karna and even other brave warriors;\nwho stand already killed by Me; fear not. You\nwill surely conquer the enemies in this war;\ntherefore, fight. (34)\n\nप्रसंग -- इस प्रकार भगवान्‌ के मुख से सब बातें सुनने के बाद अर्जुन की कैसी परिस्थिति हुई और\nउन्होंने क्या किया-इस जिज्ञासा पर संजय कहते F—\n\nसञ्जय उवाच\nएतच्छुत्वा वचनं केशवस्य कुताञ्जलिर्वेपमानः किरीरी।\nनमस्कृत्वा भूय एवाह कृष्णं सगद्गदं भीतभीतः प्रणम्य । । ३५।।\n\nसंजय बोले-केशव भगवान्‌ के इस वचन को\nसुनकर मुकुटधारी अर्जुन हाथ जोड़कर Higa हुआ\n\n271 श्रीमदभगवदगीता\n\n"
+        },
+        "vision": {
+          "ocr_s": 8.58,
+          "chars": 1055,
+          "words": 191,
+          "devanagari_ratio": 0.663,
+          "script_runs": 4,
+          "text": "There fore, do you arise and win glory;\nconquering foes, enjoy the affluent kingdom.\nThese warriors stand already slain by Me; be\nyou only an instrument, Arjuna.\n(33)\nद्रोणं च भीष्मं च जयद्रथं च कर्णं तथान्यानपि योधवीरान् ।\nमया हतांस्त्वं जहि मा व्यथिष्ठा युध्यस्व जेतासि रणे सपत्नान् ।। ३४ ।।\nद्रोणाचार्य और भीष्म पितामह तथा जयद्रथ और\nकर्ण तथा और भी बहुत से मेरे द्वारा मारे हुए शूरवीर\nयोद्धाओं को तू मार । भय मत कर । निस्सन्देह तू युद्ध\nमें वैरियों को जीतेगा । इसलिये युद्ध कर ।। ३४ ।।\nDo you kill Drona and Bhisma and Jayadratha\nand Karna and even other brave warriors;\nwho stand already killed by Me; fear not. You\nwill surely conquer the enemies in this war;\ntherefore, fight.\nप्रसंग\n-\n(34)\nइस प्रकार भगवान् के मुख से सब बातें सुनने के बाद अर्जुन की कैसी परिस्थिति हुई और\nउन्होंने क्या किया - इस जिज्ञासा पर संजय कहते हैं-\nसञ्जय उवाच\nएतच्छ्रुत्वा वचनं केशवस्य कृताञ्जलिर्वेपमानः किरीटी ।\nनमस्कृत्वा भूय एवाह कृष्णं सगद्गदं भीतभीतः प्रणम्य ।। ३५ । ।\nसंजय बोले- केशव भगवान् के इस वचन को\nसुनकर मुकुटधारी अर्जुन हाथ जोड़कर काँपता हुआ\n271\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.95
+    },
+    {
+      "page": 276,
+      "raster_s": 0.404,
+      "megapixels": 5.48,
+      "png_kb": 6514,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.309,
+          "chars": 1137,
+          "words": 212,
+          "devanagari_ratio": 0.591,
+          "script_runs": 14,
+          "text": "> YX\n\nकरके भगवान्‌ श्रीकृष्ण के प्रति गद्गद वाणी से\nबोला-- 1134-11\n\nSanjaya said: Hearing these words of\nBhagavan Kesava, Arjuna tremblingly bowed\nto Him with joined palms, and bowing again\nin extreme terror spoke to Sri Krsna in faltering\naccents. (35)\n\nSS च २ > +~ स\nty ZZ Ap 220 Pee oe 2222\n\nप्रसंग — अब छत्तीसवें से carted श्लोक तक अर्जुन द्वारा किये हुए भगवान्‌ के स्तवन, और\nक्षमा याचनासहित प्रार्थना का वर्णन है, उसमें प्रथम Tay पद का प्रयोग करके जगत्‌ के हर्षित होने आदि\nका औचित्य बतलाते हैं-\n\n> dats\nAf\n\nअर्जुन उवाच\nस्थाने हषीकेश तव प्रकीर्त्या जगत्महष्यत्यनुरज्यते च।\nरक्षांसि भीतानि दिशो द्रवन्ति सर्वे नमस्यन्ति च सिद्धसंघाः । । ३६।।\n\nअर्जुन बोले -हे अन्तर्यामिन्‌ ! यह योग्य ही है कि\nआपके नाम, गुण और प्रभाव के कीर्तन से जगत्‌ अति\nहर्षित हो रहा है ओर अनुराग को भी प्राप्त हो रहा है\nतथा भयभीत राक्षस लोग दिशाओं में भाग रहे हैँ और\nसब सिद्धगणों के समुदाय नमस्कार कर रहे हैं ।। ३६ ।।\n\nArjuna said: Lord, well it is the universe\nexults and is filled with love by chanting Your\nnames, virtues and glory; terrified Raksasas\n\nare fleeing in all directions, and all the hosts\nof Siddhas are bowing to You.\n\nSSS\n72% }\n\nएकादश अध्याय 972\n"
+        },
+        "vision": {
+          "ocr_s": 9.847,
+          "chars": 1126,
+          "words": 205,
+          "devanagari_ratio": 0.642,
+          "script_runs": 5,
+          "text": "नमस्कार करके, फिर भी अत्यन्त भयभीत होकर प्रणाम\nकरके भगवान् श्रीकृष्ण के प्रति गद्गद वाणी से\nबोला- ।। ३५ ।।\nSañjaya said: Hearing these words of\nBhagavan Kesava, Arjuna tremblingly bowed\nto Him with joined palms, and bowing again\nin extreme terror spoke to Sri Krsna in faltering\naccents.\n(35)\n-\nप्रसंग – अब छत्तीसवें से छियालीसवें श्लोक तक अर्जुन द्वारा किये हुए भगवान् के स्तवन, और\nक्षमा याचनासहित प्रार्थना का वर्णन है, उसमें प्रथम 'स्थाने' पद का प्रयोग करके जगत् के हर्षित होने आदि\nका औचित्य बतलाते हैं-\nअर्जुन उवाच\nस्थाने हृषीकेश तव प्रकीर्त्या जगत्प्रहृष्यत्यनुरज्यते च ।\nरक्षांसि भीतानि दिशो द्रवन्ति सर्वे नमस्यन्ति च सिद्धसंघाः ।। ३६ ।।\nअर्जुन बोले - हे अन्तर्यामिन् ! यह योग्य ही है कि\nआपके नाम, गुण और प्रभाव के कीर्तन से जगत् अति\nहर्षित हो रहा है और अनुराग को भी प्राप्त हो रहा है\nतथा भयभीत राक्षस लोग दिशाओं में भाग रहे हैं और\nसब सिद्धगणों के समुदाय नमस्कार कर रहे हैं ।। ३६ ।।\nArjuna said: Lord, well it is the universe\nexults and is filled with love by chanting Your\nnames, virtues and glory; terrified Raksasas\nare fleeing in all directions, and all the hosts\nof Siddhas are bowing to You.\n(36)\nएकादश अध्याय\n272"
+        }
+      },
+      "agreement": 0.921
+    },
+    {
+      "page": 277,
+      "raster_s": 0.402,
+      "megapixels": 5.44,
+      "png_kb": 6291,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 8.025,
+          "chars": 1115,
+          "words": 204,
+          "devanagari_ratio": 0.717,
+          "script_runs": 3,
+          "text": "= - पूर्व श्लोक में जो स्थाने\" पद का प्रयोग करके सिद्ध समुदायों का नमस्कार आदि करना\nउचित बतलाया गया था, अब चार श्लोकों में भगवान्‌ के प्रभाव का वर्णन करके उसी बात को सिद्ध करते\nहुए अर्जुन के बार-बार नमस्कार करने का भाव दिखलाते हैं-\n\nकस्माच्च ते न नमेरन्महात्मन्‌ गरीयसे ब्रह्मणोष्प्यादिकर्त्रे |\nअनन्त देवेश जगन्निवास त्वमक्षरं सदसत्तत्परं यत्‌ । । ३७।।\n\nहे महात्मन्‌ ! ब्रह्मा के भी आदि कर्ता और सबसे बड़े\nआपके लिये ये कैसे नमस्कार न करें; क्योकि हे अनन्त !\nहे देवेश ! हे जगन्निवास ! जो सत्‌, असत्‌ और उनसे\nपरे अक्षर अर्थात्‌ सच्चिदानन्दघन ब्रह्म है, वह आप ही\nहै ।। ३७ ।।\n\nO great soul, why should they not bow\nto You, who are the progenitor of Brahma\nhimself and the greatest of the great? O infinite\nLord of celestials, Abode of the universe,\nYou are that which is existent (Sat), that\nwhich is non-existent (Asat) and also that\nwhich is beyond both, viz., the indestructible\nBrahma. (37)\n\nत्वामादिदेवः पुरुषः पुराणस्त्वमस्य विश्वस्य परं निधानम्‌ ।\nवेत्तासि वेद्यं च परं च धाम त्वया ततं विश्वमनन्तरूप । । ३८ ।।\n\nआप आदि देव और सनातन पुरुष हैं, आप इस\nजगत्‌ के परम आश्रय और जानने वाले तथा जानने\n\n273 श्रीमटभरगवटगीता\n"
+        },
+        "vision": {
+          "ocr_s": 8.52,
+          "chars": 1105,
+          "words": 203,
+          "devanagari_ratio": 0.72,
+          "script_runs": 3,
+          "text": "प्रसंग - पूर्व श्लोक में जो 'स्थाने' पद का प्रयोग करके सिद्ध समुदायों का नमस्कार आदि करना\nउचित बतलाया गया था, अब चार श्लोकों में भगवान् के प्रभाव का वर्णन करके उसी बात को सिद्ध करते\nहुए अर्जुन के बार-बार नमस्कार करने का भाव दिखलाते हैं-\nकस्माच्च ते न नमेरन्महात्मन् गरीयसे ब्रह्मणोऽप्यादिकर्त्रे ।\nअनन्त देवेश जगन्निवास त्वमक्षरं सदसत्तत्परं यत् ।। ३७ ।।\nहे महात्मन् ! ब्रह्मा के भी आदि कर्ता और सबसे बड़े\nआपके लिये ये कैसे नमस्कार न करें; क्योंकि हे अनन्त !\nहे देवेश ! हे जगन्निवास ! जो सत्, असत् और उनसे\nपरे अक्षर अर्थात् सच्चिदानन्दघन ब्रह्म है, वह आप ही\nहैं ।। ३७ ।।\nO great soul, why should they not bow\nto You, who are the progenitor of Brahma\nhimself and the greatest of the great? O infinite\nLord of celestials, Abode of the universe,\nYou are that which is existent (Sat), that\nwhich is non-existent (Asat) and also that\nwhich is beyond both, viz., the indestructible\nBrahma.\n(37)\nत्वामादिदेवः पुरुषः पुराणस्त्वमस्य विश्वस्य परं निधानम् ।\nवेत्तासि वेद्यं च परं च धाम त्वया ततं विश्वमनन्तरूप ।। ३८ ।।\nआप आदि देव और सनातन पुरुष हैं, आप इस\nजगत् के परम आश्रय और जानने वाले तथा जानने\n273\nश्रीमदभगवदगीता"
+        }
+      },
+      "agreement": 0.9846
+    },
+    {
+      "page": 278,
+      "raster_s": 0.158,
+      "megapixels": 5.55,
+      "png_kb": 941,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 4.6,
+          "chars": 890,
+          "words": 161,
+          "devanagari_ratio": 0.461,
+          "script_runs": 6,
+          "text": "। | योग्य और परम धाम हैं | हे अनन्त रूप ! आपसे यह Kf ॥\n} सब जगत्‌ व्याप्त अर्थात्‌ परिपूर्ण हे ४; | |\n\nYou are the primal Deity, the most ancient\nPerson; You are the ultimate resort of this\nuniverse. You are both the knower and the\nknowable, and the highest abode. It is You\nwho pervade the universe, assuming endless\nforms, (38)\n\nवायुर्यमोऽग्नर्वरुणः शशांकः प्रजापतिस्त्वं प्रपितामहश्च ।\nनमो नमस्तेऽस्तु सहस्रकृत्वः पुनश्च भूयोऽपि नमो नमस्ते । । ३६।।\n\nआप वायु, यमराज, अग्नि, वरुण, चन्द्रमा, प्रजा के\nस्वामी ब्रह्मा और ब्रह्मा के भी पिता हैं। आपके लिये\nहजारों बार नमस्कार | नमस्कार हो !! आपके लिये फिर\nभी बार-बार नमस्कार ! नमस्कार !! || उ€ ।।\n\nYou are Vayu (the wind-god), Yama (the god\nof death), Agni (the god of fire), the moon-\ngod, Brahma (the Lord of Creation), nay, the\nfather of Brahma Himself. Hail, hail to You a\nthousand times; salutations, repeated salutations\nO You once again.\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.824,
+          "chars": 898,
+          "words": 160,
+          "devanagari_ratio": 0.477,
+          "script_runs": 5,
+          "text": "योग्य और परम धाम हैं । हे अनन्त रूप ! आपसे यह\nसब जगत् व्याप्त अर्थात् परिपूर्ण है ।। ३८ ।।\nYou are the primal Deity, the most ancient\nPerson; You are the ultimate resort of this\nuniverse. You are both the knower and the\nknowable, and the highest abode. It is You\nwho pervade the universe, assuming endless\nforms.\nवायुर्यमोऽग्निर्वरुणः शशांकः प्रजापतिस्त्वं प्रपितामहश्च ।\n(38)\nनमो नमस्तेऽस्तु सहस्रकृत्वः पुनश्च भूयोऽपि नमो नमस्ते ।। ३६ ।।\nआप वायु, यमराज, अग्नि, वरुण, चन्द्रमा, प्रजा के\nस्वामी ब्रह्मा और ब्रह्मा के भी पिता हैं। आपके लिये\nहजारों बार नमस्कार ! नमस्कार हो !! आपके लिये फिर\nभी बार-बार नमस्कार ! नमस्कार !! ।। ३६ ।।\nYou are Vayu (the wind-god), Yama (the god\nof death), Agni (the god of fire), the moon-\ngod, Brahma (the Lord of Creation), nay, the\nfather of Brahma Himself. Hail, hail to You a\nthousand times; salutations, repeated salutations\nO You once again.\n(39)\nएकादश अध्याय\n274"
+        }
+      },
+      "agreement": 0.9585
+    },
+    {
+      "page": 279,
+      "raster_s": 0.389,
+      "megapixels": 5.52,
+      "png_kb": 6190,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.57,
+          "chars": 1076,
+          "words": 196,
+          "devanagari_ratio": 0.797,
+          "script_runs": 9,
+          "text": "= ते सवेत |\nअनन्तवीर्यामितविक्रिमस्त्वं सर्वं समाप्नोषि ततोऽसि Was! । ४०।।\n\nहे अनन्त सामर्थ्य वाले आपके लिये आगे से और\nपीछे से भी नमस्कार ! हे सर्वात्मन्‌ ! आपके लिये सब\nओर से ही नमस्कार हो | क्योकि अनन्त पराक्रमशाली\nआप सब संसार को व्याप्त किये हुए हैँ, इससे आप\nही सर्वरूप हैं || ४० ||\n\n0 Lord of infinite prowess, my salutations\nto You from before and from behind. O soul of\nall, my obeisance to You from all sides indeed.\nYou, who possess limitless might, pervade all;\n\ntherefoe, You are all. (40)\n\nप्रसंग - इस प्रकार भगवान्‌ की स्तुति और प्रणाम करके अब भगवान्‌ के गुण, रहस्य और माहाल्य\nको यथार्थ न जानने के कारण वाणी और क्रिया द्वारा किये गये अपराधों को क्षमा करने के लिये दो श्लोकों\nमेँ भगवान्‌ से अर्जुन प्रार्थना करते हैं-\n\nसखेति मत्वा प्रसभं यदुक्त हे कृष्ण हे यादव हे सखेति |\nअजानता महिमानं तवेदं मया प्रमादात्मणयेन वापि || ४9।।\nयच्वावहासार्थमसत्कृतोऽसि विहारशय्यासनभोजनेषु ।\nएकोऽथवाप्यच्युत तत्समक्षं तत्क्षामये त्वामहमप्रमेयम्‌ | । ४२।।\nआपके इस प्रभाव को न जानते हुए, आप मेरे सखा\nहैं ऐसा मानकर प्रेम से अथवा प्रमाद से भी मैंने €\n\n4 Uf < ॐ ॐ KEE\n\n275 श्रीमद्भगवद्गीता\n\n"
+        },
+        "vision": {
+          "ocr_s": 8.674,
+          "chars": 1104,
+          "words": 199,
+          "devanagari_ratio": 0.817,
+          "script_runs": 3,
+          "text": "नमः पुरस्तादथ पृष्ठतस्ते नमोऽस्तु ते सर्वत एव सर्व ।\nअनन्तवीर्यामितविक्रमस्त्वं सर्वं समाप्नोषि ततोऽसि सर्वः ।। ४० ।।\nहे अनन्त सामर्थ्य वाले ! आपके लिये आगे से और\nपीछे से भी नमस्कार ! हे सर्वात्मन् ! आपके लिये सब\nओर से ही नमस्कार हो । क्योंकि अनन्त पराक्रमशाली\nआप सब संसार को व्याप्त किये हुए हैं, इससे आप\nही सर्वरूप हैं ।। ४० ।।\nO Lord of infinite prowess, my salutations\nto You from before and from behind. O soul of\nall, my obeisance to You from all sides indeed.\nYou, who possess limitless might, pervade all;\ntherefoe, You are all.\nप्रसंग\n-\n(40)\nइस प्रकार भगवान् की स्तुति और प्रणाम करके अब भगवान् के गुण, रहस्य और माहात्म्य\nको यथार्थ न जानने के कारण वाणी और क्रिया द्वारा किये गये अपराधों को क्षमा करने के लिये दो श्लोकों\nमें भगवान् से अर्जुन प्रार्थना करते हैं-\nसखेति मत्वा प्रसभं यदुक्तं हे कृष्ण हे यादव हे सखेति ।\nअजानता महिमानं तवेदं मया प्रमादात्प्रणयेन वापि । । ४१ ।।\nयच्चावहासार्थमसत्कृतोऽसि विहारशय्यासनभोजनेषु ।\nएकोऽथवाप्यच्युत तत्समक्षं तत्क्षामये त्वामहमप्रमेयम् ।। ४२ ।।\nआपके इस प्रभाव को न जानते हुए, आप मेरे सखा\nहैं ऐसा मानकर प्रेम से अथवा प्रमाद से भी मैंने 'हे\n275\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.937
+    },
+    {
+      "page": 280,
+      "raster_s": 0.153,
+      "megapixels": 5.47,
+      "png_kb": 982,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 1.814,
+          "chars": 995,
+          "words": 182,
+          "devanagari_ratio": 0.527,
+          "script_runs": 3,
+          "text": "कृष्ण !', है यादव !', हे सखे !' इस प्रकार जो कुछ ^\nबिना सोचे-समझे हठात्‌ कहा है; और हे अच्युत ! आप\nजो मेरे द्वारा विनोद के लिये विहार, शय्या, आसन और\nभोजनादि में अकेले अथवा उन सखाओ के सामने भी\nअपमानित किये गये हैं-- वह सब अपराध अप्रमेय\nस्वरूप अर्थात्‌ अचिन्त्य प्रभाव वाले आपसे मैं क्षमा\nकरवाता हूँ 1189-82 ||\n\nThe way in which I have importunately\ncalled out, either through intimacy or even\nthrough want of thought, “Ho Krsna! Ho Yadava!\nHo Comrade!” and so on, suspecting not this\ngreatness of Yours, and thinking You only tc\nbe a friend, and the way in which You have\nbeen slighted by me in jest, O sinless one.\nwhile at play, reposing, sitting or at meals,\neither alone or even in the presence of other—\nfor all that I crave forgiveness from You, who\nare infinite. (41,42)\n\nपितासि लोकस्य चराचरस्य त्वमस्य पूज्यश्च गुरुर्गरीयान्‌ ।\nन तवत्समोऽस्त्यभ्यधिकः कुतोऽन्यो लोकत्रयेऽप्यप्रतिमप्रभाव | | ४३।।\n\nआप इस चराचर जगत्‌ के पिता और सबसे बड़े गुरु\nएवं अति पूजनीय हैं, हे अनुपम प्रभाव वाले ! तीनों\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.641,
+          "chars": 1008,
+          "words": 186,
+          "devanagari_ratio": 0.541,
+          "script_runs": 3,
+          "text": "कृष्ण !', 'हे यादव !', 'हे सखे !' इस प्रकार जो कुछ\nबिना सोचे-समझे हठात् कहा है; और हे अच्युत ! आप\nजो मेरे द्वारा विनोद के लिये विहार, शय्या, आसन और\nभोजनादि में अकेले अथवा उन सखाओं के सामने भी\nअपमानित किये गये हैं- वह सब अपराध अप्रमेय\nस्वरूप अर्थात् अचिन्त्य प्रभाव वाले आपसे मैं क्षमा\nकरवाता हूँ ।। ४१-४२ ।।\nThe way in which I have importunately\ncalled out, either through intimacy or even\nthrough want of thought, \"Ho Krsna! Ho Yadava!\nHo Comrade !\" and so on, suspecting not this\ngreatness of Yours, and thinking You only to\nbe a friend, and the way in which You have\nbeen slighted by me in jest, O sinless one.\nwhile at play, reposing, sitting or at meals,\neither alone or even in the presence of other-\nfor all that I crave forgiveness from You, who\nare infinite.\n(41,42)\nपितासि लोकस्य चराचरस्य त्वमस्य पूज्यश्च गुरुर्गरीयान् ।\nन त्वत्समोऽस्त्यभ्यधिकः कुतोऽन्यो लोकत्रयेऽप्यप्रतिमप्रभाव ।। ४३ ।।\nआप इस चराचर जगत् के पिता और सबसे बड़े गुरु\nएवं अति पूजनीय हैं, हे अनुपम प्रभाव वाले ! तीनों\nएकादश अध्याय\n276"
+        }
+      },
+      "agreement": 0.969
+    },
+    {
+      "page": 281,
+      "raster_s": 0.147,
+      "megapixels": 5.43,
+      "png_kb": 958,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 1.76,
+          "chars": 994,
+          "words": 193,
+          "devanagari_ratio": 0.497,
+          "script_runs": 4,
+          "text": "रा लोकों में आपके समान भी त्न है, फिर | हे\nअधिक तो कैसे हो सकता है || ४३ ।।\n\nYou are the Father, nay the greatest\nteacher of this moving and unmoving creation,\nand worthy of adoration. O Lord ofincomparable\nmight, in all the three worlds there is none\nelse even equal to You; how, then, any\nbetter? (43)\n\nतस्मात्मणम्य प्रणिधाय कायं प्रसादये त्वामहमीशमीड्यम्‌ ।\nपितेव पुत्रस्य सखेव सख्युः प्रियः प्रियायार्हसि देव सेटुम्‌ । । ४४।।\n\nअतएव हे प्रभो ! मैं शरीर को भलीभाँति चरणों में\n\nनिवेदित कर, प्रणाम करके, स्तुति करने योग्य आप\nईश्वर को प्रसन्न होने के लिये प्रार्थना करता हूँ । हे देव |\nपिता जैसे पु के, सखा जैसे सखा के और पति जैसे\nप्रियतमा पत्नी के अपराध सहन करते हैँ - वैसे ही आप\nभी मेरे अपराध को सहन करने योग्य हैं || ४४ ||\n\nTherefore, Lord, prostrating my body at\nYour feet and bowing low I seek to propitiate\nYou, the ruler of all and worthy of all praise.\nIt behoves You to bear with me even as father\nbears with his son, a friend with his friend\nand a husband with his beloved spouse, (44)\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.602,
+          "chars": 1017,
+          "words": 195,
+          "devanagari_ratio": 0.517,
+          "script_runs": 5,
+          "text": "लोकों में आपके समान भी दूसरा कोई नहीं है, फिर\nअधिक तो कैसे हो सकता है ।। ४३ ।।\nYou are the Father, nay the greatest\nteacher of this moving and unmoving creation,\nand worthy of adoration. O Lord of incomparable\nmight, in all the three worlds there is none\nelse even equal to You; how, then, any\nbetter?\n(43)\nतस्मात्प्रणम्य प्रणिधाय कायं प्रसादये त्वामहमीशमीड्यम् ।\nपितेव पुत्रस्य सखेव सख्युः प्रियः प्रियायार्हसि देव सोढुम् ।। ४४ ।।\nअतएव हे प्रभो ! मैं शरीर को भलीभाँति चरणों में\nनिवेदित कर, प्रणाम करके, स्तुति करने योग्य आप\nईश्वर को प्रसन्न होने के लिये प्रार्थना करता हूँ । हे देव !\nपिता जैसे पुत्र के, सखा जैसे सखा के और पति जैसे\nप्रियतमा पत्नी के अपराध सहन करते हैं - वैसे ही आप\nभी मेरे अपराध को सहन करने योग्य हैं ।। ४४ ।।\nTherefore, Lord, prostrating my body at\nYour feet and bowing low I seek to propitiate\nYou, the ruler of all and worthy of all praise.\nIt behoves You to bear with me even as father\nbears with his son, a friend with his friend\nand a husband with his beloved spouse, (44)\n277\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9621
+    },
+    {
+      "page": 282,
+      "raster_s": 0.158,
+      "megapixels": 5.53,
+      "png_kb": 948,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.955,
+          "chars": 1221,
+          "words": 261,
+          "devanagari_ratio": 0.697,
+          "script_runs": 32,
+          "text": "ati — = 21 an य, bt A a 6, = च 0 =\neae eee ~=: eet ~ = पट! ^\nare Se गज 2. न eee न शौ ~=; हे\n[~ ४ if =\n\n= > न ~ ale 5 > a\n\nee See a\n५\nच ५\n\nऋ ~: —_ a! व\n\nee ०, 44 ‘ey. (६\n\nch (=\nन epee 5-५\n\n{ey\n\n= ८\n\nअपने अपराधों कं लिये क्षमा-याचना करके\nमें भगवान्‌ से चतुर्भुज रूप का दर्शन कराने के लिये प्रार्थना करते हैं-\n\nअद्दृष्टपूर्व हषितो5स्मि दृष्ट्वा भयेन च प्रव्यथितं मनो मे।\nतदेव मे दर्शय देवरूपं प्रसीद देवेश जगन्निवास ।। ४५।।\n\nमैं पहले न देखे हुए आपके इस +} ज्चर्यमय रूप को\n\nदेखकर र्षित हो रहा हूँ और मेरा मन भय से अति\nव्याकुल भी हो रहा है, इसलिये आप उस अपने चतुर्भुज\nविष्णु रूप को ही मुझे दिखलाइये ! हे देवेश ! डे\nजगच्निवास ! प्रसन्न होइये ll ४५ ||\n\nHaving Seen Your wondrous form, which\nwas never seen before, I feel transported with\njoy; at the same time my mind is tormented by\nfear. Pray reveal to me that divine form; the\n\nform of Visnu with four arms; O Lord of celestials\nAbode of the universe, be gracious. (45)\n\nकिरीटिनं गदिनं चक्रहस्तमिच्छामि त्वां द्रष्टुमहं तथैव |\nतेनैव रूपेण चतुर्भुजेन सहस्रबाहो भव विश्वमूर्ते । । ४६।।\nमैं वैसे ही आपको मुकुट धारण किये हुए तथा गदा\nऔर चक्र हाथ में लिये हुए देखना चाहता हूँ, इसलिये\nहे विश्व स्वरूप ! हे सहवाहो ! आप उसी चतुर्भुज रूप\n\nसे प्रकट होइये | li ४६ ।।\n\nएकादश्रा अध्याय 278\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.853,
+          "chars": 1066,
+          "words": 205,
+          "devanagari_ratio": 0.752,
+          "script_runs": 3,
+          "text": "प्रसंग\n--\nइस प्रकार भगवान् से अपने अपराधों के लिये क्षमा-याचना करके अब अर्जुन दो श्लोकों\nमें भगवान् से चतुर्भुज रूप का दर्शन कराने के लिये प्रार्थना करते हैं-\nअदृष्टपूर्वं हृषितोऽस्मि दृष्ट्वा भयेन च प्रव्यथितं मनो मे ।\nतदेव मे दर्शय देवरूपं प्रसीद देवेश जगन्निवास ।। ४५ ।।\nमैं पहले न देखे हुए आपके इस आश्चर्यमय रूप को\nदेखकर हर्षित हो रहा हूँ और मेरा मन भय से अति\nव्याकुल भी हो रहा है, इसलिये आप उस अपने चतुर्भुज\nविष्णु रूप को ही मुझे दिखलाइये ! हे देवेश ! हे\nजगन्निवास ! प्रसन्न होइये ।। ४५ ।।\nHaving Seen Your wondrous form, which\nwas never seen before, I feel transported with\njoy; at the same time my mind is tormented by\nfear. Pray reveal to me that divine form; the\nform of Visnu with four arms; O Lord of celestials\nAbode of the universe, be gracious. (45)\nकिरीटिनं गदिनं चक्रहस्तमिच्छामि त्वां द्रष्टुमहं तथैव ।\nतेनैव रूपेण चतुर्भुजेन सहस्रबाहो भव विश्वमूर्ते । । ४६ ॥\nमैं वैसे ही आपको मुकुट धारण किये हुए तथा गदा\nऔर चक्र हाथ में लिये हुए देखना चाहता हूँ, इसलिये\nहे विश्व स्वरूप ! हे सहस्रबाहो ! आप उसी चतुर्भुज रूप\nसे प्रकट होइये । ।। ४६ ।।\nएकादश अध्याय\n278"
+        }
+      },
+      "agreement": 0.8789
+    },
+    {
+      "page": 283,
+      "raster_s": 0.351,
+      "megapixels": 5.5,
+      "png_kb": 5723,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.978,
+          "chars": 1029,
+          "words": 189,
+          "devanagari_ratio": 0.575,
+          "script_runs": 9,
+          "text": "न 4 < <> 4 AS = >> O06 SS ५७,\n\nI wish to see You adorned in the same\nway with a diadem on the head, and holding\na mace and a discus in two of Your hands.\nO Lord with a thousand arms, O Universal\nBeing, appear again in the same four-armed\nForm. (46)\n\nप्रसंग - अर्जुन की प्रार्थना पर अब अगले दो श्लोकों में भगवान्‌ अपने विश्वरूप की महिमा और\nदुर्लभता का वर्णन करते हुए उनचासवे श्लोक में अर्जुन को आश्वासन देकर चतुर्भुज रूप देखने के लिये\nकहते हैं-\n\nश्रीभगवानुवाच\nमया प्रसन्नेन तवार्जुनेदं रूपं परं दर्शितमात्मयोगात्‌ |\nतेजोमयं विश्वमनत्मादयं यन्मे त्वदन्येन न दृष्टपूर्वम्‌ | । ४७।।\n\nश्रीभगवान्‌ बोले-हे अर्जुन ! अनुग्रहपूर्वक मैंने\nअपनी योगशक्ति के प्रभाव से यह मेरा परम तेजोमय,\nसबका आदि ओर सीमारहित विराट्‌ रूप तुझ को\nदिखलाया है, जिसे तेरे अतिरिक्त दूसरे किसी ने पहले\nनहीं देखा था Il ४७ ।।\n\nSri Bhagavan said: Arjuna! pleased with\nyou I have shown you, through My own power\nof Yoga, this supreme, effulgent, primal and\ninfinite Cosmic Body, which was never seen\nbefore by any else than you. (47)\n\n277 OSS ia ॐ\n\n279 श्रीमद्भगवद्गीता\n"
+        },
+        "vision": {
+          "ocr_s": 8.958,
+          "chars": 985,
+          "words": 179,
+          "devanagari_ratio": 0.583,
+          "script_runs": 4,
+          "text": "I wish to see You adorned in the same\nway with a diadem on the head, and holding\na mace and a discus in two of Your hands.\nO Lord with a thousand arms, O Universal\nBeing, appear again in the same four-armed\nForm.\n(46)\nप्रसंग - अर्जुन की प्रार्थना पर अब अगले दो श्लोकों में भगवान् अपने विश्वरूप की महिमा और\nदुर्लभता का वर्णन करते हुए उनचासवें श्लोक में अर्जुन को आश्वासन देकर चतुर्भुज रूप देखने के लिये\nकहते हैं-\nश्रीभगवानुवाच\nमया प्रसन्नेन तवार्जुनेदं रूपं परं दर्शितमात्मयोगात् ।\nतेजोमयं विश्वमनत्माद्यं यन्मे त्वदन्येन न दृष्टपूर्वम् ।। ४७ ।।\n-\nश्रीभगवान् बोले – हे अर्जुन ! अनुग्रहपूर्वक मैंने\nअपनी योगशक्ति के प्रभाव से यह मेरा परम तेजोमय,\nसबका आदि और सीमारहित विराट् रूप तुझ को\nदिखलाया है, जिसे तेरे अतिरिक्त दूसरे किसी ने पहले\nनहीं देखा था ।। ४७ ।।\nSri Bhagavan said : Arjuna ! pleased with\nyou I have shown you, through My own power\nof Yoga, this supreme, effulgent, primal and\ninfinite Cosmic Body, which was never seen\nbefore by any else than you.\negh(47)\n279\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9636
+    },
+    {
+      "page": 284,
+      "raster_s": 0.155,
+      "megapixels": 5.52,
+      "png_kb": 986,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 5.281,
+          "chars": 903,
+          "words": 171,
+          "devanagari_ratio": 0.683,
+          "script_runs": 8,
+          "text": "4 | नञ वेदयज्ञाध्ययनैर्न an aan तपोभिसरुग्रै |\nएवं रूपः शक्य अह नृलोके द्रष्टं त्वदन्येन कुरुप्रवीर | । ४८।।\n\nहे अर्जुन ! मनुष्य लोक में इस प्रकार विश्व रूप वाला\nमें वेद ओर यज्ञो के अध्ययन से, न दान से, न\nक्रियाओं से और न उग्र तपों से ही तेरे अतिरिक्त दूसरे\nके द्वारा देखा जा सकता हूँ || ४८ ||\n\nArjuna, in this mortal world I cannot be\nseen in this Form by anyone else than you,\neither through study of the Vedas or of rituals,\nor a gain through gifts, actions or austere\npenances, (48)\n\nमा ते व्यथा मा च विमूटभावो दृष्ट्वा रपं घोरमीदृङ्ममेदम्‌ |\nव्यपेतभीः प्रीतमनाः पुनस्त्वं तदेव मे रूपमिदं प्रपश्य । sell\n\nमेरे इस प्रकार के इस विकराल रूप को देखकर\nतुझको व्याकुलता नहीं होनी चाहिये और मूढभाव भी\nनहीं होना चाहिये | तू भयरहित और प्रीतियुक्त मनवाला\nहोकर उसी मेरे इस शंख-चक्र-गदा-पदूमयुक्त चतुर्भुज\nरूप को फिर देख ।। ४६ ||\n\nSeeing such a dreadful Form of Mine as\nthis, be not perturbed or perplexed; with a\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.901,
+          "chars": 974,
+          "words": 181,
+          "devanagari_ratio": 0.68,
+          "script_runs": 5,
+          "text": "न वेदयज्ञाध्ययनैर्न दानैर्न च क्रियाभिर्न तपोभिरुग्रैः ।\nएवं रूपः शक्य अहं नृलोके द्रष्टुं त्वदन्येन कुरुप्रवीर ।। ४८ ।।\nहे अर्जुन ! मनुष्य लोक में इस प्रकार विश्व रूप वाला\nमैं न वेद और यज्ञों के अध्ययन से, न दान से, न\nक्रियाओं से और न उग्र तपों से ही तेरे अतिरिक्त दूसरे\nके द्वारा देखा जा सकता हूँ ।। ४८ ।।\nArjuna, in this mortal world I cannot be\nseen in this Form by anyone else than you,\neither through study of the Vedas or of rituals,\nor a gain through gifts, actions or austere\npenances.\n(48)\nमा ते व्यथा मा च विमूढभावो दृष्ट्वा रूपं घोरमीदृङ्ममेदम् ।\nव्यपेतभीः प्रीतमनाः पुनस्त्वं तदेव मे रूपमिदं प्रपश्य ।। ४६ ।।\nमेरे इस प्रकार के इस विकराल रूप को देखकर\nतुझको व्याकुलता नहीं होनी चाहिये और मूढभाव भी\nनहीं होना चाहिये । तू भयरहित और प्रीतियुक्त मनवाला\nहोकर उसी मेरे इस शंख-चक्र-गदा-पद्मयुक्त चतुर्भुज\nरूप को फिर देख ।। ४६ ।।\nSeeing such a dreadful Form of Mine as\nthis, be not perturbed or perplexed; with a\nfearless and complacent mind, behold once\nएकादश अध्याय\n280"
+        }
+      },
+      "agreement": 0.9252
+    },
+    {
+      "page": 285,
+      "raster_s": 0.159,
+      "megapixels": 5.49,
+      "png_kb": 986,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.807,
+          "chars": 1247,
+          "words": 240,
+          "devanagari_ratio": 0.705,
+          "script_runs": 24,
+          "text": "al\n“rt\n\nन्व ice\n\n= same four-armed Form of Mine (bearing\nthe conch, discus, mace and lotus). (49)\n\ntana\n\nद (+ Fi a म\n\nee\n\nप्रसंग - इस प्रकार चतुर्भुज रूप का दर्शन करने के लिये अर्जुन को आज्ञा देकर भगवान्‌ ने क्या\nकिया, जब सञ्जय धृतराष्ट्र से वही कहते हैं-\n\nसंजय उवाच\nइत्यर्जुनं वासुदेवस्तयोक्त्वा स्वक रूपं दर्शयामास भूयः।\nआश्वासयामास च भीतमेनं भूत्वा पुनः सौम्यवपूर्महयत्मा | | ५०।।\nसञ्जय बोले- वासुदेव भगवान्‌ ने अर्जुन कं \"प्रति\n\n5\n\nॐ | इस प्रकार कहकर फिर वैसे ही अपने चतुर्भुज रूप को |.\n| दिखलाया और फिर महात्मा श्रीकृष्ण ने सौम्यमूर्ति |\n+ | होकर इस भयभीत अर्जुन को धीरज दिया ।। ५० ।।\n\n2.9\n\nArjuna, Bhagavan Vasudeva again showed to\nhim in the same way His own four-armed\nform; and then, assuming a gentle form, the\nhigh-souled Sri Krsna consoled the frightened\nArjuna. (50)\n\n9\nत्न ~ नय at se\nत - 7: 5\n= ee * =\n\n: ea =\n\nee ~,\nध्येय 1\n\na\n=\n=\n\nप्रसंग — इस प्रकार भगवान्‌ श्रीकृष्ण ने अपने विश्व रूप को संवरण करके, चतुर्भुज रूप के दर्शन\n\n|\nSanjaya said: Having spoken thus to\nदेने के पश्चात्‌ जब स्वाभाविक मानुष रूप से युक्त होकर अर्जुन को आश्वासन दिया, तब अर्जुन सावधान\n\nहोकर कहने लगे- न्‍\n\nअर्जुन उवाच So\n\na 7 gh went मानुषं रूपं तव सौम्यं जनार्दन। é\ney + प्रकृतिं ५ ८\n| इदानीमस्मि संवृत्तः सचेताः प्रकृतिं गतः। । ७।। WZ\n\n281 श्रीमद्भगवद्‌गीता\n"
+        },
+        "vision": {
+          "ocr_s": 1.703,
+          "chars": 1079,
+          "words": 186,
+          "devanagari_ratio": 0.727,
+          "script_runs": 4,
+          "text": "again the same four-armed Form of Mine (bearing\nthe conch, discus, mace and lotus).\nप्रसंग\n-\n(49)\nइस प्रकार चतुर्भुज रूप का दर्शन करने के लिये अर्जुन को आज्ञा देकर भगवान् ने क्या\nकिया, अब सञ्जय धृतराष्ट्र से वही कहते हैं-\nसंजय उवाच\nइत्यर्जुनं वासुदेवस्तथोक्त्वा स्वकं रूपं दर्शयामास भूयः ।\nआश्वासयामास च भीतमेनं भूत्वा पुनः सौम्यवपुर्महात्मा ।। ५० ।।\nसञ्जय बोले- वासुदेव भगवान् ने अर्जुन के प्रति\nइस प्रकार कहकर फिर वैसे ही अपने चतुर्भुज रूप को\nदिखलाया और फिर महात्मा श्रीकृष्ण ने सौम्यमूर्ति\nहोकर इस भयभीत अर्जुन को धीरज दिया ।। ५० ।।\nSañjaya said: Having spoken thus to\nArjuna, Bhagavan Vasudeva again showed to\nhim in the same way His own four-armed\nform; and then, assuming a gentle form, the\nhigh-souled Sri Krsna consoled the frightened\nArjuna.\n(50)\nप्रसंग - इस प्रकार भगवान् श्रीकृष्ण ने अपने विश्व रूप को संवरण करके, चतुर्भुज रूप के दर्शन\nदेने के पश्चात् जब स्वाभाविक मानुष रूप से युक्त होकर अर्जुन को आश्वासन दिया, तब अर्जुन सावधान\nहोकर कहने लगे-\nअर्जुन उवाच\nदृष्ट्वेदं मानुषं रूपं तव सौम्यं जनार्दन ।\nइदानीमस्मि संवृत्तः सचेताः प्रकृतिं गतः । । ५१॥\n281\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.8746
+    },
+    {
+      "page": 286,
+      "raster_s": 0.16,
+      "megapixels": 5.52,
+      "png_kb": 964,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 1.501,
+          "chars": 853,
+          "words": 156,
+          "devanagari_ratio": 0.661,
+          "script_runs": 5,
+          "text": "अर्जुन बोले\nमनुष्य रूप को देखकर अब मैं स्थिरचित्त हो गया हूँ\nऔर अपनी स्वाभाविक स्थिति को प्राप्त हो गया\n\n@ 1149 ।।\n\nArjuna said : Krsna, seeing this gentle human\nform of Yours I have regained my composure\nand am myself again. (51)\n\nप्रसंग - इस प्रकार अर्जुन के वचन सुनकर अव भगवान्‌ दो श्लोकों द्वारा अपने चतुर्भुज देवरूप\nके दर्शन की दुर्लभता और उसकी महिमा का वर्णन करते हैं-\n\nश्रीभगवानुवाच\n\nसुदुर्दर्शमिदं रूपं दृष्टवानसि यन्मम ।\nदेवा अप्यस्य रूपस्य नित्यं दर्शनकाङ्क्षिणः । । ५२।।\n\nश्रीभगवान्‌ बोले -मेरा जो चतुर्भुज रूप तुमने देखा\nहै, यह सुदुर्दर्शं है अर्थात्‌ इसके दर्शन बड़े ही दुर्लभ हैँ | |\nदेवता भी सदा इस रूप के दर्शन की आकाङ्क्षा करते |\nरहते हैं || ५२ tl\n\nSri Bhagavan said : This form of Mine (with\nfour arms) which you have just seen is exceedingly\ndifficult to perceive. Even the gods are always\neager to behold this form.\n\nएकादश अध्याय 282\n"
+        },
+        "vision": {
+          "ocr_s": 1.66,
+          "chars": 873,
+          "words": 162,
+          "devanagari_ratio": 0.679,
+          "script_runs": 5,
+          "text": "अर्जुन बोले - हे जनार्दन ! आपके इस अति शान्त\nमनुष्य रूप को देखकर अब मैं स्थिरचित्त हो गया हूँ\nऔर अपनी स्वाभाविक स्थिति को प्राप्त हो गया\nहूँ ।। ५१ ।।\nArjuna said: Krsna, seeing this gentle human\nform of Yours I have regained my composure\nand am myself again.\n(51)\nप्रसंग इस प्रकार अर्जुन के वचन सुनकर अब भगवान् दो श्लोकों द्वारा अपने चतुर्भुज देवरूप\nके दर्शन की दुर्लभता और उसकी महिमा का वर्णन करते हैं\nश्रीभगवानुवाच\nसुदुर्दर्शमिदं रूपं दृष्टवानसि यन्मम ।\nदेवा अप्यस्य रूपस्य नित्यं दर्शनकाङ्क्षिणः । । ५२ ॥\nश्रीभगवान् बोले- मेरा जो चतुर्भुज रूप तुमने देखा\nहै, यह सुदुर्दर्श है अर्थात् इसके दर्शन बड़े ही दुर्लभ हैं ।\nदेवता भी सदा इस रूप के दर्शन की आकाङ्क्षा करते\nरहते हैं ।। ५२ ।।\nSri Bhagavan said: This form of Mine (with\nfour arms) which you have just seen is exceedingly\ndifficult to perceive. Even the gods are always\neager to behold this form.\n(52)\nएकादश अध्याय\n282"
+        }
+      },
+      "agreement": 0.9511
+    },
+    {
+      "page": 287,
+      "raster_s": 0.393,
+      "megapixels": 5.48,
+      "png_kb": 6290,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 5.071,
+          "chars": 1089,
+          "words": 222,
+          "devanagari_ratio": 0.672,
+          "script_runs": 13,
+          "text": ">. अ 0) Oop ~ Cj ~ 0\n\nस 1\n\n=\n\nनाहं वेदैर्न तपसा न दानेन न चेज्यया।\nशक्य एवं विधो दरष्टुं दृष्टवानसि मां यथा । । ५३।।\nजिस प्रकार तुमने मुझको देखा है -इस प्रकार\n\nचतुर्भुज रूप वाला मैं न वेदों से, न तपसे, न दानसे,\nऔर न यज्ञ से ही देखा जा सकता हूँ ।। ५३ ।।\n\nSSS SSS DH De =\n\nNeither by study ofthe Vedas nor by penance,\nnor again by charity, nor even by ritual can I\nbe seen in this form (with four arms) as you\nhave seen Me. (53)\n\nSs\n\nSs\n\nप्रसंग - यदि उपर्युक्त उपायों से आपके दर्शन नहीं हो सकते तो किस उपाय से हो सकते हैं, ऐसी\nजिज्ञासा होने पर भगवान्‌ कहते F—\n\nभक्त्या त्वनन्यया शक्य अहमेवंविधोऽर्जुन ।\nज्ञातु द्रष्टुं च तत्त्वेन प्रवेष्टुं च परंतप ।। ४।।\n\nपरन्तु हे परंतप अर्जुन ! अनन्य भक्ति के दारा इस\n| (भकार चतुर्भुज रूप वाला मैं प्रत्यक्ष देखने के लिये, तत्त्व\n| से जानने के लिये तथा प्रवेश करने के लिये अर्थात्‌\nएकीभाव से प्राप्त होने के लिये भी शक्य हूँ । | ५४ ।।\n\n‘Through single-minded devotion, however,\nI can be seen in this form (with four arms);\n\noa\n\n७.\n\n4112 ५ yyy,\n\nip,\n\nह\n\n~\n\n_e | nay, known in essence and even entered into,\n| | Ovaliant Arjuna.\n\n|\nहै\n\n283 श्रीमद्भगवद्गीता\n"
+        },
+        "vision": {
+          "ocr_s": 8.818,
+          "chars": 996,
+          "words": 198,
+          "devanagari_ratio": 0.697,
+          "script_runs": 7,
+          "text": "नाहं वेदैर्न तपसा न दानेन न चेज्यया ।\nशक्य एवं विधो द्रष्टुं दृष्टवानसि मां यथा ।। ५३ ।।\nजिस प्रकार तुमने मुझको देखा है - इस प्रकार\nचतुर्भुज रूप वाला मैं न वेदों से, न तपसे, न दानसे,\nऔर न यज्ञ से ही देखा जा सकता हूँ ।। ५३ ।।\nNeither by study of the Vedas nor by penance,\nnor again by charity, nor even by ritual can I\nbe seen in this form (with four arms) as you\nhave seen Me.\n-\n(53)\nप्रसंग – यदि उपर्युक्त उपायों से आपके दर्शन नहीं हो सकते तो किस उपाय से हो सकते हैं, ऐसी\nजिज्ञासा होने पर भगवान् कहते हैं-\n-\nभक्त्या त्वनन्यया शक्य अहमेवं विधोऽर्जुन ।\n(ज्ञातु द्रष्टुं च तत्त्वेन प्रवेष्टुं च परंतप । । ५४ ॥\nM\nपरन्तु हे परंतप अर्जुन ! अनन्य भक्ति के द्वारा इस\nप्रकार चतुर्भुज रूप वाला मैं प्रत्यक्ष देखने के लिये, तत्त्व\nसे जानने के लिये तथा प्रवेश करने के लिये अर्थात्\nएकीभाव से प्राप्त होने के लिये भी शक्य हूँ ।। ५४ ।।\nThrough single-minded devotion, however,\nI can be seen in this form (with four arms);\nnay, known in essence and even entered into,\nO valiant Arjuna.\n(54)\n283\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9331
+    },
+    {
+      "page": 288,
+      "raster_s": 0.156,
+      "megapixels": 5.5,
+      "png_kb": 939,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 1.703,
+          "chars": 648,
+          "words": 104,
+          "devanagari_ratio": 0.751,
+          "script_runs": 7,
+          "text": "का वर्णन किया जाता है--\n\nमत्कर्मकृन्मत्परमो मदुभक्तः संगवर्जितः।\nनिर्वैरः सर्वभूतेषु यः a मामेति पाण्डव । | wil\n\nहे अर्जुन ! जो पुरुष केवल मेरे ही लिये सम्पूर्ण\nकर्तव्य कर्मों को करने वाला है, मेरे परायण है, मेरा\nभक्त है, आसक्तिरहित है और सम्पूर्ण भूतप्राणियों में\nवैरभाव से रहित है- वह अनन्य. भक्ति युक्तं पुरुष\nमुझको ही प्राप्त होता है || ५५ ।।\n\nArjuna, he who performs all his duties for\n\nMy sake, depends on Me, is devoted to Me; has\nno attachment, and is free from malice towards\n\nall beings, reaches Me. (55) |\n\nऊँ तत्सदिति श्रीमद्भगवद्‌गीतासूपनिषत्सु ब्रह्मविद्यायां योगशाब्रे श्रीकृष्णार्जुनस॑वादे\nविश्वरूपदर्शनयोगो नानैकादशोऽध्यायः 1199 |।\n\n"
+        },
+        "vision": {
+          "ocr_s": 1.685,
+          "chars": 842,
+          "words": 143,
+          "devanagari_ratio": 0.808,
+          "script_runs": 5,
+          "text": "-\nप्रसंग अनन्य भक्ति के द्वारा भगवान् को देखना, जानना और एकीभाव से प्राप्त करना सुलभ\nबतलाया जोने के कारण अनन्य भक्ति का स्वरूप जानने की आकांक्षा होने पर अब अनन्य भक्त के लक्षणों\nका वर्णन किया जाता है-\nमत्कर्मकृन्मत्परमो मद्भक्तः संगवर्जितः ।\nनिर्वैरः सर्वभूतेषु यः स मामेति पाण्डव । । ५५॥\nहे अर्जुन ! जो पुरुष केवल मेरे ही लिये सम्पूर्ण\nकर्तव्य कर्मों को करने वाला है, मेरे परायण है, मेरा\nभक्त है, आसक्तिरहित है और सम्पूर्ण भूतप्राणियों में\nवैरभाव से रहित है-वह अनन्य भक्ति युक्त पुरुष\nमुझको ही प्राप्त होता है ।। ५५ ।।\nArjuna, he who performs all his duties for\nMy sake, depends on Me, is devoted to Me; has\nno attachment, and is free from malice towards\nall beings, reaches Me.\nॐ तत्सदिति श्रीमद्भगवद्गीतासूपनिषत्सु ब्रह्मविद्यायां योगशास्त्रे श्रीकृष्णार्जुनसंवादे\nविश्वरूपदर्शनयोगो नामैकादशोऽध्यायः ।। ११ ।।\nTAPR\n(55)\nTha\nएकादश अध्याय\n284"
+        }
+      },
+      "agreement": 0.8248
+    },
+    {
+      "page": 289,
+      "raster_s": 0.389,
+      "megapixels": 5.54,
+      "png_kb": 6290,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 5.181,
+          "chars": 1154,
+          "words": 217,
+          "devanagari_ratio": 0.814,
+          "script_runs": 13,
+          "text": "ल OS Ose\n\nsae 18\n\nदादशोऽध्यायः ‘\n\nइस बारहवें अध्याय में अनेक प्रकार के साधनों सहित भगवान्‌ की भक्ति का वर्णन करके भगवद्भक्तं १ N\nके लक्षण बतलाये गये हैं इसका उपक्रम और उपसंहार भगवान्‌ की भक्ति में ही हुआ है। केवल तीन श्लोकों | 7\nमें ज्ञान के साधन का वर्णन है, वह भी भगवद्भक्ति और ज्ञानयोग की परस्पर तुलना करने के लिये ही. |\nहै; अत़एव इस अध्याय का नाम “भक्तियोग' रखा गया है।\n\n५9\n\n५\nSS\n\n~\n.\n\n५\n\n{९ प्रसंग - निर्गुण-निराकार और सगुण-साकार की उपासना करने वाले दोनों प्रकार के उपासको में\n५ (९ \\ उत्तम उपासक कौन है, इसी जिज्ञासा के अनुसार अर्जुन पूछ रहे हैं-\nNE ea उवाच\n\nएवं सततयुक्ता ये भक्तास्त्वां पर्युपासते।\n\nये चाप्यक्षरमव्यक्तं॒तेषां के योगवित्तमाः । । 9 ।।\n\nअर्जुन बोले-जौ अनन्य प्रेमी भक्तजन पूर्वोक्त\n\n| 5 प्रकार से निरन्तर आपके भजन-ध्यान A लगे रहकर\n\n|. आप सगुणरूप 'परमेश्वर को और दूसरे जो केवल\n\n( | अविनाशी सच्चिदानन्दघन निराकार ब्रह्मको ही अतिश्रेष्ठ\nभाव से भजते हैं - उन दोनों प्रकार के उपासको में अति\nउत्तम योगवेत्ता कौन हैं ? 119 ।।\n\nहै अ SSS\n\nArjuna said : The devotees who, with their\nminds constantly fixed on You as shown above,\nadore You as possessed of form and attributes,\n\n‘and those who adore as the supreme Reality\n\n285 श्रीमद्भगवदूगीता\n"
+        },
+        "vision": {
+          "ocr_s": 8.644,
+          "chars": 1139,
+          "words": 208,
+          "devanagari_ratio": 0.817,
+          "script_runs": 8,
+          "text": "-(Be)\nॐ श्रीपरमात्मने नमः\nedt vino\nTafodwy\n(the द्वादशोऽध्यायः\nsdi\n( इस बारहवें अध्याय में अनेक प्रकार के साधनों सहित भगवान् की भक्ति का वर्णन करके भगवद्भक्तों\nके लक्षण बतलाये गये हैं इसका उपक्रम और उपसंहार भगवान् की भक्ति में ही हुआ है। केवल तीन श्लोकों\nमें ज्ञान के साधन का वर्णन है, वह भी भगवद्भक्ति और ज्ञानयोग की परस्पर तुलना करने के लिये ही\nहै; अतएव इस अध्याय का नाम 'भक्तियोग' रखा गया है।\n-\nप्रसंग – निर्गुण-निराकार और सगुण-साकार की उपासना करने वाले दोनों प्रकार के उपासकों में\nउत्तम उपासक कौन है, इसी जिज्ञासा के अनुसार अर्जुन पूछ रहे हैं-\nअर्जुन उवाच\n573\nक एवं सततयुक्ता ये भक्तास्त्वां पर्युपासते ।\nये चाप्यक्षरमव्यक्तं तेषां के योगवित्तमाः । । १ । ।\nक\nअर्जुन बोले- जो अनन्य प्रेमी भक्तजन पूर्वोक्त\nप्रकार से निरन्तर आपके भजन- ध्यान में लगे रहकर\nआप सगुणरूप परमेश्वर को और दूसरे जो केवल\nअविनाशी सच्चिदानन्दघन निराकार ब्रह्मको ही अतिश्रेष्ठ\nभाव से भजते हैं - उन दोनों प्रकार के उपासकों में अति\nउत्तम योगवेत्ता कौन हैं ? ।। १ ।।\n(2)\nArjuna said : The devotees who, with their\nminds constantly fixed on You as shown above,\nadore You as possessed of form and attributes,\nand those who adore as the supreme Reality\n285\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9231
+    },
+    {
+      "page": 290,
+      "raster_s": 0.392,
+      "megapixels": 5.48,
+      "png_kb": 6453,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.93,
+          "chars": 1026,
+          "words": 184,
+          "devanagari_ratio": 0.644,
+          "script_runs": 10,
+          "text": "tO} स ८ ~= ~ SS\n\nonly the indestructible unmanifest Brahma\n(who is Truth, Knowledge and Bliss solidified)-\nof these two types of worshippers who are the\nbest knowers of Yoga? (1)\n\nSS\n८2\nMi\n\nSAM\n\nप्रसंग - इस प्रकार अर्जुन के पूछने पर उसके उत्तर में भगवान्‌ सगुण-साकार के उपासकों को उत्तम\nबतलाते हैं- ।\n\nSH\n“A\nA\n\nश्रीभगवानुवाच\n\nमय्यावेश्य मनो ये मां नित्ययुक्ता उपासते।\nश्रद्धया परयोपेतास्ते मे युक्ततमा मताः।। २।।\n\nश्रीभगवान्‌ बोले-मुझमें मन को एकाग्र करके\nनिरन्तर मेरे भजन-ध्यान में लगे हुए जो भक्तजन\nअतिशय श्रेष्ठ श्रद्धा से युक्त होकर मुझ सगुण रूप\nपरमेश्वर को भजते हैं, वे मुझ को योगियों में अति उत्तम\nयोगी मान्य हैं 112 ।।\n\nSri Bhagavan said: I consider them to be\nthe best Yogis, who endowed with supreme\nfaith, and ever united through ‘meditation\nwith Me, worship Me with the mind centred\non Me. (2)\n\nप्रसंग - पूर्व श्लोक में सगुण-साकार परमेश्वर के उपासकों को उत्तम योगवेत्ता बतलाया, इस पर\nयह जिज्ञासा हो सकती है कि तो क्या निर्गुण-निराकार ब्रह्म के उपासक उत्तम योगवेत्ता नहीं हैं ? इस पर\nकहते हैं- ; <\n\nद्विदश अध्याय 286\n"
+        },
+        "vision": {
+          "ocr_s": 9.368,
+          "chars": 997,
+          "words": 179,
+          "devanagari_ratio": 0.642,
+          "script_runs": 6,
+          "text": "only the indestructible unmanifest Brahma\n(who is Truth, Knowledge and Bliss solidified)-\nof these two types of worshippers who are the\nbest knowers of Yoga ?\nप्रसंग\nबतलाते हैं-\n-\n(1)\nइस प्रकार अर्जुन के पूछने पर उसके उत्तर में भगवान् सगुण-साकार के उपासकों को उत्तम\nश्रीभगवानुवाच\nमय्यावेश्य मनो ये मां नित्ययुक्ता उपासते ।\nश्रद्धया परयोपेतास्ते मे युक्ततमा मताः ।।२॥\nश्रीभगवान् बोले-मुझमें मन को एकाग्र करके\nनिरन्तर मेरे भजन - ध्यान में लगे हुए जो भक्तजन\nअतिशय श्रेष्ठ श्रद्धा से युक्त होकर मुझ सगुण रूप\nपरमेश्वर को भजते हैं, वे मुझ को योगियों में अति उत्तम\nयोगी मान्य हैं ।। २ ।।\nSri Bhagavan said : I consider them to be\nthe best Yogis, who endowed with supreme\nfaith, and ever united through 'meditation\nwith Me, worship Me with the mind centred\non Me.\nTied\nT: bir\nBachA\n(2)\nप्रसंग - पूर्व श्लोक में सगुण-साकार परमेश्वर के उपासकों को उत्तम योगवेत्ता बतलाया, इस पर\nयह जिज्ञासा हो सकती है कि तो क्या निर्गुण-निराकार ब्रह्म के उपासक उत्तम योगवेत्ता नहीं हैं ? इस पर\nकहते हैं-\nbns\nद्विदश अध्याय\n286"
+        }
+      },
+      "agreement": 0.9423
+    },
+    {
+      "page": 291,
+      "raster_s": 0.404,
+      "megapixels": 5.53,
+      "png_kb": 6829,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.172,
+          "chars": 1049,
+          "words": 161,
+          "devanagari_ratio": 0.703,
+          "script_runs": 7,
+          "text": "( ये त्वक्षरमनिर्देश्यमव्यक्त. पर्युपासते । ॥\nसर्वत्रगमचिन्त्यं च कूटस्थमचलं धुवम्‌ ।। ३।।\nसंनियम्येन्द्रियग्रामं सर्वत्र समबुद्धयः।\nते प्राप्नुवन्ति . मामेव सर्वभूतहिते रताः। । ४।।\n\nपरन्तु जो पुरुष saat के समुदाय को भली प्रकार\nवश में करके मन-बुदधि से परे सर्वव्यापी, अकथनीय\nस्वरूप ओर सदा एकरस रहने वाले, नित्य, अचल,\nनिराकार, अविनाशी सच्चिदानन्दघन ब्रह्म को निरन्तर\nएकीभाव से ध्यान करते हुए भजते हैँ, वे सम्पूर्ण भूतों\nके हित में रत और सबमें समान भाव वाले योगी मुझको\nही प्राप्त होते हैँ ।। ३-४ ।।\n\nThose, however, who fully controlling all\ntheir senses and even-minded towards all,\nand devoted to the welfare ofall bein;‘s_ constantly\nadore as their very self the unthinkable;\nomnipresent, indestructible indefinabie, eternal,\nimmovable, unmanifest and changeless Brahma,\nthey too come to Me. (3,4)\n\n22222 022 0, ८ lps\n\nप्रसंग — इस प्रकार निर्गुण-उपासना और उसके फल का प्रतिपादन करने के पश्चात्‌ अब\nदेहाभिमानियों के लिये अव्यक्त गति की प्राप्ति को कठिन बतलाते हैं-\n\nक्लेशो5धिकतरस्तेषामव्यक्तासक्तचेतसाम्‌ ।\nअव्यक्ता हि गतिर्दःखं\n\n287 श्रीमद्भगवद्गीता\n"
+        },
+        "vision": {
+          "ocr_s": 9.201,
+          "chars": 1052,
+          "words": 162,
+          "devanagari_ratio": 0.718,
+          "script_runs": 5,
+          "text": "ये\nपर्युपासते ।\nये त्वक्षरमनिर्देश्यमव्यक्तं\nसर्वत्रगमचिन्त्यं च कूटस्थमचलं ध्रुवम् ।। ३ ॥\nसंनियम्येन्द्रियग्रामं सर्वत्र समबुद्धयः ।\nते प्राप्नुवन्ति मामेव सर्वभूतहिते रताः ।।४॥\nपरन्तु जो पुरुष इन्द्रियों के समुदाय को भली प्रकार\nवश में करके मन-बुद्धि से परे सर्वव्यापी, अकथनीय\nस्वरूप और सदा एकरस रहने वाले, नित्य, अचल,\nनिराकार, अविनाशी सच्चिदानन्दघन ब्रह्म को निरन्तर\nएकीभाव से ध्यान करते हुए भजते हैं, वे सम्पूर्ण भूतों\nके हित में रत और सबमें समान भाव वाले योगी मुझको\nही प्राप्त होते हैं ।। ३-४ ।।\nThose, however, who fully controlling all\ntheir senses and even-minded towards all,\nand devoted to the welfare of allbeings enstantly\nadore as their very self the unthinkable;\nomnipresent, indestructible indefinable, eternal,\nimmovable, unmanifest and changeless Brahma,\nthey too come to Me.\n(3,4)\nप्रसंग - इस प्रकार निर्गुण उपासना और उसके फल का प्रतिपादन करने के पश्चात् अब\nदेहाभिमानियों के लिये अव्यक्त गति की प्राप्ति को कठिन बतलाते हैं-\nbab\nक्लेशोऽधिकतरस्तेषामव्यक्तासक्तचेतसाम् ।\nअव्यक्ता हि गतिर्दःखं देहवद्भिरवाप्यते । । ५ ॥\n287\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9346
+    },
+    {
+      "page": 292,
+      "raster_s": 0.391,
+      "megapixels": 5.48,
+      "png_kb": 6913,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.915,
+          "chars": 1106,
+          "words": 196,
+          "devanagari_ratio": 0.614,
+          "script_runs": 8,
+          "text": "@®NS oe\nWS SSG SW#™\"\n\nOWNS\n\n= सच्चिदानन्द्धन निराकार ब्रह्म में आसक्त\nचित्तवाले पुरुषों के साधन में परिश्रम विशेष है, क्योकि\n\n(©),\n\n। | देहाभिमानियों के द्वारा अव्यक्त विषयक गति दुःखपूर्वक\n) \\ Of course, the strain is greater for those\n\nwho have their mind attached to the Unmanifest;\nfor atonement with the Unmanifest is attained\nwith difficulty by those who are centred in\nthe body. (5)\n\nप्रसंग - इस प्रकार निर्गुण-निराकार ब्रह्म की उपासना से देहाभिमानियों के लिये परमात्मा की प्राप्ति\nकठिन बतलाने के उपरान्त अब दो श्लोकों द्वारा सगुण परमेश्वर की उपासना से परमेश्वर की प्राप्ति शीघ्र\n\n^ और अनायास होने की बात कहते F—\nMe ये तु सर्वाणि कर्माणि मयि सन्यस्य मत्पराः।\n॥ अनन्येनैव योगेन मां ध्यायन्त उपासते । । ६।।\n\nपरन्तु जो मेरे परायण रहने वाले भक्तजन सम्पूर्ण\nकर्मो को मुझ में अर्पण करके मुझ सगुण रूप परमेश्वर\nको ही अनन्य भक्ति योग से निरन्तर चिन्तन करते हुए\nभजते हैं ।।६ II\nOn the other hand, those who depending\nexclusively on Me, and surrendering all actions\nto Me, worship Me (God with attributes),\n\nconstantly meditating on Me with single-minded\ndevotion. (6)\n\nRSs\n\nde =\n७)\n\n>\n\nद\n\nन —~\n\nदेदश अध्याय 288\n"
+        },
+        "vision": {
+          "ocr_s": 9.282,
+          "chars": 1075,
+          "words": 187,
+          "devanagari_ratio": 0.638,
+          "script_runs": 9,
+          "text": "उन सच्चिदानन्दघन निराकार ब्रह्म में आसक्त\nचित्तवाले पुरुषों के साधन में परिश्रम विशेष है, क्योंकि\nदेहाभिमानियों के द्वारा अव्यक्त विषयक गति दुःखपूर्वक\nप्राप्त की जाती है ।। ५ ।।\nOf course, the strain is greater for those\nwho have their mind attached to the Unmanifest;\nfor atonement with the Unmanifest is attained\nwith difficulty by those who are centred in\nthe body.\nप्रसंग\n-\n(5)\nइस प्रकार निर्गुण-निराकार ब्रह्म की उपासना से देहाभिमानियों के लिये परमात्मा की प्राप्ति\nकठिन बतलाने के उपरान्त अब दो श्लोकों द्वारा सगुण परमेश्वर की उपासना से परमेश्वर की प्राप्ति शीघ्र\nऔर अनायास होने की बात कहते हैं-\n-\nये त सर्वाणि कर्माणि मयि संन्यस्य मत्पराः।\nतु\nTR\nअनन्येनैव योगेन मां ध्यायन्त उपासते ।। ६ ।।\nbrit\nlad\nपरन्तु जो मेरे परायण रहने वाले भक्तजन सम्पूर्ण\nकर्मों को मुझ में अर्पण करके मुझ सगुण रूप परमेश्वर\nको ही अनन्य भक्ति योग से निरन्तर चिन्तन करते हुए\nभजते हैं ।। ६ ।।\nOn the other hand, those who depending\nexclusively on Me, and surrendering all actions\nto Me, worship Me (God with attributes),\nconstantly meditating on Me with single-minded\ndevotion.\n(6)\nद्विदश अध्याय\n288"
+        }
+      },
+      "agreement": 0.9363
+    },
+    {
+      "page": 293,
+      "raster_s": 0.392,
+      "megapixels": 5.52,
+      "png_kb": 6561,
+      "backends": {
+        "tesseract": {
+          "ocr_s": null,
+          "chars": 0,
+          "words": 0,
+          "devanagari_ratio": 0.0,
+          "script_runs": 0,
+          "text": "",
+          "error": "TesseractError: (-5, '')"
+        },
+        "vision": {
+          "ocr_s": 9.272,
+          "chars": 1024,
+          "words": 193,
+          "devanagari_ratio": 0.767,
+          "script_runs": 5,
+          "text": "तेषामहं समुद्धर्ता मृत्युसंसारसागरात् ।\nभवामि नचिरात्पार्थ मय्यावेशितचेतसाम् ।। ७॥\nहे अर्जुन ! उन मुझ में चित्त लगाने वाले प्रेमी भक्तों\nका मैं शीघ्र ही मृत्यु रूप संसार-समुद्र से उद्धार करने\nवाला होता हूँ ।। ७ ।।\nThese, Arjuna, I speedily deliver from the\nocean of birth and death, their mind being\nfixed on Me.\n(7)\nप्रसंग - इस प्रकार पूर्व श्लोकों में निर्गुण उपासना की अपेक्षा सगुण उपासना की सुगमता का\nप्रतिपादन किया गया। इसलिये अब भगवान् अर्जुन को उसी प्रकार मन, बुद्धि लगाकर सगुण उपासना\nकरने की आज्ञा देते हैं-\nमय्येव मन आधत्स्व मयि बुद्धिं निवेशय ।\nनिवसिष्यसि मय्येव अत ऊर्ध्वं न संशयः।। ८ ।।\nमुझ में मन को लगा और मुझ में ही बुद्धि को लगा;\nइसके उपरान्त तू मुझ में ही निवास करेगा, इसमें कुछ\nभी संशय नहीं है ।। ८ ।।\nTherefore, fix yor mind on Me, and establish\nyour intellect in Me alone; thereafter you\nwill abide solely in Me. There is no doubt\nabout it.\n-\n(8)\nप्रसंग – यहाँ यह जिज्ञासा हो सकती है कि यदि मैं उपर्युक्त प्रकार से आप में मन-बुद्धि न लगा\nसकूँ तो मुझे क्या करना चाहिये। इसपर कहते हैं-\n289\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.0
+    },
+    {
+      "page": 294,
+      "raster_s": 0.136,
+      "megapixels": 5.51,
+      "png_kb": 1024,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 2.745,
+          "chars": 1040,
+          "words": 233,
+          "devanagari_ratio": 0.646,
+          "script_runs": 16,
+          "text": "द्विदश अध्याय 290\n\n(ग) न es nea ee 0 को Tt See = (¬ {aS ०)\n(२) = ततो मामिच्छाप्तुं धनंजय । । ६।। 9\n| यदि तू मन को मुझमें अचल स्थापन करने के लिये ||\n© समर्थ नहीं है तो हे अर्जुन ! अभ्यास रूप योग के द्वारा ©\n। | मुझको प्राप्त होने के लिये इच्छा कर ।। € ।। हु\n@& If you cannot steadily fix the mind on Me, | @\n1 Arjuna, then seek to attain Me through the | |\n‘ Yoga of repeated practice. (9)\n॥ प्रसंग — यहाँ यह जिज्ञासा होती है कि यदि इस प्रकार अभ्यास योग भी मैं न कर By तो मुझे ey\n|| क्या करना चाहिये। इस पर कहते हैं- BNE\n&। अभ्यासेऽप्यसमर्थोऽसि मत्कर्मपरमो भव । >\n<j मदर्थमपि कर्माणि कुर्वन्सिद्विमवाप्स्यसि | 91! (:\n० | यदि तू उपर्युक्त अभ्यास में भी असमर्थ है तो केवल ©\n। | मेरे लिये कर्म करने के ही परायण हो जा | इस प्रकार |\n>| मेरे निमित्त कर्मों को करता हुआ भी मेरी प्राप्तिखूप ~\nसात यो\n| सिद्धि को ही प्राप्त होगा ।। १० ।। |\n© If You are unequal even to the pursuit of =\n| | such practice, be intent to work for Me; you\nshall attain perfection (in the shape of My ;\n=| | realization) even by performing actions for =.\n| My sake. (10) j\n"
+        },
+        "vision": {
+          "ocr_s": 1.699,
+          "chars": 948,
+          "words": 184,
+          "devanagari_ratio": 0.684,
+          "script_runs": 7,
+          "text": "अथ चित्तं समाधातुं न शक्नोषि मयि स्थिरम् ।\nअभ्यासयोगेन ततो मामिच्छाप्तुं धनंजय ।। ६॥\nयदि तू मन को मुझमें अचल स्थापन करने के लिये\nसमर्थ नहीं है तो हे अर्जुन ! अभ्यास रूप योग के द्वारा\nमुझको प्राप्त होने के लिये इच्छा कर ।। ६ ।।\nIf you cannot steadily fix the mind on Me,\nArjuna, then seek to attain Me through the\nYoga of repeated practice.\n(9)\nप्रसंग - यहाँ यह जिज्ञासा होती है कि यदि इस प्रकार अभ्यास योग भी मैं न कर सकूँ तो मुझे\nक्या करना चाहिये। इस पर कहते हैं-\nअभ्यासेऽप्यसमर्थोऽसि मत्कर्मपरमो भव ।\nमदर्थमपि कर्माणि कुर्वन्सिद्धिमवाप्स्यसि । । १०॥\nP\nयदि तू उपर्युक्त अभ्यास में भी असमर्थ है तो केवल\nमेरे लिये कर्म करने के ही परायण हो जा। इस प्रकार\nमेरे निमित्त कर्मों को करता हुआ भी मेरी प्राप्ति रूप\nसिद्धि को ही प्राप्त होगा ।। १० ।।\nि\nIf You are unequal even to the pursuit of\nsuch practice, be intent to work for Me; you\nshall attain perfection (in the shape of My\nrealization) even by performing actions for\nMy sake.\n(10)\nद्विदश अध्याय\n290"
+        }
+      },
+      "agreement": 0.8747
+    },
+    {
+      "page": 295,
+      "raster_s": 0.432,
+      "megapixels": 5.54,
+      "png_kb": 6561,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.594,
+          "chars": 1057,
+          "words": 196,
+          "devanagari_ratio": 0.826,
+          "script_runs": 5,
+          "text": "=\nन कर सकूँ तो मुझे क्या करना चाहिये। इस पर कहते हैं-\n\nअयैतदप्यशक्तोडसि कर्तुं मद्योगमाश्रितः |\nसर्वकर्मफलत्यागं ततः He यतात्मवान्‌ । । १9।।\n\nयदि मेरी प्राप्ति रूप योग के आश्रित होकर उपर्युक्त\nसाधन को करने में भी तू असमर्थ है तो मन-बुद्धि आदि\nपर विजय प्राप्त करने वाला होकर सब कर्मो के फल\nका त्याग कर 1199 ।।\n\n= ~ धि ~ ८\n_ows Sooo\n\nbf 24 Z\n\nIf, taking recourse to the Yoga of My realization,\nyou are unable even to do this, then, subduing\nyour mind and intellect etc., relinquish the\n\nfruit of all actions. (11)\n\nप्रसंग — यहाँ पर यह शंका हो सकती है कि कर्मफल त्याग” रूप साधन पूर्वोक्त अन्य साधनों की\nअपेक्षा निम्न श्रेणी का होगा; अतः ऐसी शंका को हटाने के लिये कर्म फल के त्याग का महत्त्व अगले\nश्लोक में बतलाया जाता है- ;\n\nश्रेयो हि ज्ञानमभ्यासाज्ज्ञानाद्धयानं विशिष्यते ।\nध्यानात्कर्मफलत्यागस्त्यागाच्छान्तिरनन्तरम्‌ । । १२।।\n\nमर्मको न जानकर किये हए अभ्यास से ज्ञान श्रेष्ठ\nहै, ज्ञान से मुझ परमेश्वर के स्वरूप का ध्यान श्रेष्ठ है\nऔर ध्यान से भी सब कर्मों के फल का त्याग श्रेष्ठ है;\nक्योकि त्याग से तत्काल ही परम शान्ति होती\nहै 1192 ।।\n\n291 श्रीमद्भगवद्‌गीता\n"
+        },
+        "vision": {
+          "ocr_s": 9.252,
+          "chars": 1143,
+          "words": 211,
+          "devanagari_ratio": 0.836,
+          "script_runs": 7,
+          "text": "प्रसंग - यहाँ अर्जुन को जिज्ञासा हो सकती है कि यदि उपर्युक्त प्रकार से आपके लिये मैं कर्म भी\nन कर सकूँ तो मुझे क्या करना चाहिये। इस पर कहते हैं-\nअथैतदप्यशक्तोऽसि कर्तुं मद्योगमाश्रितः ।\nसर्वकर्मफलत्यागं ततः कुरु यतात्मवान् ।। ११।।\nयदि मेरी प्राप्ति रूप योग के आश्रित होकर उपर्युक्त\nसाधन को करने में भी तू असमर्थ है तो मन-बुद्धि आदि\nपर विजय प्राप्त करने वाला होकर सब कर्मों के फल\nका त्याग कर ।। ११ ।।\nIf, taking recourse to the Yoga of My realization,\nyou are unable even to do this, then, subduing\nyour mind and intellect etc., relinquish the\nfruit of all actions.\n-\n(11)\nप्रसंग – यहाँ पर यह शंका हो सकती है कि 'कर्मफल त्याग' रूप साधन पूर्वोक्त अन्य साधनों की\nअपेक्षा निम्न श्रेणी का होगा; अतः ऐसी शंका को हटाने के लिये कर्म फल के त्याग का महत्त्व अगले\nश्लोक में बतलाया जाता है-\nश्रेयो हि ज्ञानमभ्यासाज्ज्ञानाद्ध्यानं विशिष्यते ।\nध्यानात्कर्मफलत्यागस्त्यागाच्छान्तिरनन्तरम् ।। १२ ।।\nTIST 1121\nFR\nमर्मको न जानकर किये हुए अभ्यास से ज्ञान श्रेष्ठ\nहै, ज्ञान से मुझ परमेश्वर के स्वरूप का ध्यान श्रेष्ठ है\nऔर ध्यान से भी सब कर्मों के फल का त्याग श्रेष्ठ है;\nक्योंकि त्याग से तत्काल ही परम शान्ति होती\nहै ।। १२ ।।\nbns bas\nseyniod\n291\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9078
+    },
+    {
+      "page": 296,
+      "raster_s": 0.16,
+      "megapixels": 5.5,
+      "png_kb": 1066,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.195,
+          "chars": 1323,
+          "words": 259,
+          "devanagari_ratio": 0.72,
+          "script_runs": 18,
+          "text": "ee i\n\nभे ४८ ल 0 शक पाक 1 की: ८ cere Ce a 91, न, a ®),\na= is better than practice (without है ८\ndiscernment), meditation on Godissuperior |\nto knowledge, and renunciation of the |:\nfruit of actions is even superior to meditation;\nfor peace immediately follows from ४८\nrenunciation. (12) :\nप्रसंग - उपर्युक्त श्लोकों में भगवान्‌ की प्राप्ति के लिये भक्ति के अंगभूत अलग-अलग साधन 4\nबतलाकर उनका फल परमेश्वर की प्राप्ति बतलाया गया, अतएव भगवान्‌ को प्राप्त हुए प्रेमी भक्तों के | (@ |\nलक्षण जानने की इच्छा होने पर अब सात श्लोकों में भगवस्माप्त ज्ञानी भक्तों के लक्षण बतलाये जाते है- |` ˆ `\n\\ अद्देष्टा सर्वभूतानां AA: करुण एव च। [\n(7 निर्ममो निरहकारः समदुःखसुखः क्षमी । । %२।।\n\n| संतुष्टः सततं योगी यतात्मा दृढनिश्चयः |\n& |. मय्यर्पितमनोबुदधिर्यो मद्भक्तः स मे प्रियः।। %।।\n| जो पुरुष सब भूतो मे देषभाव से रहित, स्वार्थरहित, |\n« । सबका प्रेमी और हेतु रहित दयालु है तथा ममता से\n॥ । रहित, अहंकार से रहित, सुख-दुःखों की प्राप्ति में सम\nEB क्षमावान्‌ है अर्थात्‌ अपराध करने वाले को भी\n\nके | अभय देने वाला है; तथा जो योगी निरन्तर संतुष्ट है, है\n| मन-इन्द्रियों सहित शरीर को वश में किये हुए है और' | |\n\nमुझमें दृढ़ निश्चय वाला है--वह मुझमें अर्पण किये ४\n' | मन-बुद्धि वाला मेरा भक्त मुझको प्रिय है || 93-98 11\n\n५ He who is free from malice towards all | ~.\nbeings, friendly and compassionate, rid of ‘T’ (\nन थ EL LOSS ey\n\nfea अध्याय 292\n"
+        },
+        "vision": {
+          "ocr_s": 1.823,
+          "chars": 1189,
+          "words": 207,
+          "devanagari_ratio": 0.735,
+          "script_runs": 4,
+          "text": "Knowledge is better than practice (without\ndiscernment), meditation on God is superior\nto knowledge, and renunciation of the\nfruit of actions is even superior to meditation;\nfor peace immediately follows from\nrenunciation.\n(12)\n-\nप्रसंग उपर्युक्त श्लोकों में भगवान् की प्राप्ति के लिये भक्ति के अंगभूत अलग-अलग साधन\nबतलाकर उनका फल परमेश्वर की प्राप्ति बतलाया गया, अतएव भगवान् को प्राप्त हुए प्रेमी भक्तों के\nलक्षण जानने की इच्छा होने पर अब सात श्लोकों में भगवव्याप्त ज्ञानी भक्तों के लक्षण बतलाये जाते हैं-\nअद्वेष्टा सर्वभूतानां मैत्रः करुण एव च ।\nनिर्ममो निरहंकारः समदुःखसुखः क्षमी । । १३॥\nसंतुष्टः सततं योगी यतात्मा दृढनिश्चयः ।\nमय्यर्पितमनोबुद्धिर्यो मद्भक्तः स मे प्रियः । । १४।।\nजो पुरुष सब भूतों में द्वेषभाव से रहित, स्वार्थरहित,\nसबका प्रेमी और हेतु रहित दयालु है तथा ममता से\nरहित, अहंकार से रहित, सुख-दुःखों की प्राप्ति में सम\nऔर क्षमावान् है अर्थात् अपराध करने वाले को भी\nअभय देने वाला है; तथा जो योगी निरन्तर संतुष्ट है,\nमन- इन्द्रियों सहित शरीर को वश में किये हुए है और\nमुझमें दृढ़ निश्चय वाला है - वह मुझमें अर्पण किये हुए\nमन-बुद्धि वाला मेरा भक्त मुझको प्रिय है ।। १३-१४ ।।\nHe who is free from malice towards all\nbeings, friendly and compassionate, rid of 'T'\nद्विदश अध्याय\n292"
+        }
+      },
+      "agreement": 0.8994
+    },
+    {
+      "page": 297,
+      "raster_s": 0.41,
+      "megapixels": 5.54,
+      "png_kb": 6625,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 4.965,
+          "chars": 1093,
+          "words": 216,
+          "devanagari_ratio": 0.504,
+          "script_runs": 20,
+          "text": "“DB\n\n= ‘mine’, balanced in joy and sorrow, forgiving :\nby nature, ever-contented and mentally united\nwith Me, nay, who has subdued his mind,\nsenses and body, has a firm resolve, and has\nsurrendered his mind and reason to Me, that\ndevotee of Mine is dear to Me. (13,14)\n\nयस्मान्नोदिजते लोको लोकान्नोद्दिजते च a: |\nहर्षामर्षभयोद्वेगैर्मुक्ती यः स च मे प्रियः।। १५।।\n\nजिससे कोई भी जीव उद्देग को प्राप्त नहीं होता और\nजो स्वयं भी किसी जीव से उदेग को प्राप्त नहीं होता;\nतथा जो हर्ष, अमर्ष, भय और उदेगादि से रहित है --वह\nभक्त मुझको प्रिय है ।। १५ ।।\n\nHe who is not 3 source of annoyance to his\nfellow-creatures, and who in his turn does\n\nnot feel vexed with fellow-creatures, and who\nis free from delight and envy perturbation\n\nSOS स^ ऐ SS\n\n(र र <-> Yi (८०५\nLLL OV WO) RED) z=’ ८6\nSSS —< SS Was ३२ प = पे \\.\n\nve\n\n~ S क\n\n>\n\nee ^^\n\n«= | and fear, is dear to Me. (15) |e\nws अनपेक्षः शुचिर्दक्ष उदासीनो गतव्यथः।\nif y । (9)\n( सर्वार्म्भपरित्यागी यो मदुभक्तः स मे प्रियः। । १६।। र\n\nजो पुरुष आकांक्षा से रहित, बाहर-भीतर से शुद्ध,\nवतुर, पक्षपात से रहित और दुःखों से छूटा हुआ है - वह\n\nभ\n\n|\n\n+ श्रीमद्भगवद्गीता\n"
+        },
+        "vision": {
+          "ocr_s": 9.287,
+          "chars": 973,
+          "words": 179,
+          "devanagari_ratio": 0.517,
+          "script_runs": 4,
+          "text": "and 'mine', balanced in joy and sorrow, forgiving\nby nature, ever-contented and mentally united\nwith Me, nay, who has subdued his mind,\nsenses and body, has a firm resolve, and has\nsurrendered his mind and reason to Me, that\ndevotee of Mine is dear to Me.\n(13,14)\nयस्मान्नोद्विजते लोको लोकान्नोद्विजते च यः ।\n197\nहर्षामर्षभयोद्वेगैर्मुक्तो यः स च मे प्रियः । । १५॥\n।।\nजिससे कोई भी जीव उद्वेग को प्राप्त नहीं होता और\nजो स्वयं भी किसी जीव से उद्वेग को प्राप्त नहीं होता;\nतथा जो हर्ष, अमर्ष, भय और उद्वेगादि से रहित है - वह\nभक्त मुझको प्रिय है ।। १५ ।।\nHe who is not a source of annoyance to his\nfellow-creatures, and who in his turn does\nnot feel vexed with fellow-creatures, and who\nis free from delight and envy perturbation\nand fear, is dear to Me. laebion 89 (15)\nअनपेक्षः शुचिर्दक्ष उदासीनो गतव्यथः ।\nसर्वारम्भपरित्यागी यो मद्भक्तः स मे प्रियः ।। ६।।\nजो पुरुष आकांक्षा से रहित, बाहर-भीतर से शुद्ध,\nचतुर, पक्षपात से रहित और दुःखों से छूटा हुआ है - वह\n293\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9054
+    },
+    {
+      "page": 298,
+      "raster_s": 0.409,
+      "megapixels": 5.5,
+      "png_kb": 6706,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 3.518,
+          "chars": 914,
+          "words": 175,
+          "devanagari_ratio": 0.507,
+          "script_runs": 12,
+          "text": "5 SS\n\nZA\n29१:\n=\n\nजे\n\nDD न SPM dy a 101 OLY IN Shee SEE ee ED <~ YZ, ’\nya ९३\n\nसब आरम्भो का त्यागी मेरा भक्त मुझको प्रिय 1 जज\n\nSB ilse. ||\n\nHe who wants nothing, who is both internally\nand externally pure, is clever and-impartial,\nand has risen above all distractions, and\nwho renounces the feeling of doership in\nall undertaking,—that devotee of Mine is\ndear. (16)\n\nयो न हष्यति न द्वेष्टि शोचति न काइक्षति।\nशुभाशुभपरित्यागी भक्तिमान्यः स मे Pa: 119911\n\nजो न कभी हर्षित होता है, न देष करता है, शोक\nकरता है, न कामना करता है तथा जो शुभ ओर शुभ\nसम्पूर्ण कर्मो का त्यागी है--वह भक्ति युक्त पुरुष मुझको\nप्रिय है ।। १७ ।।\n\nHe who neither rejoices nor hates, nor\ngrieves, nor desires and who renounces both\n\ngood and evil actions and is full of devotion,\nis dear to Me. (17)\n\nसमः शत्रौ च मित्रे च तथा मानापमानयोः।\nशीतोष्णसुखदुःखेषु समः संगविवर्जितः । । १८॥।\n\nजो शशच्चु-मित्र में और मान-अपमान में सम है तथा\n\nद्विदश अध्याय 294\n\n"
+        },
+        "vision": {
+          "ocr_s": 9.159,
+          "chars": 838,
+          "words": 158,
+          "devanagari_ratio": 0.553,
+          "script_runs": 5,
+          "text": "सब आरम्भों का त्यागी मेरा भक्त मुझको प्रिय\nहै ।। १६ ।।\nHe who wants nothing, who is both internally\nand externally pure, is clever and impartial,\nand has risen above all distractions, and\nwho renounces the feeling of doership in\nall undertaking,-that devotee of Mine is\ndear.\n(16)\nयो न हृष्यति न द्वेष्टि न शोचति न काङ्क्षति ।\nशुभाशुभपरित्यागी भक्तिमान्यः स मे प्रियः ।।१७।।\nजो न कभी हर्षित होता है, न द्वेष करता है, न शोक\nकरता है, न कामना करता है तथा जो शुभ और अशुभ\nसम्पूर्ण कर्मों का त्यागी है - वह भक्ति युक्त पुरुष मुझको\nप्रिय है ।। १७ ।।\nHe who neither rejoices nor hates, nor\ngrieves, nor desires and who renounces both\ngood and evil actions and is full of devotion,\nis dear to Me.\n(17)\nसमः शत्रौ च मित्रे च तथा मानापमानयोः ।\nशीतोष्णसुखदुःखेषु समः संगविवर्जितः । । १५॥\nजो शत्रु-मित्र में और मान-अपमान में सम है तथा\nद्विदश अध्याय\n294"
+        }
+      },
+      "agreement": 0.9155
+    },
+    {
+      "page": 299,
+      "raster_s": 0.424,
+      "megapixels": 5.54,
+      "png_kb": 6391,
+      "backends": {
+        "tesseract": {
+          "ocr_s": 4.22,
+          "chars": 851,
+          "words": 152,
+          "devanagari_ratio": 0.425,
+          "script_runs": 9,
+          "text": "= || 9८ ||\n\nHe who is alike to friend and foe, as well as\nto honour and ignominy, who remains balanced\nin heat and cold, pleasure and pain and other\ncontrary experiences, and is free from\nattachment. (18)\n\nतुल्यनिन्दास्तुतिर्मीनी संतुष्टो येन केनचित्‌ |\nअनिकेतः स्थिरमतिर्भक्तिमान्मे प्रियो नरः।।१६।।\n\nजो निन्दास्तुति को समान समझने वाला, मननशील\nओर जिस किसी प्रकार से भी शरीर का निर्वाह होने\nमें सदा ही सन्तुष्ट है और रहने के स्थान में ममता ओर\nआसक्ति से रहित है - वह स्थिर बुद्धि भक्तिमान्‌ पुरुष\nमुझको प्रिय है ।। १६ ।।\n\nHe who takes praise and reproach alike,\nand is given to contemplation and contented\nwith any means of subsistence whatsoever,\nentertaining no sense of ownership and\nattachment in respect of his dwelling place\nand full of devotion to Me, that man is dear to\nMe. (19)\n\n<:\n\n> 2222\n\n८\nae\naN\n\nWii 50222 दा SORE\n\n॥\n\n295 श्रीमद्भगवद्गीता\n"
+        },
+        "vision": {
+          "ocr_s": 8.57,
+          "chars": 883,
+          "words": 159,
+          "devanagari_ratio": 0.48,
+          "script_runs": 5,
+          "text": "सरदी, गरमी और सुख-दुःखादि द्वन्द्वों में सम है और\nआसक्ति से रहित है ।। १८ ।।\nHe who is alike to friend and foe, as well as\nto honour and ignominy, who remains balanced\nin heat and cold, pleasure and pain and other\ncontrary experiences, and is free from\nattachment. A fa\nकि\nबैंक (18)\nतुल्यनिन्दास्तुतिर्मोनी संतुष्टो येन केनचित् ।\nअनिकेतः स्थिरमतिर्भक्तिमान्मे प्रियो नरः।।१६।।\nजो निन्दा - स्तुति को समान समझने वाला, मननशील\nऔर जिस किसी प्रकार से भी शरीर का निर्वाह होने\nमें सदा ही सन्तुष्ट है और रहने के स्थान में ममता और\nआसक्ति से रहित है - वह स्थिर बुद्धि भक्तिमान् पुरुष\nमुझको प्रिय है ।। १६ ।।\nHe who takes praise and reproach alike,\nand is given to contemplation and contented\nwith any means of subsistence whatsoever,\nentertaining no sense of ownership and\nattachment in respect of his dwelling place\nand full of devotion to Me, that man is dear to\nMe.\n(19)\n295\nश्रीमद्भगवद्गीता"
+        }
+      },
+      "agreement": 0.9176
+    }
+  ]
+}
