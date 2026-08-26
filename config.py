@@ -1,5 +1,5 @@
 """
-Configuration for the Hindi Textbook RAG Application.
+Configuration for the Sarthi AI application.
 Loads environment variables and defines constants.
 """
 
@@ -68,10 +68,21 @@ YOUTUBE_CHUNK_OVERLAP_SECONDS = float(
 )
 
 # ── Embedding request pacing ──────────────────────────────────────────
-# The binding constraint on a bulk index is requests-per-MINUTE, not total
-# volume: a 1877-page corpus is ~72 embedding calls, and firing them
-# back-to-back trips the quota long before the day's allowance is touched.
-EMBED_BATCH_SIZE = 20       # Chunks per embed_content call
+# MEASURED, not assumed. The binding constraint is INPUT TOKENS per minute:
+#   aiplatform.googleapis.com/embed_content_input_tokens_per_minute_per_base_model
+# An earlier comment here claimed requests-per-minute. It was wrong, and the
+# difference matters: under a request limit, bigger batches give proportional
+# relief; under a TOKEN limit they give NONE, because 250 chunks carry exactly
+# the tokens of 20 chunks x 12.5. Proof (Vertex express, gemini-embedding-001):
+# a 250 x 1010-char request succeeded, and the NEXT request at 200 x 1010 --
+# strictly smaller -- was rejected, because the first had drained the window.
+#
+# The only levers on this quota are throughput over time (see the adaptive pace
+# below) and raising the quota itself. Batch size is now purely a throughput
+# and overhead choice: 250 instances is the hard API ceiling (n=400 -> HTTP 400
+# "too many instances"), and larger batches measured FASTER per chunk
+# (23.8 chunks/s at n=250 vs 13.0 at n=50).
+EMBED_BATCH_SIZE = 20       # Chunks per embed_content call (API max is 250)
 EMBED_BATCH_DELAY_S = 1.0   # Pause between successive batches (proactive pacing)
 EMBED_MAX_ATTEMPTS = 5      # Total tries per batch before giving up
 EMBED_BACKOFF_BASE_S = 10   # First retry waits this; each retry doubles it

@@ -336,6 +336,65 @@ before network and cold start are added.
 - Document citations need a safe file-serving route, not only a source name. Nested local
   PDF/TXT/MD sources now open without allowing paths outside `data/`.
 
+## 10. Embedding quota is TOKEN-bound, not request-bound (2026-08-26)
+
+### 🟢 Measured
+
+**The metric, named by the API itself:**
+`aiplatform.googleapis.com/embed_content_input_tokens_per_minute_per_base_model`
+(Vertex express mode, `gemini-embedding-001`, `LLM_BACKEND=vertex`.)
+
+Google does not publish per-model embedding limits for express mode, and three
+doc pages fetched during this session were JS nav shells with no quota tables.
+The 429 payload is the only reliable source: `google.rpc.QuotaFailure` names the
+metric, `google.rpc.RetryInfo` gives the wait the server actually wants.
+
+**The proof that it is tokens, not requests** — three consecutive probes:
+
+| probe | instances x chars | total chars | result |
+|---|---|---|---|
+| 1 | 250 x 1010 | 252,500 | OK (21.9s) |
+| 2 | 200 x 1010 | 202,000 | **429 tokens_per_minute** |
+| 3 | 250 x 795 | 198,750 | **429 tokens_per_minute** |
+
+Probes 2 and 3 were *strictly smaller* than probe 1 and still failed, because
+probe 1 had drained the per-minute token window. Under a request-count limit the
+smaller requests would have been safer. They were not.
+
+**Why this matters more than it sounds.** `config.py` carried a comment asserting
+"the binding constraint is requests-per-MINUTE". That is wrong, and it points at
+the opposite fix: under an RPM limit, raising `EMBED_BATCH_SIZE` gives
+proportional relief; under a TPM limit it gives **none**, since 250 chunks carry
+exactly the tokens of 20 chunks x 12.5. Comment corrected in place.
+
+**Batch size is still worth tuning — for throughput, not for quota.**
+- API ceiling is **250 instances**; `n=400` returns HTTP 400 "too many instances".
+- Larger batches are *faster per chunk*: 23.8 chunks/s at n=250 vs 13.0 at n=50.
+- 250 x 1010 chars (252,500) is proven to fit in one request.
+
+### 🟢 The cost of a non-resumable embed stage, observed
+
+`मनुस्मृति-सम्पूर्ण.pdf` (509 pages, 1030 chunks) failed at **54%** of embedding
+during the folder run. `index_document` computes every batch before storing any,
+so ~556 successfully embedded chunks were discarded — token quota spent, nothing
+kept — and a rerun must spend it again. Quota exhaustion causing work loss
+causing more quota pressure.
+
+Note the OCR cache did not help here: the router sent only **4 of 509** pages to
+Vision (`505 direct · 4 ocr`), so the loss was entirely in the stage that is not
+yet resumable. Making the embed loop checkpoint per batch makes *hitting* the
+limit cheap, which is more robust than trying never to hit it.
+
+### 🔴 Landmine
+
+`gemini-embedding-2` matches the SDK's `t_is_vertex_embed_content_model()`
+predicate and is therefore restricted to **one content per request**; batching
+raises `ValueError`. `gemini-embedding-001` is explicitly exempted and uses the
+PREDICT path, which is why 20-per-call works today. Switching embedding models
+would silently break batching.
+
+---
+
 ## Main conclusion
 *(Revised 2026-08-22.)* The earlier conclusion — "retrieval experimentation is no longer
 the bottleneck, Gemini retrieval is reliable" — **does not survive §6**. It rested on
@@ -368,6 +427,8 @@ decide about thresholds, rerankers or embedding-model comparisons.
 - [x] ~~Collapse the duplicated context/prompt construction in `rag_engine`; make `ask`
       raise like `ask_with_sources`~~ — done, §6.6.
 - [ ] Pace / retry `retriever.retrieve`, or batch it in `evaluate.py` — §6.3.
+- [ ] Make the embedding loop resumable per batch — §10. A 429 at 54% currently
+      discards every batch already embedded and re-spends the token quota.
 - [ ] `app.py` still stores the *typed* filename casing; `document_id` makes this harmless
       for identity, but `status` can display a name that differs from the file on disk.
 - [ ] Derive `COLLECTION_NAME` from the embedding model before any embedding-001 vs
