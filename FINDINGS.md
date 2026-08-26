@@ -483,10 +483,35 @@ So region choice is worth ~2.2x on latency independently of the quota gain.
 limited. Cache one client per region and rotate deterministically, skipping
 regions with a live cooldown.
 
-**Prerequisite:** round-robin needs ADC with an explicit `location`. Express mode
-(`VERTEX_API_KEY`) carries no region, so `llm_client.get_client()` must move to
-`genai.Client(vertexai=True, project=..., location=...)`. ADC is already
-configured and verified working against the same quota.
+**No ADC migration needed -- the API key works regionally.** An earlier version
+of this note claimed round-robin required moving off `VERTEX_API_KEY` to ADC.
+Tested and wrong on both halves:
+
+* The project API key authenticates fine against regional endpoints
+  (`{region}-aiplatform.googleapis.com/v1/projects/{p}/locations/{region}/...`),
+  returning 200 from us-central1, asia-southeast1, europe-west1 and asia-east1.
+  Google's express-mode docs say endpoints "use the global endpoint and don't
+  include projects or locations" -- that describes what express mode *provides*,
+  not a restriction on where the key is accepted.
+* Quota is independent per region under key auth too: us-central1 was saturated
+  to a 429 and the other three regions served immediately.
+
+**The SDK accepts a key together with a region**, so no hand-rolled HTTP is
+needed either:
+
+```python
+genai.Client(vertexai=True, project=PROJECT, location=REGION, api_key=VERTEX_API_KEY)  # works
+genai.Client(enterprise=True, location=REGION, api_key=VERTEX_API_KEY)                 # 403
+```
+
+The comment in `llm_client.get_client()` -- "Passing project/location alongside
+api_key is rejected by the SDK" -- is true only for `enterprise=True`. With
+`vertexai=True` it works, which is what makes regional rotation a small change
+rather than an auth migration.
+
+**Never pass the key as `?key=...` in the URL.** Round-robin snippets usually do.
+Query strings land in server logs, proxy logs and history; use the
+`x-goog-api-key` header (or the SDK, which handles it).
 
 ### 🔴 `gemini-embedding-2` is not an escape from the quota -- tested
 
