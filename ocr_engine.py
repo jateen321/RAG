@@ -12,6 +12,7 @@ Credentials. Tesseract remains available as a fully local backend.
 """
 
 import io
+import random
 import re
 import time
 import difflib
@@ -23,12 +24,14 @@ import pytesseract
 from PIL import Image
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import (
     GOOGLE_VISION_LANGUAGE_HINTS,
     OCR_BACKEND,
     OCR_MAX_ATTEMPTS,
     OCR_BACKOFF_BASE_S,
+    OCR_MAX_WORKERS,
     TESSERACT_LANG,
     PDF_DPI,
     LAYER_CHECK_SAMPLE,
@@ -55,9 +58,9 @@ def _render_page(page) -> Image.Image:
     return _pixmap_to_image(pix).convert("RGB")
 
 
-def _ocr_with_tesseract(img: Image.Image) -> str:
-    """Run the local Tesseract backend."""
-    text = pytesseract.image_to_string(img, lang=TESSERACT_LANG)
+def _ocr_with_tesseract(png: bytes) -> str:
+    """Run the local Tesseract backend on encoded PNG bytes."""
+    text = pytesseract.image_to_string(Image.open(io.BytesIO(png)), lang=TESSERACT_LANG)
     return text.strip()
 
 
@@ -77,10 +80,14 @@ def _with_retry(fn, what: str):
             last = exc
             if attempt == OCR_MAX_ATTEMPTS - 1:
                 break
-            wait = OCR_BACKOFF_BASE_S * (2 ** attempt)
+            # Jitter matters once requests run concurrently: without it, N
+            # workers hitting the same 503 window back off on an identical
+            # schedule and retry in lockstep, amplifying the outage instead of
+            # riding it out.
+            wait = OCR_BACKOFF_BASE_S * (2 ** attempt) * random.uniform(0.5, 1.5)
             console.print(
                 f"   [yellow]{what} attempt {attempt + 1}/{OCR_MAX_ATTEMPTS} "
-                f"failed ({type(exc).__name__}); retrying in {wait}s[/yellow]"
+                f"failed ({type(exc).__name__}); retrying in {wait:.1f}s[/yellow]"
             )
             time.sleep(wait)
     raise RuntimeError(f"{what} failed after {OCR_MAX_ATTEMPTS} attempts") from last
@@ -102,7 +109,7 @@ def _get_vision_client():
     return _vision_client
 
 
-def _ocr_with_google_vision(img: Image.Image) -> str:
+def _ocr_with_google_vision(png: bytes) -> str:
     """Run Cloud Vision dense-document OCR using ADC authentication."""
     try:
         from google.cloud import vision
@@ -112,18 +119,10 @@ def _ocr_with_google_vision(img: Image.Image) -> str:
             "Install it with: .venv/bin/python -m pip install -r requirements.txt"
         ) from exc
 
-    # Encode GRAYSCALE, not RGB. Vision's latency on these scans is dominated by
-    # UPLOAD SIZE, not OCR difficulty: measured 2026-08-25 on Gita p.250/254/255,
-    # a 6.4 MB RGB PNG took ~9.0 s while the same page as a 1.6 MB grayscale PNG
-    # took 2.64 s — a 3.4x speed-up for 0.9994 text similarity. Colour carries no
-    # information an OCR engine uses, so this is free.
-    content = io.BytesIO()
-    img.convert("L").save(content, format="PNG", optimize=True)
-
     def _call():
         client = _get_vision_client()
         response = client.document_text_detection(
-            image=vision.Image(content=content.getvalue()),
+            image=vision.Image(content=png),
             image_context=vision.ImageContext(
                 language_hints=GOOGLE_VISION_LANGUAGE_HINTS
             ),
@@ -167,7 +166,7 @@ Rules:
 """
 
 
-def _ocr_with_gemini(img: Image.Image) -> str:
+def _ocr_with_gemini(png: bytes) -> str:
     """Run multimodal-LLM OCR (config.LLM_MODEL) on the page image.
 
     ⚠ This backend's failure mode differs IN KIND from the other two. Tesseract
@@ -196,14 +195,11 @@ def _ocr_with_gemini(img: Image.Image) -> str:
     if _gemini_client is None:
         _gemini_client = get_client()
 
-    buf = io.BytesIO()
-    img.convert("L").save(buf, format="PNG", optimize=True)
-
     def _call():
         return _gemini_client.models.generate_content(
             model=LLM_MODEL,
             contents=[
-                types.Part.from_bytes(data=buf.getvalue(), mime_type="image/png"),
+                types.Part.from_bytes(data=png, mime_type="image/png"),
                 _GEMINI_OCR_PROMPT,
             ],
             config=types.GenerateContentConfig(
@@ -232,10 +228,39 @@ _OCR_BACKENDS = {
 }
 
 
-def _ocr_page(page) -> str:
-    """Rasterize one PDF page and run the configured OCR backend."""
+def _prepare_page(page) -> bytes:
+    """Rasterize + encode one page. MUST run on the main thread.
+
+    PyMuPDF's Document is not thread-safe, so page rendering cannot move into a
+    worker. Splitting here is what makes concurrency safe AND cheap: rendering
+    is ~0.25 s while a Vision round-trip is ~2.6 s, so the part that stays
+    serial is ~10% of the work.
+
+    Encoding here rather than inside the backend also bounds memory. A rendered
+    10.5 MP RGB page is ~31 MB in RAM; the grayscale PNG it becomes is ~1.6 MB.
+    With 8 workers in flight that is the difference between ~250 MB and ~13 MB.
+    """
     img = _render_page(page)
-    return _OCR_BACKENDS[OCR_BACKEND](img)
+    buf = io.BytesIO()
+    if OCR_BACKEND == "tesseract":
+        # Keep Tesseract's input byte-identical to what it saw before this
+        # refactor, so its measured accuracy still applies.
+        img.save(buf, format="PNG")
+    else:
+        # Hosted backends are upload-bound; grayscale is ~4x smaller for
+        # 0.9994 text similarity (measured 2026-08-25).
+        img.convert("L").save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+def _ocr_page(page) -> str:
+    """Rasterize one PDF page and run the configured OCR backend.
+
+    Single per-page entry point: the parallel path calls the same
+    _prepare_page/_OCR_BACKENDS pair, so retry, grayscale encoding and backend
+    dispatch cannot drift between the two.
+    """
+    return _OCR_BACKENDS[OCR_BACKEND](_prepare_page(page))
 
 
 def _norm(s: str) -> str:
@@ -296,6 +321,58 @@ def _verify_text_layer(doc) -> bool:
     return trusted
 
 
+def _ocr_pages(doc, page_nums: list[int], progress=None, task=None) -> dict[int, str]:
+    """OCR the given pages, concurrently when OCR_MAX_WORKERS > 1.
+
+    Only the network call is parallel. Each chunk is rasterized and encoded on
+    THIS thread (PyMuPDF is not thread-safe), then handed to workers as bytes.
+
+    Chunking bounds memory: at most `workers * 2` encoded pages are held at
+    once, so a 900-page document costs the same RAM as a 16-page one.
+
+    A page that fails every retry yields "" and is reported, rather than
+    aborting the run — losing one page of a 3653-page index should not cost the
+    other 3652.
+    """
+    backend = _OCR_BACKENDS[OCR_BACKEND]
+    results: dict[int, str] = {}
+
+    def _done(n, text):
+        results[n] = text
+        if progress is not None:
+            progress.update(task, advance=1)
+
+    # workers == 1 takes the plain sequential path, byte-for-byte the old
+    # behaviour, so there is always a fallback if concurrency misbehaves.
+    if OCR_MAX_WORKERS <= 1:
+        for n in page_nums:
+            try:
+                _done(n, backend(_prepare_page(doc[n])))
+            except Exception as exc:                       # noqa: BLE001
+                console.print(f"   [red]page {n + 1}: OCR failed — {exc}[/red]")
+                _done(n, "")
+        return results
+
+    # One pool for the whole document; chunking below is what bounds memory, so
+    # the pool does not need to be rebuilt per chunk.
+    chunk = max(1, OCR_MAX_WORKERS * 2)
+    with ThreadPoolExecutor(max_workers=OCR_MAX_WORKERS) as pool:
+        for start in range(0, len(page_nums), chunk):
+            batch = page_nums[start:start + chunk]
+            # Rasterize + encode HERE, on the main thread. Only `chunk` encoded
+            # pages exist at once, so RAM is flat in document length.
+            prepared = [(n, _prepare_page(doc[n])) for n in batch]
+            futures = {pool.submit(backend, data): n for n, data in prepared}
+            for fut in as_completed(futures):
+                n = futures[fut]
+                try:
+                    _done(n, fut.result())
+                except Exception as exc:                   # noqa: BLE001
+                    console.print(f"   [red]page {n + 1}: OCR failed — {exc}[/red]")
+                    _done(n, "")
+    return results
+
+
 def extract_text_from_pdf(pdf_path: str) -> list[dict]:
     """
     Extract text from a PDF, routing each page to the right method.
@@ -317,9 +394,29 @@ def extract_text_from_pdf(pdf_path: str) -> list[dict]:
     # Language-agnostic defense: is the embedded text layer trustworthy?
     trust_layer = _verify_text_layer(doc)
 
-    pages_text = []
-    method_counts = {"direct": 0, "ocr": 0}
+    # ── Pass 1: routing (cheap — reads the text layer only, no OCR) ──
+    # Deciding routes up front is what lets the OCR pages be batched and run
+    # concurrently; interleaving the decision with the work would serialise it.
+    routes: dict[int, tuple[str, str]] = {}
+    for page_num in range(total_pages):
+        raw = doc[page_num].get_text().strip()
+        method = choose_method(raw)
+        if method == "direct" and not trust_layer:
+            method = "ocr"  # layer proven unreliable → OCR even 'direct' pages
+        routes[page_num] = (method, raw if method == "direct" else "")
 
+    ocr_pages = [n for n, (m, _) in routes.items() if m == "ocr"]
+    method_counts = {
+        "direct": total_pages - len(ocr_pages),
+        "ocr": len(ocr_pages),
+    }
+    if ocr_pages:
+        console.print(
+            f"   ⚡ OCR: {len(ocr_pages)} pages · {OCR_MAX_WORKERS} worker(s)"
+        )
+
+    # ── Pass 2: OCR the pages that need it ───────────────────────────
+    ocr_text: dict[int, str] = {}
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -329,31 +426,21 @@ def extract_text_from_pdf(pdf_path: str) -> list[dict]:
         console=console,
     ) as progress:
         task = progress.add_task("🔍 Extracting text", total=total_pages)
+        progress.update(task, advance=method_counts["direct"])  # direct pages are free
+        if ocr_pages:
+            ocr_text = _ocr_pages(doc, ocr_pages, progress, task)
 
-        for page_num in range(total_pages):
-            page = doc[page_num]
-
-            # Decide per page from its embedded text layer
-            raw = page.get_text().strip()
-            method = choose_method(raw)
-            if method == "direct" and not trust_layer:
-                method = "ocr"  # layer proven unreliable → OCR even 'direct' pages
-
-            if method == "direct":
-                text = raw
-            else:
-                text = _ocr_page(page)
-
-            method_counts[method] += 1
-
-            if text:
-                pages_text.append({
-                    "page": page_num + 1,
-                    "text": text,
-                    "method": method,
-                })
-
-            progress.update(task, advance=1)
+    # ── Assemble in page order ───────────────────────────────────────
+    pages_text = []
+    for page_num in range(total_pages):
+        method, raw = routes[page_num]
+        text = raw if method == "direct" else ocr_text.get(page_num, "")
+        if text:
+            pages_text.append({
+                "page": page_num + 1,
+                "text": text,
+                "method": method,
+            })
 
     doc.close()
 

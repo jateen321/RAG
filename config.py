@@ -91,6 +91,26 @@ if OCR_BACKEND not in OCR_BACKENDS:
 # observed mid-run on 2026-08-25, and Vertex returns 429 RESOURCE_EXHAUSTED
 # under per-minute quota. Without retry ONE blip aborts a whole 1877-page
 # index, so mirror indexer.py's embedding pacing.
+# ── OCR concurrency ───────────────────────────────────────────────────
+# Only the NETWORK call is parallelised; rasterization stays on the main thread
+# because PyMuPDF's Document is not thread-safe. That split works because the
+# network dominates: ~0.25s to rasterize vs ~2.6s for a Vision round-trip.
+#
+# Worker counts are PER BACKEND, not one global number, because their limits
+# differ by an order of magnitude:
+#   google_vision  quota is generous; 8 workers ≈ 185 req/min, well inside it.
+#   gemini         Vertex express 429'd at SEQUENTIAL rates in benchmarking, so
+#                  parallelism mostly buys retries. Keep it near 1.
+#   tesseract      pytesseract shells out, so threads do help, but past core
+#                  count they just thrash.
+_DEFAULT_OCR_WORKERS = {
+    "google_vision": 8,
+    "gemini": 2,
+    "tesseract": min(4, os.cpu_count() or 1),
+}
+# 0 / unset → use the per-backend default above.
+OCR_MAX_WORKERS = int(os.getenv("OCR_MAX_WORKERS", "0")) or _DEFAULT_OCR_WORKERS[OCR_BACKEND]
+
 OCR_MAX_ATTEMPTS = 4        # total tries per page
 OCR_BACKOFF_BASE_S = 2      # first retry waits this; each retry doubles (2→4→8)
 

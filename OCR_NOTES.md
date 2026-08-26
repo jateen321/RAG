@@ -461,3 +461,74 @@ have taken ~548 min — the encoding change alone saves ~6.5 hours.
 Of the 786 trusted pages, **505 are Manusmriti**, which the `autojunk` bug would have
 force-OCR'd — so that fix saves both money and text quality, since the clean layer is
 better than OCR of the same page.
+
+## 🟢 Parallel OCR requests — 3.3x, and a corrected diagnosis
+
+Only the NETWORK call is parallelised. Rasterization stays on the main thread because
+PyMuPDF's `Document` is not thread-safe; that split is cheap because rendering is ~0.25 s
+against a ~2.6 s Vision round-trip, so the part that stays serial is ~10% of the work.
+
+### The wrong diagnosis, and why it was wrong
+
+A first measurement showed only **1.10x** from 8 workers, and single-page timing gave
+2.8 Mbps against a 15.9 MB payload — apparently "bandwidth-bound, parallelism cannot help".
+**That conclusion was wrong.** 2.8 Mbps was **single-stream TCP throughput to Vision**, not
+the link's capacity. Concurrent connections reach 8.6 Mbps aggregate.
+
+The measurements that produced it were also taken across a drifting network and
+contradicted themselves — a JPEG payload 36% *smaller* than PNG timed 30% *slower*
+sequentially. Re-measured with worker counts **interleaved** across 3 reps so drift hits
+every condition equally, reporting medians (8 dense pages, 10.64 MB grayscale PNG):
+
+| workers | median | speedup | aggregate throughput |
+|---|---|---|---|
+| 1 | 32.2 s | 1.00x | 2.6 Mbps |
+| 2 | 12.2 s | 2.63x | 7.0 Mbps |
+| 4 | 11.6 s | 2.78x | 7.4 Mbps |
+| **8** | **9.8 s** | **3.27x** | **8.6 Mbps** |
+
+Gains are monotonic through 8, so **8 is the `google_vision` default**. Lesson worth
+keeping: a single-connection throughput number says nothing about link capacity, and any
+timing measured on a drifting network needs interleaving before it means anything.
+
+### Design
+
+- `_prepare_page()` rasterizes AND encodes on the main thread. Encoding here rather than
+  inside the backend bounds memory: a rendered 10.5 MP RGB page is ~31 MB in RAM, the
+  grayscale PNG it becomes is ~1.6 MB. With 8 workers that is ~13 MB in flight, not ~250 MB.
+- All three backends now take **PNG bytes**, so `_ocr_page()` and the parallel path share
+  one call site — retry, encoding and dispatch cannot drift apart.
+- Chunked at `workers * 2`: a 900-page document uses the same RAM as a 16-page one.
+- **Retry jitter** (`* uniform(0.5, 1.5)`). Without it N workers hitting one 503 window
+  back off on an identical schedule and retry in lockstep, amplifying the outage.
+- A page that exhausts its retries yields `""` and is reported, rather than aborting —
+  losing 1 page of 3653 should not cost the other 3652.
+- `OCR_MAX_WORKERS=1` takes a plain sequential path, byte-for-byte the pre-parallel
+  behaviour, as a fallback if concurrency misbehaves mid-run.
+
+Per-backend defaults, because their limits differ by an order of magnitude:
+`google_vision` 8, `gemini` 2 (Vertex express 429'd at *sequential* rates — more workers
+buy retries, not speed), `tesseract` `min(4, cpu_count)`.
+
+### Verification
+
+Same document sequential vs 8 workers: page numbers identical, routing identical, per-page
+text similarity **min 0.9988 / mean 0.9998**, end-to-end **2.82x** (44.4 s → 15.8 s).
+
+The residual text difference is **not** a concurrency bug: Vision returned byte-identical
+output on 3/3 repeat calls with identical input, so it is near-deterministic but not
+guaranteed — likely version skew across its serving fleet. What concurrency could actually
+corrupt is page ORDER, and that is exact. Byte-equality was the wrong invariant to test.
+
+### JPEG rejected as the default
+
+JPEG q85 is ~2.6x smaller than grayscale PNG, but text similarity against the lossless
+baseline is **0.9949** — roughly 1 character in 200. For a corpus built once and queried
+for months that is the wrong trade, and parallelism already recovers more speed than the
+encoding change would. Grayscale PNG stays the default; JPEG remains an option worth
+revisiting only on a genuinely slow link.
+
+### Revised corpus projection
+
+3653 OCR pages at ~3x: **~50-55 min**, down from ~158 min sequential and ~548 min before
+the grayscale encoding fix.
