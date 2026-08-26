@@ -32,10 +32,11 @@ type AskResponse = {
   answer: string;
   sources: Source[];
   timings?: { total_s?: number };
+  conversation_id: string;
 };
 
 type Conversation = {
-  id: number;
+  id: string;
   question: string;
   answer?: string;
   sources?: Source[];
@@ -44,7 +45,33 @@ type Conversation = {
   error?: string;
 };
 
+type ConversationSummary = {
+  id: string;
+  title: string;
+  exchange_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type ConversationDetail = ConversationSummary & {
+  exchanges: Array<{
+    id: string;
+    question: string;
+    answer: string;
+    sources: Source[];
+    total_seconds?: number;
+  }>;
+};
+
 type Notice = { tone: 'success' | 'error'; text: string } | null;
+
+type PendingUpload = {
+  files: File[];
+  folderName?: string;
+  skippedNested: number;
+  skippedUnsupported: number;
+  skippedOversize: number;
+};
 
 const suggestions = [
   'Summarize the main ideas in the indexed books',
@@ -93,15 +120,20 @@ export default function ChatWorkspace() {
   const [healthError, setHealthError] = useState('');
   const [question, setQuestion] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [loadingConversation, setLoadingConversation] = useState(false);
   const [activeSources, setActiveSources] = useState<Source[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [busyAction, setBusyAction] = useState<'upload' | 'youtube' | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
   const threadEnd = useRef<HTMLDivElement>(null);
 
   const refreshHealth = useCallback(async () => {
@@ -114,7 +146,41 @@ export default function ChatWorkspace() {
     }
   }, []);
 
+  const loadConversation = useCallback(async (conversationId: string) => {
+    setLoadingConversation(true);
+    try {
+      const detail = await requestJson<ConversationDetail>(`/conversations/${conversationId}`);
+      setActiveConversationId(detail.id);
+      setConversations(detail.exchanges.map((exchange) => ({
+        id: exchange.id,
+        question: exchange.question,
+        answer: exchange.answer,
+        sources: exchange.sources,
+        totalSeconds: exchange.total_seconds,
+      })));
+      setActiveSources(detail.exchanges.at(-1)?.sources || []);
+      setMobileLibraryOpen(false);
+    } catch (error) {
+      setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'Could not load that conversation.' });
+    } finally {
+      setLoadingConversation(false);
+    }
+  }, []);
+
+  const refreshConversationHistory = useCallback(async (openMostRecent = false) => {
+    try {
+      const data = await requestJson<{ conversations: ConversationSummary[] }>('/conversations');
+      setConversationHistory(data.conversations);
+      if (openMostRecent && data.conversations[0]) {
+        await loadConversation(data.conversations[0].id);
+      }
+    } catch (error) {
+      setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'Could not load conversation history.' });
+    }
+  }, [loadConversation]);
+
   useEffect(() => { void refreshHealth(); }, [refreshHealth]);
+  useEffect(() => { void refreshConversationHistory(true); }, [refreshConversationHistory]);
   useEffect(() => { threadEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [conversations]);
   useEffect(() => {
     if (!notice) return;
@@ -126,14 +192,17 @@ export default function ChatWorkspace() {
     const cleanQuestion = nextQuestion.trim();
     if (!cleanQuestion || conversations.some((message) => message.pending)) return;
 
-    const id = Date.now();
+    const id = crypto.randomUUID();
     setQuestion('');
     setConversations((current) => [...current, { id, question: cleanQuestion, pending: true }]);
     try {
       const data = await requestJson<AskResponse>('/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: cleanQuestion }),
+        body: JSON.stringify({
+          question: cleanQuestion,
+          conversation_id: activeConversationId || undefined,
+        }),
       });
       setConversations((current) => current.map((message) => message.id === id ? {
         ...message,
@@ -142,13 +211,35 @@ export default function ChatWorkspace() {
         sources: data.sources,
         totalSeconds: data.timings?.total_s,
       } : message));
+      setActiveConversationId(data.conversation_id);
       setActiveSources(data.sources || []);
+      await refreshConversationHistory();
     } catch (error) {
       setConversations((current) => current.map((message) => message.id === id ? {
         ...message,
         pending: false,
         error: error instanceof Error ? error.message : 'The question could not be answered.',
       } : message));
+    }
+  }
+
+  function startNewConversation() {
+    setActiveConversationId(null);
+    setConversations([]);
+    setActiveSources([]);
+    setQuestion('');
+    setMobileLibraryOpen(false);
+  }
+
+  async function removeConversation(conversationId: string) {
+    const conversation = conversationHistory.find((item) => item.id === conversationId);
+    if (!window.confirm(`Delete “${conversation?.title || 'this conversation'}”?`)) return;
+    try {
+      await requestJson(`/conversations/${conversationId}`, { method: 'DELETE' });
+      if (activeConversationId === conversationId) startNewConversation();
+      await refreshConversationHistory();
+    } catch (error) {
+      setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'Could not delete the conversation.' });
     }
   }
 
@@ -177,28 +268,72 @@ export default function ChatWorkspace() {
       event.target.value = '';
       return;
     }
-    setPendingFile(file);
+    setPendingUpload({ files: [file], skippedNested: 0, skippedUnsupported: 0, skippedOversize: 0 });
+  }
+
+  function chooseFolder(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(event.target.files || []);
+    if (!selectedFiles.length) return;
+
+    const relativePath = (file: File) => file.webkitRelativePath || file.name;
+    const firstPathParts = relativePath(selectedFiles[0]).split('/');
+    const folderName = firstPathParts.length > 1 ? firstPathParts[0] : 'Selected folder';
+    const topLevelFiles = selectedFiles.filter((file) => relativePath(file).split('/').length <= 2);
+    const supportedFiles = topLevelFiles.filter((file) => ['.pdf', '.txt', '.md'].some((extension) => file.name.toLowerCase().endsWith(extension)));
+    const files = supportedFiles.filter((file) => file.size <= 500 * 1024 * 1024);
+    const skippedNested = selectedFiles.length - topLevelFiles.length;
+    const skippedUnsupported = topLevelFiles.length - supportedFiles.length;
+    const skippedOversize = supportedFiles.length - files.length;
+
+    if (!files.length) {
+      setNotice({ tone: 'error', text: `No eligible top-level PDF, TXT, or Markdown files were found in ${folderName}.` });
+      event.target.value = '';
+      return;
+    }
+
+    setPendingUpload({ files, folderName, skippedNested, skippedUnsupported, skippedOversize });
+  }
+
+  function closeUploadDialog() {
+    setPendingUpload(null);
+    setUploadProgress(0);
+    if (fileInput.current) fileInput.current.value = '';
+    if (folderInput.current) folderInput.current.value = '';
   }
 
   async function uploadDocument() {
-    if (!pendingFile) return;
+    if (!pendingUpload) return;
     setBusyAction('upload');
-    const body = new FormData();
-    body.append('file', pendingFile);
-    try {
-      const result = await requestJson<{ source: string; pages_with_text: number; chunks_indexed: number }>('/upload', {
-        method: 'POST',
-        body,
-      });
-      setNotice({ tone: 'success', text: `${result.source} indexed with ${result.chunks_indexed} passages.` });
-      setPendingFile(null);
-      if (fileInput.current) fileInput.current.value = '';
-      await refreshHealth();
-    } catch (error) {
-      setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'The document could not be indexed.' });
-    } finally {
-      setBusyAction(null);
+    setUploadProgress(0);
+    const indexed: string[] = [];
+    const failures: string[] = [];
+
+    for (const [index, file] of pendingUpload.files.entries()) {
+      const body = new FormData();
+      body.append('file', file);
+      if (pendingUpload.folderName && file.webkitRelativePath) body.append('relative_path', file.webkitRelativePath);
+      try {
+        const result = await requestJson<{ source: string; pages_with_text: number; chunks_indexed: number }>('/upload', {
+          method: 'POST',
+          body,
+        });
+        indexed.push(result.source);
+      } catch (error) {
+        failures.push(`${file.name}: ${error instanceof Error ? error.message : 'could not be indexed'}`);
+      }
+      setUploadProgress(index + 1);
     }
+
+    if (indexed.length) await refreshHealth();
+    if (failures.length) {
+      setNotice({ tone: 'error', text: `Indexed ${indexed.length} of ${pendingUpload.files.length}. ${failures.length} failed. ${failures[0]}` });
+    } else if (pendingUpload.folderName) {
+      setNotice({ tone: 'success', text: `${indexed.length} documents from ${pendingUpload.folderName} were indexed.` });
+    } else {
+      setNotice({ tone: 'success', text: `${indexed[0]} indexed successfully.` });
+    }
+    closeUploadDialog();
+    setBusyAction(null);
   }
 
   async function indexYoutube(event: FormEvent) {
@@ -244,9 +379,44 @@ export default function ChatWorkspace() {
           <button className="close-panel" type="button" onClick={() => setMobileLibraryOpen(false)} aria-label="Close library">×</button>
         </div>
 
-        <button className="new-chat" type="button" onClick={() => { setConversations([]); setActiveSources([]); setMobileLibraryOpen(false); }}>
+        <button className="new-chat" type="button" onClick={startNewConversation}>
           <span aria-hidden="true">＋</span> New conversation
         </button>
+
+        <div className="history-heading">Recent conversations</div>
+        <div className="conversation-history" aria-label="Saved conversations">
+          {conversationHistory.map((conversation) => (
+            <div className={`history-item ${activeConversationId === conversation.id ? 'active' : ''}`} key={conversation.id}>
+              <button className="history-open" type="button" onClick={() => void loadConversation(conversation.id)} disabled={loadingConversation} title={conversation.title}>
+                <span>{conversation.title}</span>
+                <small>{conversation.exchange_count} exchange{conversation.exchange_count === 1 ? '' : 's'}</small>
+              </button>
+              <button className="history-delete" type="button" onClick={() => void removeConversation(conversation.id)} aria-label={`Delete ${conversation.title}`}>×</button>
+            </div>
+          ))}
+          {!conversationHistory.length && <p className="empty-history">Your conversations will appear here.</p>}
+        </div>
+
+        <div className="library-actions">
+          <button type="button" onClick={() => fileInput.current?.click()}><span aria-hidden="true">↑</span> Add a document</button>
+          <label htmlFor="folder-upload"><span aria-hidden="true">▤</span> Add a folder</label>
+          <button type="button" onClick={() => setYoutubeOpen(true)}><span aria-hidden="true">▶</span> Add YouTube</button>
+          <input ref={fileInput} className="visually-hidden" type="file" accept="application/pdf,text/plain,text/markdown,.pdf,.txt,.md" onChange={chooseFile} />
+          <input
+            ref={(node) => {
+              folderInput.current = node;
+              if (node) {
+                node.setAttribute('webkitdirectory', '');
+                node.setAttribute('directory', '');
+              }
+            }}
+            id="folder-upload"
+            className="visually-hidden"
+            type="file"
+            multiple
+            onChange={chooseFolder}
+          />
+        </div>
 
         <div className="library-heading">
           <span>Your library</span>
@@ -266,12 +436,6 @@ export default function ChatWorkspace() {
             </div>
           ))}
           {health && health.documents.length === 0 && <p className="empty-library">Your library is empty. Add a document or YouTube source to begin.</p>}
-        </div>
-
-        <div className="library-actions">
-          <button type="button" onClick={() => fileInput.current?.click()}><span aria-hidden="true">↑</span> Add a document</button>
-          <button type="button" onClick={() => setYoutubeOpen(true)}><span aria-hidden="true">▶</span> Add YouTube</button>
-          <input ref={fileInput} className="visually-hidden" type="file" accept="application/pdf,text/plain,text/markdown,.pdf,.txt,.md" onChange={chooseFile} />
         </div>
 
         <div className={`index-status ${healthError ? 'offline' : ''}`}>
@@ -386,16 +550,19 @@ export default function ChatWorkspace() {
         )}
       </aside>
 
-      {pendingFile && (
+      {pendingUpload && (
         <div className="modal-backdrop" role="presentation">
           <section className="modal" role="dialog" aria-modal="true" aria-labelledby="upload-title">
-            <button className="modal-close" type="button" onClick={() => setPendingFile(null)} aria-label="Close">×</button>
-            <span className="modal-icon">DOC</span>
+            <button className="modal-close" type="button" onClick={closeUploadDialog} aria-label="Close">×</button>
+            <span className="modal-icon">{pendingUpload.folderName ? 'DIR' : 'DOC'}</span>
             <p className="eyebrow">ADD TO YOUR LIBRARY</p>
-            <h2 id="upload-title">Index this document?</h2>
-            <p className="modal-copy">Pustak AI will extract its text, create searchable passages, and add them to your local knowledge base.</p>
-            <div className="selected-file"><BookIcon /><span><strong>{pendingFile.name}</strong><small>{(pendingFile.size / 1024 / 1024).toFixed(1)} MB</small></span></div>
-            <div className="modal-actions"><button type="button" className="secondary" onClick={() => setPendingFile(null)} disabled={busyAction === 'upload'}>Cancel</button><button type="button" className="primary" onClick={() => void uploadDocument()} disabled={busyAction === 'upload'}>{busyAction === 'upload' ? 'Indexing…' : 'Upload & index'}</button></div>
+            <h2 id="upload-title">Index this {pendingUpload.folderName ? 'folder' : 'document'}?</h2>
+            <p className="modal-copy">Pustak AI will extract the text, create searchable passages, and preserve the selected folder path in your local library.</p>
+            <div className="selected-file"><BookIcon /><span><strong>{pendingUpload.folderName || pendingUpload.files[0].name}</strong><small>{pendingUpload.folderName ? `${pendingUpload.files.length} supported top-level document${pendingUpload.files.length === 1 ? '' : 's'}` : `${(pendingUpload.files[0].size / 1024 / 1024).toFixed(1)} MB`}</small></span></div>
+            {pendingUpload.folderName && (pendingUpload.skippedNested > 0 || pendingUpload.skippedUnsupported > 0 || pendingUpload.skippedOversize > 0) && (
+              <p className="selection-note">Skipped: {pendingUpload.skippedNested} from nested folders, {pendingUpload.skippedUnsupported} unsupported, {pendingUpload.skippedOversize} over 500 MB.</p>
+            )}
+            <div className="modal-actions"><button type="button" className="secondary" onClick={closeUploadDialog} disabled={busyAction === 'upload'}>Cancel</button><button type="button" className="primary" onClick={() => void uploadDocument()} disabled={busyAction === 'upload'}>{busyAction === 'upload' ? `Indexing ${uploadProgress}/${pendingUpload.files.length}…` : 'Upload & index'}</button></div>
           </section>
         </div>
       )}
