@@ -17,6 +17,8 @@ from rich.console import Console
 from config import (
     EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP, MAX_CHUNK_OVERLAP,
     MIN_CHUNK_LENGTH, CHROMA_DB_PATH, COLLECTION_NAME,
+    EMBED_BATCH_SIZE, EMBED_BATCH_DELAY_S, EMBED_MAX_ATTEMPTS,
+    EMBED_BACKOFF_BASE_S,
 )
 from llm_client import get_client
 
@@ -155,39 +157,80 @@ def _chunk_text(text: str, page_num: int) -> list[dict]:
     return chunks
 
 
-def _embed_texts(texts: list[str], batch_size: int = 20) -> list[list[float]]:
+def _is_quota_error(exc: Exception) -> bool:
+    """True for a rate-limit/quota rejection, whatever shape the SDK gives it."""
+    code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    if code == 429:
+        return True
+    text = str(exc).lower()
+    return "429" in text or "quota" in text or "resource_exhausted" in text
+
+
+def _embed_batch(batch: list[str]) -> list[list[float]]:
+    """Embed one batch, retrying a quota rejection with exponential backoff.
+
+    The previous version retried exactly once after a fixed 30s, and — crucially
+    — the retry call itself was NOT inside a try block, so a second 429 escaped
+    as a raw traceback and abandoned the whole document. Quota here is a
+    per-minute window, so a single short wait is not reliably enough once that
+    window has been saturated.
     """
-    Embed texts using Gemini's free embedding model.
-
-    Handles rate limiting by batching and adding small delays.
-    """
-    all_embeddings = []
-
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i:i + batch_size]
-
+    delay = EMBED_BACKOFF_BASE_S
+    for attempt in range(1, EMBED_MAX_ATTEMPTS + 1):
         try:
             result = _client.models.embed_content(
                 model=EMBEDDING_MODEL,
                 contents=batch,
             )
-            all_embeddings.extend([e.values for e in result.embeddings])
-        except Exception as e:
-            if "429" in str(e) or "quota" in str(e).lower():
-                console.print("[yellow]⏳ Rate limited, waiting 30 seconds...[/yellow]")
-                time.sleep(30)
-                # Retry this batch
-                result = _client.models.embed_content(
-                    model=EMBEDDING_MODEL,
-                    contents=batch,
-                )
-                all_embeddings.extend([e.values for e in result.embeddings])
-            else:
-                raise e
+            return [e.values for e in result.embeddings]
+        except Exception as exc:
+            if not _is_quota_error(exc):
+                raise
+            if attempt == EMBED_MAX_ATTEMPTS:
+                raise RuntimeError(
+                    f"Embedding quota still exhausted after {EMBED_MAX_ATTEMPTS} "
+                    f"attempts. Nothing was written for this document — rerun "
+                    f"the index once the per-minute quota has recovered."
+                ) from exc
+            console.print(
+                f"[yellow]⏳ Rate limited (attempt {attempt}/"
+                f"{EMBED_MAX_ATTEMPTS}) — waiting {delay}s...[/yellow]"
+            )
+            time.sleep(delay)
+            delay *= 2
 
-        # Small delay to respect free tier rate limits
+
+def _embed_texts(texts: list[str], batch_size: int = None, on_progress=None) -> list[list[float]]:
+    """
+    Embed texts with the configured Gemini embedding model.
+
+    Batches, paces, and retries. The pacing sleep here previously never ran:
+    ``index_document`` pre-sliced the work and called this with
+    ``batch_size=len(batch)``, so the loop always executed exactly one iteration
+    and the "is there another batch?" guard was never true. Callers now hand the
+    FULL list over and receive progress through ``on_progress`` instead of
+    re-implementing the batching.
+
+    Args:
+        texts: All chunk texts to embed.
+        batch_size: Chunks per request. Defaults to ``EMBED_BATCH_SIZE``.
+        on_progress: Optional callable invoked with the count just completed.
+    """
+    batch_size = batch_size or EMBED_BATCH_SIZE
+    all_embeddings = []
+
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+        all_embeddings.extend(_embed_batch(batch))
+
+        if on_progress:
+            on_progress(len(batch))
+
+        # Proactive spacing between batches. Cheaper than being throttled:
+        # a 1s pause costs ~1 minute over 72 batches, while one 429 costs a
+        # 10-80s backoff and risks losing the document entirely.
         if i + batch_size < len(texts):
-            time.sleep(1)
+            time.sleep(EMBED_BATCH_DELAY_S)
 
     return all_embeddings
 
@@ -251,14 +294,11 @@ def index_document(
         console=console,
     ) as progress:
         task = progress.add_task("Embedding chunks", total=len(texts))
-        embeddings = []
-        batch_size = 20
-
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            batch_embeddings = _embed_texts(batch, batch_size=len(batch))
-            embeddings.extend(batch_embeddings)
-            progress.update(task, advance=len(batch))
+        # Hand the WHOLE list to _embed_texts and let it batch. Slicing here and
+        # passing batch_size=len(batch) is what disabled its inter-batch pacing.
+        embeddings = _embed_texts(
+            texts, on_progress=lambda n: progress.update(task, advance=n)
+        )
 
     # Step 3: Store in ChromaDB
     console.print("\n[bold]💾 Storing in vector database...[/bold]")
