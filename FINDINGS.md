@@ -412,6 +412,48 @@ Vision (`505 direct · 4 ocr`), so the loss was entirely in the stage that is no
 yet resumable. Making the embed loop checkpoint per batch makes *hitting* the
 limit cheap, which is more robust than trying never to hit it.
 
+### 🟢 Multi-region round-robin DOES multiply throughput -- tested
+
+Embedding quota is enforced per project, per region, per base model, so
+spreading requests across regions multiplies aggregate throughput. Verified
+directly rather than assumed (project `cloudexplore-502215`, ADC auth):
+
+| check | result |
+|---|---|
+| 5 regions reachable | us-central1, us-east4, europe-west1, asia-east1, asia-southeast1 -- all OK, dim=3072 |
+| **quota independent per region** | us-central1 saturated to a confirmed 429, then **all four other regions served immediately** |
+| **vectors identical across regions** | `exact=True`, `max_delta=0.00e+00`, `cosine=1.00000000` |
+
+**The vector-identity check is the one that decides usability.** Round-robin is
+only safe because the same input yields a byte-identical vector in every region.
+Had they differed even in the last decimal, mixing regions would have quietly
+degraded every future search -- worse than being rate limited, and invisible.
+Re-verify this before adopting round-robin for any NEW embedding model.
+
+**Unexpected: `us-central1` is among the slowest regions from here.**
+
+| region | single-content latency |
+|---|---|
+| asia-southeast1 | 1216 ms |
+| asia-east1 | 1416 ms |
+| us-central1 | **2692 ms** (what the pipeline used) |
+| us-east4 | 2725 ms |
+| europe-west1 | 2984 ms |
+
+So region choice is worth ~2.2x on latency independently of the quota gain.
+
+**Two flaws in the round-robin snippet as usually written:** it builds a fresh
+`genai.Client` per request, re-paying credential lookup and TLS setup every time
+-- the same bug already fixed for the Vision client (`ocr_engine._get_vision_client`)
+-- and it shuffles randomly, which wastes calls on regions already known to be
+limited. Cache one client per region and rotate deterministically, skipping
+regions with a live cooldown.
+
+**Prerequisite:** round-robin needs ADC with an explicit `location`. Express mode
+(`VERTEX_API_KEY`) carries no region, so `llm_client.get_client()` must move to
+`genai.Client(vertexai=True, project=..., location=...)`. ADC is already
+configured and verified working against the same quota.
+
 ### 🔴 `gemini-embedding-2` is not an escape from the quota -- tested
 
 Proposed on the theory that it runs on global rather than regional per-model
