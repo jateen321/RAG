@@ -13,3 +13,4 @@ evaluation/results*.json
 CLAUDE.md
 FINDINGS.md
 data/
+evaluation/ocr_cache/

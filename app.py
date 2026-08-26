@@ -16,6 +16,7 @@ Usage:
 
 import sys
 import os
+import pathlib
 import shutil
 
 # Importing readline is the whole fix: Python wires it into input() on import,
@@ -152,12 +153,16 @@ def cmd_index(pdf_path: str = None):
         console.print("[red]❌ Please provide a PDF file.[/red]")
         sys.exit(1)
 
-    from ocr_engine import extract_text_from_pdf
+    # Go through document_ingester rather than calling ocr_engine directly, so
+    # the CLI shares the OCR disk cache with /upload and /index/folder. Calling
+    # extract_text_from_pdf() here would re-OCR pages the API had already paid
+    # for -- the two paths must not diverge.
+    from document_ingester import extract_document
     from indexer import index_document
 
-    # Step 1: OCR
+    # Step 1: OCR (served from cache when the file and OCR settings are unchanged)
     console.print("\n[bold]Step 1/2: Extracting text (OCR)...[/bold]")
-    pages_text = extract_text_from_pdf(pdf_path)
+    pages_text = extract_document(pathlib.Path(pdf_path))
 
     if not pages_text:
         console.print("[red]❌ No text could be extracted from this PDF.[/red]")
@@ -210,7 +215,7 @@ def cmd_index_youtube(url: str):
             )
 
 
-def cmd_index_folder(folder_path: str, recursive: bool = True):
+def cmd_index_folder(folder_path: str, recursive: bool = True, force: bool = False):
     """Index PDF, TXT, and Markdown files beneath one local folder."""
     from document_ingester import index_folder
 
@@ -218,8 +223,10 @@ def cmd_index_folder(folder_path: str, recursive: bool = True):
         f"\n[bold]📂 Indexing supported documents in "
         f"{escape(folder_path)}...[/bold]"
     )
+    if force:
+        console.print("   [yellow]--force: re-indexing files already in the collection[/yellow]")
     try:
-        report = index_folder(folder_path, recursive=recursive)
+        report = index_folder(folder_path, recursive=recursive, force=force)
     except ValueError as exc:
         console.print(f"[red]❌ {escape(str(exc))}[/red]")
         sys.exit(1)
@@ -530,7 +537,7 @@ def main():
   [cyan]python app.py index[/cyan]               Pick a PDF from data/ and index it
   [cyan]python app.py index <pdf_file>[/cyan]    Index a specific PDF
   [cyan]python app.py index-youtube <url>[/cyan] Index a YouTube video or playlist
-  [cyan]python app.py index-folder <folder>[/cyan] Recursively index PDF/TXT/Markdown files
+  [cyan]python app.py index-folder <folder> [--force][/cyan] Index PDF/TXT/Markdown (skips already-indexed)
   [cyan]python app.py ask "question"[/cyan]      Ask a one-shot question  
   [cyan]python app.py chat[/cyan]                Start interactive chat
   [cyan]python app.py status[/cyan]              Show database statistics
@@ -565,11 +572,12 @@ def main():
         cmd_index_youtube(sys.argv[2])
 
     elif command == "index-folder":
-        if len(sys.argv) < 3:
+        args = [a for a in sys.argv[2:] if a != "--force"]
+        if not args:
             console.print("[red]❌ Please provide a folder path.[/red]")
-            console.print("   Usage: python app.py index-folder <folder>")
+            console.print("   Usage: python app.py index-folder <folder> [--force]")
             sys.exit(1)
-        cmd_index_folder(sys.argv[2])
+        cmd_index_folder(args[0], force="--force" in sys.argv[2:])
 
     elif command == "ask":
         if len(sys.argv) < 3:

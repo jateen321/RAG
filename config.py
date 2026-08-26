@@ -150,6 +150,14 @@ LAYER_CHECK_MIN_SIMILARITY = 0.4   # median OCR-vs-layer similarity below this �
 
 # ── Paths ─────────────────────────────────────────────────────────────
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+
+# ── OCR result cache ──────────────────────────────────────────────────
+# OCR is the expensive, slow, BILLED half of ingestion; embedding is the half
+# that fails on quota. Without a cache between them, one 429 at embed time
+# discards every page already OCR'd for that document — for Arthasastra that is
+# ~14 minutes and ~$1.35 of Vision units, re-spent on every retry.
+OCR_CACHE_DIR = os.path.join(os.path.dirname(__file__), "evaluation", "ocr_cache")
+OCR_CACHE_ENABLED = os.getenv("OCR_CACHE_ENABLED", "1").strip().lower() not in {"0", "false", "no"}
 CONVERSATION_DB_PATH = os.getenv(
     "CONVERSATION_DB_PATH",
     os.path.join(os.path.dirname(__file__), "data", "conversations.sqlite3"),
