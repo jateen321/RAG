@@ -183,6 +183,33 @@ def cmd_index(pdf_path: str = None):
         ))
 
 
+def cmd_index_youtube(url: str):
+    """Index transcripts from a YouTube video or playlist URL."""
+    from youtube_ingester import ingest_youtube
+
+    console.print("\n[bold]🎬 Reading YouTube metadata and transcripts...[/bold]")
+    try:
+        report = ingest_youtube(url)
+    except (ValueError, RuntimeError) as exc:
+        console.print(f"[red]❌ {escape(str(exc))}[/red]")
+        sys.exit(1)
+
+    console.print(Panel(
+        f"[green]🎉 YouTube ingestion complete![/green]\n\n"
+        f"Videos indexed: [bold]{report['videos_indexed']}[/bold]\n"
+        f"Videos skipped: [bold]{report['videos_skipped']}[/bold]\n"
+        f"Chunks indexed: [bold]{report['chunks_indexed']}[/bold]",
+        title="✅ Done",
+        border_style="green",
+    ))
+    for result in report["results"]:
+        if result["status"] == "skipped":
+            console.print(
+                f"[yellow]⚠ Skipped {escape(result['title'])}:[/yellow] "
+                f"{escape(result.get('reason') or 'unknown reason')}"
+            )
+
+
 def cmd_ask(question: str):
     """Ask a single question."""
     from rag_engine import ask
@@ -291,6 +318,7 @@ def cmd_status():
         return
 
     table = Table(title="📚 Indexed Documents", border_style="cyan", header_style="bold")
+    table.add_column("Type", style="cyan")
     table.add_column("Document", style="green", overflow="fold")
     table.add_column("Pages", justify="right")
     table.add_column("Page range", justify="center", style="dim")
@@ -300,6 +328,7 @@ def cmd_status():
         first, last = doc["first_page"], doc["last_page"]
         page_range = f"{first}–{last}" if first is not None else "—"
         table.add_row(
+            doc.get("source_type", "unknown"),
             doc["source"],
             str(doc["pages"]),
             page_range,
@@ -468,6 +497,7 @@ def main():
 
   [cyan]python app.py index[/cyan]               Pick a PDF from data/ and index it
   [cyan]python app.py index <pdf_file>[/cyan]    Index a specific PDF
+  [cyan]python app.py index-youtube <url>[/cyan] Index a YouTube video or playlist
   [cyan]python app.py ask "question"[/cyan]      Ask a one-shot question  
   [cyan]python app.py chat[/cyan]                Start interactive chat
   [cyan]python app.py status[/cyan]              Show database statistics
@@ -479,6 +509,7 @@ def main():
 [bold]Examples:[/bold]
 
   python app.py index data/CIL.pdf
+  python app.py index-youtube "https://www.youtube.com/watch?v=VIDEO_ID"
   python app.py ask "Where is Coal India Limited's corporate headquarters?"
   python app.py inspect CIL.pdf
   python app.py remove CIL.pdf
@@ -491,6 +522,13 @@ def main():
     if command == "index":
         # No path given → show the picker instead of erroring out.
         cmd_index(sys.argv[2] if len(sys.argv) > 2 else None)
+
+    elif command == "index-youtube":
+        if len(sys.argv) < 3:
+            console.print("[red]❌ Please provide a YouTube video or playlist URL.[/red]")
+            console.print("   Usage: python app.py index-youtube <url>")
+            sys.exit(1)
+        cmd_index_youtube(sys.argv[2])
 
     elif command == "ask":
         if len(sys.argv) < 3:
@@ -522,7 +560,10 @@ def main():
 
     else:
         console.print(f"[red]❌ Unknown command: {command}[/red]")
-        console.print("   Valid commands: index, ask, chat, status, inspect, remove, reset")
+        console.print(
+            "   Valid commands: index, index-youtube, ask, chat, status, "
+            "inspect, remove, reset"
+        )
         sys.exit(1)
 
 

@@ -11,8 +11,8 @@ from config import DATA_DIR
 
 app = FastAPI(
     title="Hindi Textbook RAG API",
-    description="Index Hindi/English PDFs and ask grounded questions.",
-    version="1.0.0",
+    description="Index PDFs and YouTube transcripts, then ask grounded questions.",
+    version="1.1.0",
 )
 
 
@@ -24,6 +24,14 @@ class IndexRequest(BaseModel):
     filename: str = Field(
         min_length=1,
         description="PDF filename located inside the project's data directory.",
+    )
+
+
+class YouTubeIndexRequest(BaseModel):
+    url: str = Field(
+        min_length=1,
+        max_length=2000,
+        description="YouTube video or playlist URL.",
     )
 
 
@@ -88,3 +96,15 @@ async def index_pdf(request: IndexRequest) -> dict:
         "chunks_indexed": chunks,
         "deduplicated": chunks == 0 and bool(pages),
     }
+
+
+@app.post("/index/youtube")
+async def index_youtube(request: YouTubeIndexRequest) -> dict:
+    from youtube_ingester import ingest_youtube
+
+    try:
+        return await run_in_threadpool(ingest_youtube, request.url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

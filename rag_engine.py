@@ -23,13 +23,13 @@ console = Console()
 _client = get_client()
 
 # System prompt for the LLM
-SYSTEM_PROMPT = """You are a helpful study assistant for English textbooks. Your job is to help students learn and understand the content from their books.
+SYSTEM_PROMPT = """You are a helpful study assistant. Your job is to help students learn and understand indexed PDFs and YouTube transcripts.
 
 RULES:
-1. Answer ONLY based on the provided context from the textbook.
+1. Answer ONLY based on the provided context from indexed sources.
 2. If the context doesn't contain enough information, say so honestly.
 3. Reply in the SAME LANGUAGE as the student's question (Hindi or English).
-4. Always mention the page number(s) where you found the information.
+4. Cite PDF page number(s) or YouTube timestamp(s), matching the provided labels.
 5. Explain concepts clearly, as if teaching a student.
 6. If asked to summarize, provide a clear and concise summary.
 7. Use bullet points and formatting to make answers easy to read."""
@@ -57,11 +57,16 @@ def _build_user_message(chunks: list[dict], question: str) -> str:
     This lives in one place because the two callers previously built the same
     prompt independently and had already drifted apart.
     """
+    def label(chunk: dict) -> str:
+        if chunk.get("source_type") == "youtube":
+            timestamp = chunk.get("timestamp") or "0:00"
+            return f"{chunk['source']} · Timestamp {timestamp}"
+        return f"{chunk['source']} · पृष्ठ {chunk['page']} / Page {chunk['page']}"
+
     context = "\n\n---\n\n".join(
-        f"[{c['source']} · पृष्ठ {c['page']} / Page {c['page']}]:\n{c['text']}"
-        for c in chunks
+        f"[{label(chunk)}]:\n{chunk['text']}" for chunk in chunks
     )
-    return f"""Context from the textbook:
+    return f"""Context from indexed sources:
 
 {context}
 
@@ -115,15 +120,19 @@ def ask(question: str, chat_history: list = None, show_sources: bool = True) -> 
     if show_sources:
         console.print("\n[dim]📚 Sources found:[/dim]")
         for chunk in chunks:
-            page = chunk["page"]
             source = chunk["source"]
             # escape(): the preview is raw OCR text, and console.print reads
             # `[...]` as style markup — an unescaped bracket would be eaten
             # (or raise MarkupError) instead of being shown.
             preview = escape(chunk["text"][:80].replace("\n", " ")) + "..."
+            location = (
+                f"Timestamp {chunk.get('timestamp') or '0:00'}"
+                if chunk.get("source_type") == "youtube"
+                else f"पृष्ठ/Page {chunk['page']}"
+            )
             console.print(
                 f"   • [cyan]{escape(source)}[/cyan] "
-                f"[dim]पृष्ठ/Page {page}:[/dim] [dim]{preview}[/dim]"
+                f"[dim]{location}:[/dim] [dim]{preview}[/dim]"
             )
         console.print()
 
@@ -219,6 +228,24 @@ def ask_with_sources(question: str, top_k: int = None) -> dict:
             "distance": c["distance"],
             "extraction_method": c.get("extraction_method", "unknown"),
             "preview": c["text"][:120].replace("\n", " "),
+            "source_type": c.get("source_type", "unknown"),
+            "timestamp": c.get("timestamp"),
+            "start_seconds": c.get("start_seconds"),
+            "end_seconds": c.get("end_seconds"),
+            "source_url": c.get("source_url"),
+            "video_id": c.get("video_id"),
+            "video_title": c.get("video_title"),
+            "channel_name": c.get("channel_name"),
+            "channel_id": c.get("channel_id"),
+            "duration_seconds": c.get("duration_seconds"),
+            "upload_date": c.get("upload_date"),
+            "transcript_language": c.get("transcript_language"),
+            "transcript_language_code": c.get("transcript_language_code"),
+            "transcript_is_generated": c.get("transcript_is_generated"),
+            "playlist_id": c.get("playlist_id"),
+            "playlist_title": c.get("playlist_title"),
+            "playlist_index": c.get("playlist_index"),
+            "playlist_url": c.get("playlist_url"),
         }
         for c in chunks
     ]

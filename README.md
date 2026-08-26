@@ -94,6 +94,25 @@ This will:
 - Split into boundary-aware, searchable chunks
 - Create embeddings and store them in ChromaDB
 
+### 5b. Index a YouTube video or playlist
+
+No YouTube API key is required, and the application does not download media:
+
+```bash
+python app.py index-youtube "https://www.youtube.com/watch?v=VIDEO_ID"
+python app.py index-youtube "https://www.youtube.com/playlist?list=PLAYLIST_ID"
+```
+
+For playlists, accessible videos are indexed independently. Videos that are
+private, unavailable, or have no transcript are skipped and reported without
+discarding successful videos. Transcript selection prefers manually created
+captions over auto-generated captions, with Hindi then English preferred within
+each category.
+
+Each transcript chunk stores its start/end timestamps, video ID and title,
+channel, source URL, transcript language/type, and playlist identity/position
+when applicable.
+
 ### 6. Ask Questions!
 
 **One-shot question** — ask in English or Hindi, about whatever you indexed:
@@ -121,6 +140,7 @@ python app.py chat
 |---|---|
 | `python app.py index` | Pick a PDF from `data/` and index it |
 | `python app.py index <pdf>` | Index a PDF for searching |
+| `python app.py index-youtube <url>` | Index a YouTube video or playlist transcript |
 | `python app.py ask "question"` | Ask a one-shot question |
 | `python app.py chat` | Start interactive chat |
 | `python app.py status` | Show indexed documents, pages, and chunk counts |
@@ -154,6 +174,13 @@ Then open **http://127.0.0.1:8000/docs** for interactive Swagger docs.
 | `GET` | `/health` | Status + index statistics |
 | `POST` | `/ask` | Ask a grounded question — returns the answer **and its sources** |
 | `POST` | `/index` | Index a PDF already sitting in `data/` |
+| `POST` | `/index/youtube` | Index a YouTube video or playlist URL |
+
+```bash
+curl -X POST http://127.0.0.1:8000/index/youtube \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.youtube.com/watch?v=VIDEO_ID"}'
+```
 
 ```bash
 curl -X POST http://127.0.0.1:8000/ask \
@@ -180,6 +207,11 @@ Your Question → Gemini Embedding → Similarity Search → Top 5 Chunks
                                                                         ↓
                                             Gemini Flash + Context → Answer!
 ```
+
+YouTube follows a parallel ingestion path: `yt-dlp` reads video/playlist
+metadata, `youtube-transcript-api` retrieves timestamped captions, and the
+resulting chunks enter the same Gemini embedding and ChromaDB pipeline. Answers
+cite transcript timestamps instead of PDF page numbers.
 
 `*` Embeddings and answer generation use the backend selected by `LLM_BACKEND`.
 
@@ -254,6 +286,7 @@ RAG/
 ├── ocr_engine.py       # PDF → text, per-page routing + Tesseract OCR
 ├── text_quality.py     # Scores the text layer to pick direct vs OCR
 ├── indexer.py          # Text → chunks → embeddings → ChromaDB
+├── youtube_ingester.py # YouTube metadata + transcript → timestamped chunks
 ├── retriever.py        # Semantic search in ChromaDB
 ├── rag_engine.py       # Retrieve + Generate answers
 ├── evaluate.py         # Retrieval evaluation harness (hit rate, MRR, source precision)

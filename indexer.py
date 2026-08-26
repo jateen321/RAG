@@ -77,6 +77,21 @@ def _document_id(source_name: str, source_type: str = "pdf") -> str:
     return hashlib.sha256(key.encode()).hexdigest()[:12]
 
 
+def _chroma_metadata(values: dict) -> dict:
+    """Return metadata values Chroma can store.
+
+    Chroma accepts scalar values only. Dropping ``None`` and stringifying any
+    unexpected value here keeps source adapters from leaking lists/dicts into
+    the database and failing after the expensive embedding step.
+    """
+    scalar = (str, int, float, bool)
+    return {
+        key: value if isinstance(value, scalar) else str(value)
+        for key, value in values.items()
+        if value is not None
+    }
+
+
 def _content_hash(text: str) -> str:
     """Fingerprint of a chunk's text. Two chunks with the same hash hold
     identical content — useful for spotting duplicates and for telling whether
@@ -245,6 +260,96 @@ def _get_collection():
     return collection
 
 
+def index_chunks(
+    chunks: list[dict],
+    source_name: str,
+    source_type: str,
+    *,
+    document_key: str | None = None,
+    source_metadata: dict | None = None,
+) -> int:
+    """Embed and store already-created chunks from any source adapter.
+
+    Every chunk must contain ``text`` and ``chunk_index``. Location-specific
+    fields (for example ``page_number`` or ``start_seconds``) are stored as
+    metadata and passed through retrieval. ``document_key`` is the stable
+    identity of the source; YouTube uses a video ID so title changes replace
+    the same document instead of creating a duplicate.
+    """
+    if not chunks:
+        console.print("[red]❌ No text chunks created.[/red]")
+        return 0
+
+    console.print(f"   Created [bold]{len(chunks)}[/bold] chunks")
+    console.print("\n[bold]🧠 Generating embeddings...[/bold]")
+    texts = [chunk["text"] for chunk in chunks]
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Embedding chunks", total=len(texts))
+        embeddings = _embed_texts(
+            texts, on_progress=lambda n: progress.update(task, advance=n)
+        )
+
+    console.print("\n[bold]💾 Storing in vector database...[/bold]")
+    collection = _get_collection()
+    before = collection.count()
+    doc_id = _document_id(document_key or source_name, source_type)
+    common_metadata = _chroma_metadata(source_metadata or {})
+
+    ids = [
+        (
+            f"{doc_id}_p{chunk['page_number']:04d}_c{chunk['chunk_index']:03d}"
+            if chunk.get("page_number") is not None
+            else f"{doc_id}_c{chunk['chunk_index']:05d}"
+        )
+        for chunk in chunks
+    ]
+    for i in range(0, len(chunks), 100):
+        batch_chunks = chunks[i:i + 100]
+        collection.upsert(
+            ids=ids[i:i + 100],
+            embeddings=embeddings[i:i + 100],
+            documents=[chunk["text"] for chunk in batch_chunks],
+            metadatas=[
+                _chroma_metadata({
+                    **common_metadata,
+                    **{k: v for k, v in chunk.items() if k != "text"},
+                    "source_type": source_type,
+                    "document_id": doc_id,
+                    "source_name": source_name,
+                })
+                for chunk in batch_chunks
+            ],
+        )
+
+    # Upsert replaces current positions but cannot remove positions left over
+    # from an older, longer extraction. Remove those only after all new chunks
+    # are safely written; an embedding failure therefore leaves the old source
+    # untouched.
+    stored_ids = collection.get(where={"document_id": doc_id}, include=[])["ids"]
+    current_ids = set(ids)
+    stale_ids = [stored_id for stored_id in stored_ids if stored_id not in current_ids]
+    if stale_ids:
+        collection.delete(ids=stale_ids)
+
+    total_in_db = collection.count()
+    added = total_in_db - before
+    console.print(f"\n[green]✅ Indexed {len(chunks)} chunks![/green]")
+    console.print(f"   📊 Total chunks in database: {total_in_db}")
+    if added != len(chunks):
+        console.print(
+            f"   [dim]ℹ️  {max(added, 0)} new; existing chunks for this "
+            "document were replaced.[/dim]"
+        )
+    return len(chunks)
+
+
 def index_document(
     pages_text: list[dict], source_name: str, source_type: str = "pdf"
 ) -> int:
@@ -276,83 +381,19 @@ def index_document(
             chunk["extraction_method"] = method
         all_chunks.extend(chunks)
 
-    if not all_chunks:
-        console.print("[red]❌ No text chunks created. The PDF might be empty.[/red]")
-        return 0
+    return index_chunks(all_chunks, source_name, source_type)
 
-    console.print(f"   Created [bold]{len(all_chunks)}[/bold] chunks from {len(pages_text)} pages")
 
-    # Step 2: Embed chunks
-    console.print("\n[bold]🧠 Generating embeddings (free Gemini API)...[/bold]")
-    texts = [c["text"] for c in all_chunks]
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Embedding chunks", total=len(texts))
-        # Hand the WHOLE list to _embed_texts and let it batch. Slicing here and
-        # passing batch_size=len(batch) is what disabled its inter-batch pacing.
-        embeddings = _embed_texts(
-            texts, on_progress=lambda n: progress.update(task, advance=n)
-        )
-
-    # Step 3: Store in ChromaDB
-    console.print("\n[bold]💾 Storing in vector database...[/bold]")
-    collection = _get_collection()
-    before = collection.count()
-
-    doc_id = _document_id(source_name, source_type)
-
-    # Add in batches (ChromaDB limit)
-    batch_size = 100
-    for i in range(0, len(all_chunks), batch_size):
-        batch_chunks = all_chunks[i:i + batch_size]
-        batch_embeddings = embeddings[i:i + batch_size]
-
-        # The id is derived from document + position, NOT from the chunk text.
-        # Hashing the text meant that re-extracting a page (a DPI change, an OCR
-        # fix) produced brand-new ids, so the old chunks were left behind and the
-        # index accumulated two generations of the same page. Position-derived
-        # ids + upsert make a re-index replace in place.
-        ids = [
-            f"{doc_id}_p{c['page_number']:04d}_c{c['chunk_index']:03d}"
-            for c in batch_chunks
-        ]
-
-        collection.upsert(
-            ids=ids,
-            embeddings=batch_embeddings,
-            documents=[c["text"] for c in batch_chunks],
-            metadatas=[{
-                "source_type": source_type,
-                "document_id": doc_id,
-                "source_name": source_name,
-                "page_number": c["page_number"],
-                "chunk_index": c["chunk_index"],
-                "extraction_method": c["extraction_method"],
-                "content_hash": c["content_hash"],
-            } for c in batch_chunks],
-        )
-
-    total_in_db = collection.count()
-    added = total_in_db - before
-    console.print(f"\n[green]✅ Indexed {len(all_chunks)} chunks![/green]")
-    console.print(f"   📊 Total chunks in database: {total_in_db}")
-
-    # Report what actually landed, not just what we tried to write. A re-index
-    # that replaces existing chunks legitimately adds 0 — but silence here is
-    # what let a no-op masquerade as success.
-    if added != len(all_chunks):
-        console.print(
-            f"   [dim]ℹ️  {added} new, {len(all_chunks) - added} replaced "
-            f"existing chunks for this document.[/dim]"
-        )
-
-    return len(all_chunks)
+def _find_document_id(source_name: str) -> str | None:
+    """Resolve a displayed source name to its stored document ID."""
+    metadatas = _get_collection().get(include=["metadatas"])["metadatas"] or []
+    matches = {
+        md.get("document_id")
+        for md in metadatas
+        if md and md.get("source_name", "").casefold() == source_name.casefold()
+    }
+    matches.discard(None)
+    return next(iter(matches)) if len(matches) == 1 else None
 
 
 def remove_document(source_name: str) -> int:
@@ -374,7 +415,9 @@ def remove_document(source_name: str) -> int:
         Number of chunks deleted (0 if that source isn't indexed).
     """
     collection = _get_collection()
-    doc_id = _document_id(source_name)
+    doc_id = _find_document_id(source_name)
+    if not doc_id:
+        return 0
 
     # Count first: delete(where=...) doesn't report how much it removed.
     matching = collection.get(where={"document_id": doc_id}, include=[])["ids"]
@@ -401,7 +444,9 @@ def get_document_chunks(source_name: str) -> list[dict]:
         'content_hash', 'chunk_id'}; empty if that document isn't indexed.
     """
     collection = _get_collection()
-    doc_id = _document_id(source_name)
+    doc_id = _find_document_id(source_name)
+    if not doc_id:
+        return []
     got = collection.get(
         where={"document_id": doc_id}, include=["documents", "metadatas"]
     )
@@ -416,6 +461,9 @@ def get_document_chunks(source_name: str) -> list[dict]:
             "chunk_index": md.get("chunk_index", 0),
             "extraction_method": md.get("extraction_method", "unknown"),
             "content_hash": md.get("content_hash", ""),
+            "source_type": md.get("source_type", "unknown"),
+            "start_seconds": md.get("start_seconds"),
+            "end_seconds": md.get("end_seconds"),
         })
 
     rows.sort(key=lambda r: (r["page_number"], r["chunk_index"]))
@@ -449,9 +497,11 @@ def get_stats() -> dict:
         pages_by_source: dict[str, set] = {}
         chunks_by_source: dict[str, int] = {}
         methods_by_source: dict[str, dict[str, int]] = {}
+        types_by_source: dict[str, str] = {}
         for md in metadatas:
             md = md or {}
             source = md.get("source_name", "unknown")
+            types_by_source[source] = md.get("source_type", "unknown")
             chunks_by_source[source] = chunks_by_source.get(source, 0) + 1
             page = md.get("page_number")
             if page is not None:
@@ -472,6 +522,7 @@ def get_stats() -> dict:
                 "first_page": pages[0] if pages else None,
                 "last_page": pages[-1] if pages else None,
                 "methods": methods_by_source.get(source, {}),
+                "source_type": types_by_source.get(source, "unknown"),
             })
 
         return {

@@ -21,3 +21,7 @@ uvicorn>=0.30           # ASGI server used to run the FastAPI app
 # ── Utilities ────────────────────────────────────────────────────────
 python-dotenv>=1.0      # load .env (import: dotenv)
 rich>=13.0              # pretty console output
+
+# ── YouTube transcript ingestion ─────────────────────────────────────
+youtube-transcript-api>=1.2,<2  # timestamped manual/automatic captions
+yt-dlp>=2025.1                  # video/playlist metadata; media is not downloaded

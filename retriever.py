@@ -82,6 +82,23 @@ def retrieve(query: str, top_k: int = None) -> list[dict]:
             "chunk_index": md.get("chunk_index"),
             "extraction_method": md.get("extraction_method", "unknown"),
             "content_hash": md.get("content_hash", ""),
+            "start_seconds": md.get("start_seconds"),
+            "end_seconds": md.get("end_seconds"),
+            "timestamp": md.get("timestamp"),
+            "source_url": md.get("source_url"),
+            "video_id": md.get("video_id"),
+            "video_title": md.get("video_title"),
+            "channel_name": md.get("channel_name"),
+            "channel_id": md.get("channel_id"),
+            "duration_seconds": md.get("duration_seconds"),
+            "upload_date": md.get("upload_date"),
+            "transcript_language": md.get("transcript_language"),
+            "transcript_language_code": md.get("transcript_language_code"),
+            "transcript_is_generated": md.get("transcript_is_generated"),
+            "playlist_id": md.get("playlist_id"),
+            "playlist_title": md.get("playlist_title"),
+            "playlist_index": md.get("playlist_index"),
+            "playlist_url": md.get("playlist_url"),
         })
 
     return retrieved
