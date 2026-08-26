@@ -336,7 +336,19 @@ before network and cold start are added.
 - Document citations need a safe file-serving route, not only a source name. Nested local
   PDF/TXT/MD sources now open without allowing paths outside `data/`.
 
-## 10. Embedding quota is TOKEN-bound, not request-bound (2026-08-26)
+## 10. Embedding quota: two metrics, and which one binds is your choice (2026-08-26)
+
+There are **two** enforced limits, and batch size decides which one you hit:
+
+| metric | triggered by | seen at |
+|---|---|---|
+| `online_prediction_requests_per_base_model` | many small requests | `EMBED_BATCH_SIZE = 20` |
+| `embed_content_input_tokens_per_minute_per_base_model` | few large requests | 250 x 1010 chars |
+
+This reconciles two readings that looked contradictory during the session. The
+token limit is the true ceiling; the request limit is one a small batch size
+walks into needlessly. An earlier version of this section asserted the quota was
+purely token-bound -- that was measured on oversized batches only.
 
 ### 🟢 Measured
 
@@ -411,6 +423,28 @@ Note the OCR cache did not help here: the router sent only **4 of 509** pages to
 Vision (`505 direct · 4 ocr`), so the loss was entirely in the stage that is not
 yet resumable. Making the embed loop checkpoint per batch makes *hitting* the
 limit cheap, which is more robust than trying never to hit it.
+
+### 🟢 Fixed, and verified on the file that failed
+
+`index_chunks` now stores each batch as soon as it is embedded, and a rerun
+re-embeds only what is missing. Chunk ids are already deterministic, so Chroma
+serves as its own checkpoint -- no second on-disk format to keep in sync.
+
+**Verification:** the same `मनुस्मृति-सम्पूर्ण.pdf` that died at 54% completed
+cleanly on the next run -- 1030 chunks, from cached OCR, at $0 Vision cost.
+Progress is now observable mid-document: during a 4842-chunk file the collection
+count rises continuously instead of staying frozen until the end.
+
+**One trap worth remembering.** The natural way to write the resume check --
+`already.get(chunk_id) != chunk.get("content_hash")` -- looks correct and is not.
+A missing id yields `None`, an absent `content_hash` yields `None`, and
+`None == None` marks an unstored chunk as already embedded, dropping it
+silently and forever. Resume must require POSITIVE evidence: id present, both
+hashes present, hashes equal.
+
+Partial documents also had to become detectable. Chunks now carry `chunk_total`
+and `indexed_file_names()` counts a document as indexed only when complete --
+otherwise a document killed partway would look done and never be finished.
 
 ### 🟢 Multi-region round-robin DOES multiply throughput -- tested
 
@@ -612,9 +646,21 @@ decide about thresholds, rerankers or embedding-model comparisons.
 - [x] ~~Collapse the duplicated context/prompt construction in `rag_engine`; make `ask`
       raise like `ask_with_sources`~~ — done, §6.6.
 - [ ] Pace / retry `retriever.retrieve`, or batch it in `evaluate.py` — §6.3.
-- [ ] Make the embedding loop resumable per batch — §10. A 429 at 54% currently
-      discards every batch already embedded and re-spends the token quota.
+- [x] ~~Make the embedding loop resumable per batch~~ — done, §10. Verified on the
+      file that had failed at 54%.
+- [ ] Raise `EMBED_BATCH_SIZE` from 20 — §10. At 20 the run hits the *request*
+      metric needlessly; a larger batch shifts it onto the token ceiling, which is
+      the real limit. API max is 250 instances.
+- [ ] Round-robin embeddings across regions — §10. Quota is per-region and vectors
+      are byte-identical across regions, so this is ~5x aggregate throughput.
+      Needs ADC with an explicit `location`; keep generation on its own client
+      rather than switching `llm_client.get_client()` wholesale.
+- [ ] Switch the embedding region away from `us-central1` — §11. It is among the
+      slowest from here (2692 ms vs 1216 ms for `asia-southeast1`).
 - [ ] `app.py` still stores the *typed* filename casing; `document_id` makes this harmless
       for identity, but `status` can display a name that differs from the file on disk.
-- [ ] Derive `COLLECTION_NAME` from the embedding model before any embedding-001 vs
-      embedding-2 comparison, or the two models' vectors mix in one collection.
+- [ ] Derive `COLLECTION_NAME` from the embedding model before any cross-model
+      comparison, or two models' vectors mix in one collection. Note the
+      embedding-001 vs embedding-2 comparison that originally motivated this is a
+      dead end (§10): `gemini-embedding-2` 404s on this project and cannot batch.
+      Multi-region round-robin is NOT affected — same model, byte-identical vectors.
