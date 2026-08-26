@@ -345,16 +345,26 @@ before network and cold start are added.
 (Vertex express mode, `gemini-embedding-001`, `LLM_BACKEND=vertex`.)
 
 **The value: ~100,000 input tokens/minute.** Not published anywhere reachable --
-`serviceusage.googleapis.com` returns 403 (`PreconditionFailure` subject 110002,
-i.e. no billing account), and the 429 body carries NO numeric limit. Measured by
-bisection instead: a 250 x 1010-char request (~99,400 tokens at the measured
-2.54 chars/token for Devanagari) succeeds, and the very next request fails
-regardless of size -- so one such request consumes essentially the whole window.
+`serviceusage.googleapis.com` returns 403 and the 429 body carries NO numeric
+limit. Measured by bisection instead: a 250 x 1010-char request (~99,400 tokens
+at the measured 2.54 chars/token for Devanagari) succeeds, and the very next
+request fails regardless of size -- so one such request consumes essentially the
+whole window.
 
-**Raising it requires enabling billing on the project.** Express mode is the free
-tier; the 403 above confirms no billing account is attached. Quota increases go
-through Console -> IAM & Admin -> Quotas, filtered to `aiplatform.googleapis.com`,
-and are unavailable while the project is billing-free.
+**It is NOT an express-mode artifact.** Tested directly: a second client built
+with ADC + explicit `project`/`location` (standard Vertex, `us-central1`, not
+express) hits the *same* metric at the *same* threshold -- one 99,400-token
+request accepted, the next rejected. Switching auth from `VERTEX_API_KEY` to a
+service account would gain nothing, so don't spend time on it. The limit is the
+project's real regional quota.
+
+**Correction on an earlier reading.** The `serviceusage` 403 was first attributed
+here to "no billing account" (`PreconditionFailure` subject 110002). That was
+wrong: billing IS enabled on the project. The actual cause is that
+`cloudbilling.googleapis.com` and `serviceusage.googleapis.com` are not enabled
+for this principal, so the quota simply cannot be read via API -- an
+API-activation issue, not a billing one. Read it in the Console instead:
+IAM & Admin -> Quotas, filtered to `aiplatform.googleapis.com`.
 
 **Caveat on the 429 body (Vertex express):** it contains only
 `{code, message, status}` -- no `google.rpc.QuotaFailure`, no `RetryInfo`. The
