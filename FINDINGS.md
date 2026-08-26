@@ -8,7 +8,7 @@ Consolidated findings for the Hindi/English RAG app. Each result is tagged with 
   ported into this repo. *Action: port the script/results back to make it reproducible here.*
 - ⚪ **Hypothesis** — believed/expected, not yet measured.
 
-Last updated: 2026-08-22.
+Last updated: 2026-08-26.
 
 ---
 
@@ -315,6 +315,16 @@ Cloud Vision `DOCUMENT_TEXT_DETECTION` and Tesseract-on-Cloud-Run. Both need API
 on the GCP project (`cloudexplore-502215`) and will incur charges. Only 86.4% of local
 wall time is OCR, so relocating that compute cannot beat a ~1.16× ceiling on this document
 before network and cold start are added.
+
+## 8. Upload and folder ingestion (2026-08-26)
+
+### 🟢 Repo-verified
+- A file on disk is **not proof that it is indexed**. Upload checks the vector index first;
+  an existing but unindexed file can now be indexed instead of returning `409`.
+- Folder upload keeps each file's relative path, accepts top-level PDF/TXT/MD files, and
+  skips nested, unsupported, or over-500 MB files.
+- Folder selection depends on browser-provided `webkitRelativePath`. A native label linked
+  to the directory input is more reliable than programmatically clicking a hidden input.
 
 ## Main conclusion
 *(Revised 2026-08-22.)* The earlier conclusion — "retrieval experimentation is no longer
