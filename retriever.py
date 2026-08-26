@@ -11,12 +11,12 @@ from config import (
     EMBEDDING_MODEL, TOP_K,
     CHROMA_DB_PATH, COLLECTION_NAME,
 )
-from llm_client import get_client
+from embedding_client import get_embedding_client
 
 console = Console()
 
-# Initialize Gemini client (backend chosen in config: Developer API or Vertex)
-_client = get_client()
+# Keep the familiar SDK-shaped interface while rotating Vertex embeddings.
+_client = get_embedding_client()
 
 
 def retrieve(query: str, top_k: int = None) -> list[dict]:

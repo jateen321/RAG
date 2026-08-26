@@ -98,6 +98,31 @@ EMBED_BACKOFF_BASE_S = 10   # First retry waits this; each retry doubles it
 EMBED_PACE_MAX_S = 30.0     # Ceiling for the adaptive delay
 EMBED_PACE_DECAY_AFTER = 5  # Clean batches needed before easing the delay back
 
+# Vertex embedding requests can rotate through independent regional quotas.
+# This is active only with LLM_BACKEND=vertex and gemini-embedding-001.
+# LLM_BACKEND=developer never sends generation or embeddings to Vertex.
+EMBEDDING_REGION_ROTATION_ENABLED = (
+    os.getenv("EMBEDDING_REGION_ROTATION_ENABLED", "1").strip().lower()
+    not in {"0", "false", "no"}
+)
+VERTEX_EMBEDDING_PROJECT_ID = os.getenv(
+    "VERTEX_EMBEDDING_PROJECT_ID", "cloudexplore-502215"
+).strip()
+VERTEX_EMBEDDING_REGIONS = tuple(
+    region.strip()
+    for region in os.getenv(
+        "VERTEX_EMBEDDING_REGIONS",
+        "asia-south1,asia-southeast1,asia-east1,asia-northeast1,"
+        "us-west1,us-central1,us-east4,europe-west4,europe-west1",
+    ).split(",")
+    if region.strip()
+)
+if EMBEDDING_REGION_ROTATION_ENABLED and not VERTEX_EMBEDDING_REGIONS:
+    raise ValueError("VERTEX_EMBEDDING_REGIONS must contain at least one region.")
+VERTEX_EMBEDDING_TIMEOUT_S = float(
+    os.getenv("VERTEX_EMBEDDING_TIMEOUT_S", "20")
+)
+
 # ── Retrieval Configuration ───────────────────────────────────────────
 TOP_K = 5                 # Number of chunks to retrieve per query
 

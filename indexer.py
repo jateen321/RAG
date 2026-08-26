@@ -21,12 +21,13 @@ from config import (
     EMBED_BATCH_SIZE, EMBED_BATCH_DELAY_S, EMBED_MAX_ATTEMPTS,
     EMBED_BACKOFF_BASE_S, EMBED_PACE_MAX_S, EMBED_PACE_DECAY_AFTER,
 )
-from llm_client import get_client
+from embedding_client import get_embedding_client
 
 console = Console()
 
-# Initialize Gemini client (backend chosen in config: Developer API or Vertex)
-_client = get_client()
+# Embeddings have their own client so Vertex regional routing cannot affect
+# answer generation.
+_client = get_embedding_client()
 
 
 # Sentence-ending marks across our scripts:
