@@ -178,6 +178,32 @@ still works; the proactive 1 s spacing does not.
 which is why a 20-question `evaluate.py` run trips a burst-rate quota while indexing the
 same corpus succeeds. The limit hit is requests-per-minute, not volume.
 
+**Confirmed in production 2026-08-24, then fixed.** Indexing `essence-of-hinduism.pdf`
+(566 chunks, 29 batches) died with an uncaught
+`429 RESOURCE_EXHAUSTED … online_prediction_requests_per_base_model`. Two separate
+defects, not one:
+1. The pacing sleep never ran (double-batching, above).
+2. The single retry was **not itself inside a `try`**, so a second 429 escaped as a raw
+   traceback and abandoned the document. One fixed 30 s wait cannot reliably clear a
+   per-minute window that has already been saturated.
+
+Fix: `_embed_batch()` retries with exponential backoff (10 → 20 → 40 → 80 s,
+`EMBED_MAX_ATTEMPTS=5`) and raises a clear RuntimeError if still exhausted;
+`_embed_texts()` now receives the full list and does its own batching, so
+`EMBED_BATCH_DELAY_S` genuinely fires between batches. Non-quota errors are re-raised
+immediately rather than retried. Verified with a fake client: pacing sleeps now equal
+batches−1 at every size (20→0, 45→2, 91→4, 200→9, 1459→72), backoff doubles, a transient
+429 recovers, and a `ValueError` raises without retrying.
+
+**Cost of the pacing:** 72 s across the entire 1877-page corpus — negligible against one
+429 that discards a whole document's embeddings.
+
+**Method note:** the first verification reported exactly 2× the expected sleeps. The cause
+was a leftover `time.sleep(1)` from the original implementation sitting directly below the
+new pacing block — the edit added the fix without removing what it replaced. Found by
+patching `time.sleep` with a stack-capturing stub and printing call sites, which named
+both lines immediately. Counting an effect is not the same as knowing what produced it.
+
 ### 6.4 🟢 Chunk metadata rebuilt
 Was `{page, source}`. Now: `source_type`, `document_id`, `source_name`, `page_number`,
 `chunk_index`, `extraction_method`, `content_hash`. `extraction_method` was **already
@@ -248,6 +274,47 @@ instead.
 chunk with page, index, length, extraction method and content hash, and **highlights the
 region carried over from the previous chunk**. Built because 6.1 went undetected for weeks
 purely because nothing rendered the stored text.
+
+## 7. OCR backend benchmarking (2026-08-22)
+
+### 7.1 🟢 Local Tesseract baseline
+`benchmark_ocr.py`, `bhagya-bada-ya-karm.pdf` (12 pages, fully scanned), 300 DPI, M-series
+Mac. Saved to `evaluation/ocr_bench_tesseract.json`.
+
+| Metric | Value |
+|---|---|
+| Wall total | **32.8 s** for 12 pages |
+| OCR | 28.3 s (**86.4%**) |
+| Rasterization | 4.4 s (13.6%) |
+| Median OCR / page | 2.57 s |
+| Avg page | 7.11 MP, **4.0 MB PNG** |
+
+### 7.2 🟢 The page image size, not the compute, is the constraint on a hosted OCR API
+At 300 DPI a page renders to **~4 MB of PNG**. Sending 12 pages to a hosted API means
+uploading ~48 MB. At a 10 Mbps uplink that is ≈38 s of upload alone — **longer than the
+entire local run (32.8 s)**. Any "move OCR to the cloud for speed" argument has to clear
+that bar first, and neither compute location changes it. Implications before deploying
+anything: send JPEG rather than PNG, or hand the API the PDF directly and skip local
+rasterization entirely. Choosing the transport matters more here than choosing the host.
+
+### 7.3 🟢 Tesseract time tracks text density, not pixel count
+Every page is ~7 MP, but OCR time ranges **0.59 s → 3.38 s**, correlating with character
+count (83 chars → 2032 chars), not with page area. Rasterization is the pixel-bound half
+and is roughly constant. Consequence: per-page timings cannot be extrapolated across
+documents of different text density, so a benchmark must state which document it used.
+
+### 7.4 🟢 Local Tesseract has no cold-start penalty
+Page 1 (2.21 s) was *faster* than the median (2.96 s) — it is a sparse cover page.
+`pytesseract` shells out to the binary with no model preload, unlike EasyOCR's ~100 MB
+load. This matters for the comparison: a scale-to-zero Cloud Run service **would** pay
+container start-up, so cold and warm requests must be reported separately rather than
+averaged.
+
+### 7.5 ⚪ Not yet measured
+Cloud Vision `DOCUMENT_TEXT_DETECTION` and Tesseract-on-Cloud-Run. Both need APIs enabled
+on the GCP project (`cloudexplore-502215`) and will incur charges. Only 86.4% of local
+wall time is OCR, so relocating that compute cannot beat a ~1.16× ceiling on this document
+before network and cold start are added.
 
 ## Main conclusion
 *(Revised 2026-08-22.)* The earlier conclusion — "retrieval experimentation is no longer
