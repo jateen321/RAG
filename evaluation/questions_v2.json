@@ -4,79 +4,419 @@
     "language": "hi",
     "category": "factual",
     "question": "कुशीनारा प्राचीन काल में किस नाम से एक महान नगर था और वह किस राजा की राजधानी थी?",
-    "expected_sources": ["data/A_History_of_Ancient_and_Early_Medieval_India.pdf"],
-    "expected_pages": [307],
-    "answer_keywords": ["कुशावती", "महासुदस्सन"],
-    "evidence": "बहुत पहले कुशीनारा एक महान नगर था, जिसका नाम कुशावती था। वह महासुदस्सन नामक राजा की राजधानी थी।"
+    "expected_sources": [
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      307
+    ],
+    "answer_keywords": [
+      "कुशावती",
+      "महासुदस्सन"
+    ],
+    "evidence": "बहुत पहले कुशीनारा एक महान नगर था, जिसका नाम कुशावती था। वह महासुदस्सन नामक राजा की राजधानी थी।",
+    "match": "page"
   },
   {
     "id": "hist-02-hi",
     "language": "hi",
     "category": "factual",
     "question": "बिहार के मुजफ्फरपुर जिले के किस स्थान को प्राचीन वैशाली के रूप में चिन्हित किया गया है, और वह किसकी राजधानी थी?",
-    "expected_sources": ["data/A_History_of_Ancient_and_Early_Medieval_India.pdf"],
-    "expected_pages": [336],
-    "answer_keywords": ["बसार", "लिच्छवि"],
-    "evidence": "बिहार के मुजफ्फरपुर जिला में स्थित बसार को प्राचीन वैशाली के रूप में चिन्हित किया गया है। यह लिच्छवियों और वज्जि गण संघ की राजधानी थी"
+    "expected_sources": [
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      336
+    ],
+    "answer_keywords": [
+      "बसार",
+      "लिच्छवि"
+    ],
+    "evidence": "बिहार के मुजफ्फरपुर जिला में स्थित बसार को प्राचीन वैशाली के रूप में चिन्हित किया गया है। यह लिच्छवियों और वज्जि गण संघ की राजधानी थी",
+    "match": "page"
   },
   {
     "id": "hist-03-en",
     "language": "en",
     "category": "factual",
     "question": "According to the Sangam poems, who was the last Chera ruler recorded, and against whom did he wage successful wars?",
-    "expected_sources": ["data/A_History_of_Ancient_and_Early_Medieval_India.pdf"],
-    "expected_pages": [449],
-    "answer_keywords": ["Chera", "Chola", "Pandya"],
-    "evidence": "संगम काव्यों में जिस अंतिम चेर शासक का नाम दर्ज है वह कुदको इलनजेरल इरमपोरई है। उसने चोलों और पांड्यों के विरुद्ध सफल युद्ध किए।"
+    "expected_sources": [
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      449
+    ],
+    "answer_keywords": [
+      "Chera",
+      "Chola",
+      "Pandya"
+    ],
+    "evidence": "संगम काव्यों में जिस अंतिम चेर शासक का नाम दर्ज है वह कुदको इलनजेरल इरमपोरई है। उसने चोलों और पांड्यों के विरुद्ध सफल युद्ध किए।",
+    "match": "page"
   },
   {
     "id": "arth-01-hi",
     "language": "hi",
     "category": "factual",
     "question": "कौटिल्य के अर्थशास्त्र के अनुसार राजा को राजकार्य के लिए दिन और रात को कितने भागों में बाँटना चाहिए?",
-    "expected_sources": ["data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"],
-    "expected_pages": [140],
-    "answer_keywords": ["आठ"],
-    "evidence": "वह दिन और रात को आठ-आठ घड़ियों में बाँट दे"
+    "expected_sources": [
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      140
+    ],
+    "answer_keywords": [
+      "आठ"
+    ],
+    "evidence": "वह दिन और रात को आठ-आठ घड़ियों में बाँट दे",
+    "match": "page"
   },
   {
     "id": "arth-02-hi",
     "language": "hi",
     "category": "factual",
     "question": "अर्थशास्त्र के अनुसार चान्द्रमास और नक्षत्र-मास कितने दिन-रात के होते हैं?",
-    "expected_sources": ["data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"],
-    "expected_pages": [262],
-    "answer_keywords": ["साढ़े उनतीस", "सत्ताईस"],
-    "evidence": "साढ़े उनतीस दिन-रात का एक चान्द्रमास होता है । सत्ताईस दिन-रात का एक नक्षत्र- मास होता है।"
+    "expected_sources": [
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      262
+    ],
+    "answer_keywords": [
+      "साढ़े उनतीस",
+      "सत्ताईस"
+    ],
+    "evidence": "साढ़े उनतीस दिन-रात का एक चान्द्रमास होता है । सत्ताईस दिन-रात का एक नक्षत्र- मास होता है।",
+    "match": "page"
   },
   {
     "id": "arth-03-en",
     "language": "en",
     "category": "factual",
     "question": "In the Arthasastra, how many days long is the month used for paying staff assigned to the service of elephants?",
-    "expected_sources": ["data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"],
-    "expected_pages": [262],
-    "answer_keywords": ["40", "forty", "elephant"],
-    "evidence": "हाथियों की सेवा में नियुक्ति कर्मचारियों का एक महीना, चालीस दिन-रात का होता है ।"
+    "expected_sources": [
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      262
+    ],
+    "answer_keywords": [
+      "40",
+      "forty",
+      "elephant"
+    ],
+    "evidence": "हाथियों की सेवा में नियुक्ति कर्मचारियों का एक महीना, चालीस दिन-रात का होता है ।",
+    "match": "page"
   },
   {
     "id": "gita-01-hi",
     "language": "hi",
     "category": "factual",
     "question": "श्रीमद्भगवद्गीता के तेरहवें अध्याय का नाम क्या है और उसमें किन दो तत्त्वों का विभाग किया गया है?",
-    "expected_sources": ["SRIMAD-BHAGAVAD-GITA.pdf"],
-    "expected_pages": [301],
-    "answer_keywords": ["क्षेत्र", "क्षेत्रज्ञ"],
-    "evidence": "इसलिये इसका नाम 'क्षेत्रक्षेत्रज्ञविभागयोग रखा गया है।"
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      301
+    ],
+    "answer_keywords": [
+      "क्षेत्र",
+      "क्षेत्रज्ञ"
+    ],
+    "evidence": "इसलिये इसका नाम 'क्षेत्रक्षेत्रज्ञविभागयोग रखा गया है।",
+    "match": "page"
   },
   {
     "id": "gita-02-hi",
     "language": "hi",
     "category": "factual",
     "question": "इस संस्करण के अनुसार गीता का रचनाकाल कम से कम कितने वर्ष पूर्व माना जाता है?",
-    "expected_sources": ["SRIMAD-BHAGAVAD-GITA.pdf"],
-    "expected_pages": [10],
-    "answer_keywords": ["पांच सहस्र"],
-    "evidence": "गीता का रचनाकाल कम से कम पांच सहस्र वर्ष पूर्व तो माना ही जाता है"
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      10
+    ],
+    "answer_keywords": [
+      "पांच सहस्र"
+    ],
+    "evidence": "गीता का रचनाकाल कम से कम पांच सहस्र वर्ष पूर्व तो माना ही जाता है",
+    "match": "page"
+  },
+  {
+    "id": "ess-01-en",
+    "language": "en",
+    "category": "factual",
+    "question": "In this text, what does the author say cow protection means, and why does he consider the cow to have been selected?",
+    "match": "page",
+    "expected_sources": [
+      "data/essence-of-hinduism.pdf",
+      "essence-of-hinduism.pdf"
+    ],
+    "expected_pages": [
+      55
+    ],
+    "answer_keywords": [
+      "cow",
+      "protection",
+      "mother"
+    ],
+    "evidence": "Cow protection to me is one of the most wonderful phenomena in human evolution. It takes the human being beyond his species."
+  },
+  {
+    "id": "ess-02-en",
+    "language": "en",
+    "category": "factual",
+    "question": "To which river does the author compare Hinduism, and what point is he making with that comparison?",
+    "match": "page",
+    "expected_sources": [
+      "data/essence-of-hinduism.pdf",
+      "essence-of-hinduism.pdf"
+    ],
+    "expected_pages": [
+      27
+    ],
+    "answer_keywords": [
+      "Ganges",
+      "source",
+      "impurities"
+    ],
+    "evidence": "Hinduism is like the Ganges pure and unsullied at its source, but taking in its course the impurities in the way."
+  },
+  {
+    "id": "ess-03-en",
+    "language": "en",
+    "category": "interpretive",
+    "question": "How does the author interpret the fight described in the Bhagavad Gita, and what do the Pandavas and Kauravas represent?",
+    "match": "page",
+    "expected_sources": [
+      "data/essence-of-hinduism.pdf",
+      "essence-of-hinduism.pdf"
+    ],
+    "expected_pages": [
+      169
+    ],
+    "answer_keywords": [
+      "spiritual",
+      "good",
+      "evil"
+    ],
+    "evidence": "The fight is there, but the fight as it is going on within. The Pandavas and Kauravas are the forces of good and evil within."
+  },
+  {
+    "id": "panc-01-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "पंचतंत्र की कथा में चार मित्रों को यात्रा के दौरान क्रमशः किन-किन धातुओं की खानें मिलीं?",
+    "match": "page",
+    "expected_sources": [
+      "panchatantra.pdf"
+    ],
+    "expected_pages": [
+      182
+    ],
+    "answer_keywords": [
+      "ताँबे",
+      "चाँदी",
+      "सोने"
+    ],
+    "evidence": "पीछे ताँबे की खान मिली थी। यहाँ चाँदी की खान मिली है; निश्चय ही आगे सोने की खान मिलेगी।"
+  },
+  {
+    "id": "panc-02-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "कछुए मन्थरक को व्याध से छुड़ाने के लिए उसके मित्रों ने क्या उपाय सोचा?",
+    "match": "page",
+    "expected_sources": [
+      "panchatantra.pdf"
+    ],
+    "expected_pages": [
+      99
+    ],
+    "answer_keywords": [
+      "चित्राँग",
+      "व्याध",
+      "हिरण्यक"
+    ],
+    "evidence": "चित्राँग व्याध के मार्ग में तालाब के किनारे जाकर लेट जाए।"
+  },
+  {
+    "id": "panc-03-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "पंचतंत्र की कथा में हाथियों के गजराज का नाम क्या था और उसने पानी के लिए क्या सुझाया?",
+    "match": "page",
+    "expected_sources": [
+      "panchatantra.pdf"
+    ],
+    "expected_pages": [
+      107
+    ],
+    "answer_keywords": [
+      "चतुर्दन्त",
+      "तालाब"
+    ],
+    "evidence": "बहुत देर सोचने के बाद चतुर्दन्त ने कहा- मुझे एक तालाब याद आता है।"
+  },
+  {
+    "id": "hist-04-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "किन विद्वानों का मानना है कि गंगा नदी घाटी के सघन वनों को जलाकर ही साफ किया जा सकता था?",
+    "match": "page",
+    "expected_sources": [
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      303
+    ],
+    "answer_keywords": [
+      "घोष",
+      "निहाररंजन"
+    ],
+    "evidence": "घोष और निहाररंजन रे जैसे विद्वानों का मानना है कि गंगा नदी घाटी क्षेत्र के सघन वनों को जलाकर ही साफ किया जा सकता है"
+  },
+  {
+    "id": "arth-04-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "अर्थशास्त्र के अनुसार 'त्रिपौरुषी' छाया किसे कहते हैं?",
+    "match": "page",
+    "expected_sources": [
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      140
+    ],
+    "answer_keywords": [
+      "त्रिपौरुषी",
+      "छाया"
+    ],
+    "evidence": "सूर्योदय से लेकर जब तक पुरुष की छाया तिगुनी लंबी रहे, वह दिन का पहिला आठवाँ हिस्सा है । इस छाया को 'त्रिपौरुषी' छाया कहते हैं ।"
+  },
+  {
+    "id": "gita-03-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "गीता में समता के प्रसंग में किन श्लोकों को विशेष रूप से द्रष्टव्य बताया गया है?",
+    "match": "page",
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      9
+    ],
+    "answer_keywords": [
+      "छठे अध्याय",
+      "नवां",
+      "अठारहवां"
+    ],
+    "evidence": "गीता के छठे अध्याय का नवां श्लोक, पांचवें अध्याय का अठारहवां श्लोक तथा छठे अध्याय का बत्तीसवां श्लोक विशेष द्रष्टव्य हैं"
+  },
+  {
+    "id": "maha-01-en",
+    "language": "en",
+    "category": "factual",
+    "question": "In the Sabha Parva, who built the magnificent palace for the son of Pandu, and what kinds of design were combined in it?",
+    "match": "source",
+    "expected_sources": [
+      "Mahabharata/maha02.txt"
+    ],
+    "expected_pages": [],
+    "answer_keywords": [
+      "Maya",
+      "palace"
+    ],
+    "evidence": "And he forthwith built a magnificent palace for the son of Pandu",
+    "note": "Plain-text source: every chunk carries page_number=1, so page-level ground truth is meaningless. Scored on source match."
+  },
+  {
+    "id": "yt-01-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "आयुर्वेदिक डाइटीशियन कोर्स के पहले एपिसोड में किस विषय पर विस्तार से बात की गई है?",
+    "match": "source",
+    "expected_sources": [
+      "YouTube: 01 आयुर्वेदिक डाईटीशियन कोर्स (एपिसोड 01) - दूध | AYURVEDIC DIETITIAN COURSE (EPISODE 01) MILK [4sKFKOSJteU]"
+    ],
+    "expected_pages": [],
+    "answer_keywords": [
+      "दूध"
+    ],
+    "evidence": "ऑडियो सीरीज आयुर्वेदिक डाइटिशियन कोर्स पर यह उसका पहला एपिसोड है",
+    "note": "YouTube source: page_number is None; the locator is `timestamp`. Scored on source match."
+  },
+  {
+    "id": "unans-01-en",
+    "language": "en",
+    "category": "unanswerable",
+    "question": "What is the current market capitalisation of Reliance Industries?",
+    "match": "none",
+    "expected_sources": [],
+    "expected_pages": [],
+    "answer_keywords": [],
+    "evidence": "",
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+  },
+  {
+    "id": "unans-02-hi",
+    "language": "hi",
+    "category": "unanswerable",
+    "question": "अर्थशास्त्र में इलेक्ट्रिक वाहनों पर कर की दर क्या बताई गई है?",
+    "match": "none",
+    "expected_sources": [],
+    "expected_pages": [],
+    "answer_keywords": [],
+    "evidence": "",
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+  },
+  {
+    "id": "unans-03-en",
+    "language": "en",
+    "category": "unanswerable",
+    "question": "Who won the 2024 ICC Men's T20 World Cup final?",
+    "match": "none",
+    "expected_sources": [],
+    "expected_pages": [],
+    "answer_keywords": [],
+    "evidence": "",
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+  },
+  {
+    "id": "unans-04-hi",
+    "language": "hi",
+    "category": "unanswerable",
+    "question": "गीता के अनुसार पायथन में मशीन लर्निंग मॉडल कैसे प्रशिक्षित करें?",
+    "match": "none",
+    "expected_sources": [],
+    "expected_pages": [],
+    "answer_keywords": [],
+    "evidence": "",
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+  },
+  {
+    "id": "unans-05-en",
+    "language": "en",
+    "category": "unanswerable",
+    "question": "What is the WiFi password for the university library?",
+    "match": "none",
+    "expected_sources": [],
+    "expected_pages": [],
+    "answer_keywords": [],
+    "evidence": "",
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+  },
+  {
+    "id": "unans-06-hi",
+    "language": "hi",
+    "category": "unanswerable",
+    "question": "पंचतंत्र में क्रिप्टोकरेंसी में निवेश की कौन-सी सलाह दी गई है?",
+    "match": "none",
+    "expected_sources": [],
+    "expected_pages": [],
+    "answer_keywords": [],
+    "evidence": "",
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
   }
 ]
