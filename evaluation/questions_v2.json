@@ -1,0 +1,82 @@
+[
+  {
+    "id": "hist-01-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "कुशीनारा प्राचीन काल में किस नाम से एक महान नगर था और वह किस राजा की राजधानी थी?",
+    "expected_sources": ["data/A_History_of_Ancient_and_Early_Medieval_India.pdf"],
+    "expected_pages": [307],
+    "answer_keywords": ["कुशावती", "महासुदस्सन"],
+    "evidence": "बहुत पहले कुशीनारा एक महान नगर था, जिसका नाम कुशावती था। वह महासुदस्सन नामक राजा की राजधानी थी।"
+  },
+  {
+    "id": "hist-02-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "बिहार के मुजफ्फरपुर जिले के किस स्थान को प्राचीन वैशाली के रूप में चिन्हित किया गया है, और वह किसकी राजधानी थी?",
+    "expected_sources": ["data/A_History_of_Ancient_and_Early_Medieval_India.pdf"],
+    "expected_pages": [336],
+    "answer_keywords": ["बसार", "लिच्छवि"],
+    "evidence": "बिहार के मुजफ्फरपुर जिला में स्थित बसार को प्राचीन वैशाली के रूप में चिन्हित किया गया है। यह लिच्छवियों और वज्जि गण संघ की राजधानी थी"
+  },
+  {
+    "id": "hist-03-en",
+    "language": "en",
+    "category": "factual",
+    "question": "According to the Sangam poems, who was the last Chera ruler recorded, and against whom did he wage successful wars?",
+    "expected_sources": ["data/A_History_of_Ancient_and_Early_Medieval_India.pdf"],
+    "expected_pages": [449],
+    "answer_keywords": ["Chera", "Chola", "Pandya"],
+    "evidence": "संगम काव्यों में जिस अंतिम चेर शासक का नाम दर्ज है वह कुदको इलनजेरल इरमपोरई है। उसने चोलों और पांड्यों के विरुद्ध सफल युद्ध किए।"
+  },
+  {
+    "id": "arth-01-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "कौटिल्य के अर्थशास्त्र के अनुसार राजा को राजकार्य के लिए दिन और रात को कितने भागों में बाँटना चाहिए?",
+    "expected_sources": ["data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"],
+    "expected_pages": [140],
+    "answer_keywords": ["आठ"],
+    "evidence": "वह दिन और रात को आठ-आठ घड़ियों में बाँट दे"
+  },
+  {
+    "id": "arth-02-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "अर्थशास्त्र के अनुसार चान्द्रमास और नक्षत्र-मास कितने दिन-रात के होते हैं?",
+    "expected_sources": ["data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"],
+    "expected_pages": [262],
+    "answer_keywords": ["साढ़े उनतीस", "सत्ताईस"],
+    "evidence": "साढ़े उनतीस दिन-रात का एक चान्द्रमास होता है । सत्ताईस दिन-रात का एक नक्षत्र- मास होता है।"
+  },
+  {
+    "id": "arth-03-en",
+    "language": "en",
+    "category": "factual",
+    "question": "In the Arthasastra, how many days long is the month used for paying staff assigned to the service of elephants?",
+    "expected_sources": ["data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"],
+    "expected_pages": [262],
+    "answer_keywords": ["40", "forty", "elephant"],
+    "evidence": "हाथियों की सेवा में नियुक्ति कर्मचारियों का एक महीना, चालीस दिन-रात का होता है ।"
+  },
+  {
+    "id": "gita-01-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "श्रीमद्भगवद्गीता के तेरहवें अध्याय का नाम क्या है और उसमें किन दो तत्त्वों का विभाग किया गया है?",
+    "expected_sources": ["SRIMAD-BHAGAVAD-GITA.pdf"],
+    "expected_pages": [301],
+    "answer_keywords": ["क्षेत्र", "क्षेत्रज्ञ"],
+    "evidence": "इसलिये इसका नाम 'क्षेत्रक्षेत्रज्ञविभागयोग रखा गया है।"
+  },
+  {
+    "id": "gita-02-hi",
+    "language": "hi",
+    "category": "factual",
+    "question": "इस संस्करण के अनुसार गीता का रचनाकाल कम से कम कितने वर्ष पूर्व माना जाता है?",
+    "expected_sources": ["SRIMAD-BHAGAVAD-GITA.pdf"],
+    "expected_pages": [10],
+    "answer_keywords": ["पांच सहस्र"],
+    "evidence": "गीता का रचनाकाल कम से कम पांच सहस्र वर्ष पूर्व तो माना ही जाता है"
+  }
+]
