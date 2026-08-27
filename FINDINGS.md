@@ -8,7 +8,16 @@ Consolidated findings for the Hindi/English RAG app. Each result is tagged with 
   ported into this repo. *Action: port the script/results back to make it reproducible here.*
 - ⚪ **Hypothesis** — believed/expected, not yet measured.
 
-Last updated: 2026-08-26.
+Last updated: 2026-08-27.
+
+---
+
+## Codex tooling
+
+- ⚪ **Hypothesis (2026-08-27):** The Codex TUI bootstrap error `thread/resume failed …
+  already has an active writer (code -32600)` indicates that a second client/process tried
+  to resume a thread currently owned for writing by another live or stale session. The
+  exact trigger and recovery procedure are not documented in the official OpenAI docs.
 
 ---
 
@@ -68,6 +77,24 @@ Gemini handled Hindi, English, paraphrasing and OCR noise far better than MiniLM
 
 ---
 
+### 🟢 Repo-verified (query latency audit, 2026-08-27)
+
+- `retrieve_context()` rebuilds the source catalog on every question via
+  `get_stats()`, which fetches and aggregates metadata for every indexed chunk.
+  This happens even when query rewriting is disabled. The `query_planning_s`
+  timer includes this scan, so it does not isolate planner model latency.
+- Query planning, embedding/vector search, optional Gemini reranking, and answer
+  generation run sequentially. `vector_retrieval_s` combines embedding network
+  time with local Chroma work; `reranking_s` also includes rank fusion.
+- The frontend waits for the complete `/ask` response before displaying answer
+  text. Engine `total_s` excludes subsequent conversation persistence and browser
+  delivery, so it is not a measurement of the full user-visible wait.
+- ⚪ **Hypothesis:** catalog caching and streaming could reduce repeated local
+  work and time to first visible answer respectively. No speedup or dominant
+  bottleneck has been measured for the current multi-query pipeline.
+
+---
+
 ## 3. TF-IDF (local lexical fallback) — 🟣 Cloud session
 - Word TF-IDF works when query and document share literal words.
 - Character TF-IDF (3–5 char n-grams) is more tolerant of spelling / OCR errors.
@@ -78,6 +105,10 @@ Gemini handled Hindi, English, paraphrasing and OCR noise far better than MiniLM
 ## 4. OCR & ingestion
 
 ### 🟢 Repo-verified
+- **Resolved 2026-08-27:** the interactive CLI banner advertised the removed EasyOCR
+  integration. It now describes Gemini-powered retrieval and adaptive text-layer/OCR
+  routing without hardcoding one of the configurable OCR backends (Google Vision,
+  Tesseract, or Gemini).
 - **Per-page routing is now wired into `ocr_engine.py`**: each page's text layer goes through
   `text_quality.choose_method()` → `direct` (trust layer) or `ocr` (rasterize + Tesseract).
   No more OCR-ing clean digital pages. CIL now reads `COAL INDIA LIMITED` (was `Coall IIndia`).
@@ -638,6 +669,28 @@ router (e.g. Vision async batch on whole PDFs) forfeits that.
 | 1-page PDF, full index | 7.06 s | 2.56 s |
 
 ---
+
+## 12. Vision failures can originate in the execution environment (2026-08-27)
+
+### 🟢 Repo-verified
+- The restricted indexing run reported repeated `ServiceUnavailable` errors. A controlled
+  DNS check could not resolve `vision.googleapis.com` there but succeeded with network
+  permission. ADC refresh, one Vision call, and eight concurrent blank-image calls then
+  succeeded; this supports a local network restriction, not a confirmed Google outage.
+- OCR logging prints only the exception class, then replaces the underlying error with
+  generic credentials/billing/quota advice. Preserve the cause to distinguish DNS failures
+  from service errors. Blank-image success does not establish full-page OCR performance.
+- Interrupted Upanishad extraction left no OCR cache or indexed document. Dharma-Sastra
+  remained at 1,500 stored chunks: an attempted resume is not evidence of completion.
+
+## 13. The frontend degrades clearly when the API is offline (2026-08-27)
+
+### 🟢 Repo-verified
+- With the Next.js server listening on port 3000 and nothing listening on port 8000, the
+  workspace loaded without browser console errors, labelled the library `Server unavailable`,
+  and converted a submitted suggestion into a retryable inline error. Sidebar toggling and
+  conversation reset still worked, but library data, retrieval, uploads, and source links
+  could not be exercised without the FastAPI server.
 
 ## Main conclusion
 *(Revised 2026-08-22.)* The earlier conclusion — "retrieval experimentation is no longer

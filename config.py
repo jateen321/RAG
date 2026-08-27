@@ -178,7 +178,6 @@ GOOGLE_VISION_LANGUAGE_HINTS = [
     for language in os.getenv("GOOGLE_VISION_LANGUAGE_HINTS", "hi,sa,en").split(",")
     if language.strip()
 ]
-OCR_LANGUAGES = ["hi", "en"]        # (legacy: EasyOCR format)
 TESSERACT_LANG = "eng+hin+san"      # Tesseract format: English + Hindi + Sanskrit
 PDF_DPI = 300                       # Resolution for PDF to image conversion
                                     # 300 is Tesseract's recommended minimum for

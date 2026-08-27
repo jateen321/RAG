@@ -14,7 +14,7 @@ from youtube_ingester import (  # noqa: E402
     _transcript_quality,
     validate_youtube_url,
 )
-from indexer import index_chunks  # noqa: E402
+from indexer import get_stats, index_chunks  # noqa: E402
 
 
 def transcript(language_code: str, generated: bool):
@@ -158,6 +158,25 @@ class FakeCollection:
 
 
 class SharedIndexerTests(unittest.TestCase):
+    def test_stats_keep_youtube_source_url_for_library_links(self):
+        collection = FakeCollection()
+        chunks = [{"text": "A" * 60, "chunk_index": 0}]
+        video_url = "https://www.youtube.com/watch?v=video123"
+
+        with (
+            patch("indexer._get_collection", return_value=collection),
+            patch("indexer._embed_batch", return_value=[[0.1]]),
+        ):
+            index_chunks(
+                chunks,
+                "Example video",
+                "youtube",
+                source_metadata={"source_url": video_url},
+            )
+            stats = get_stats()
+
+        self.assertEqual(stats["documents"][0]["source_url"], video_url)
+
     def test_pdf_ids_remain_unique_when_chunk_indices_restart_each_page(self):
         collection = FakeCollection()
         chunks = [

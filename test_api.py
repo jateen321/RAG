@@ -50,6 +50,33 @@ class DocumentUploadValidationTests(unittest.TestCase):
         self.assertEqual(response.text, "Mahabharata passage")
         self.assertTrue(response.headers["content-type"].startswith("text/plain"))
 
+    def test_passage_route_returns_the_exact_indexed_chunk(self):
+        passage = {
+            "chunk_id": "doc_p0002_c003",
+            "source": "book.pdf",
+            "text": "The complete cited paragraph.",
+            "page_number": 2,
+            "chunk_index": 3,
+            "source_type": "pdf",
+        }
+        with patch("indexer.get_chunk", return_value=passage) as get_chunk:
+            response = self.client.get(
+                "/passages/doc_p0002_c003", params={"source": "book.pdf"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), passage)
+        get_chunk.assert_called_once_with("doc_p0002_c003", "book.pdf")
+
+    def test_passage_route_hides_missing_or_mismatched_chunks(self):
+        with patch("indexer.get_chunk", return_value=None):
+            response = self.client.get(
+                "/passages/private_chunk", params={"source": "another.pdf"}
+            )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "Passage not found.")
+
     def test_rejects_non_utf8_text(self):
         with tempfile.TemporaryDirectory() as data_dir:
             path = Path(data_dir) / "notes.txt"

@@ -382,7 +382,7 @@ def extract_text_from_pdf(pdf_path: str) -> list[dict]:
 
     Returns:
         List of dicts with keys: 'page', 'text', 'method'
-        'method' is 'direct' (text layer) or 'ocr' (rasterized + Tesseract).
+        'method' is 'direct' (text layer) or 'ocr' (rasterized + configured backend).
         Example: [{'page': 1, 'text': 'पाठ 1...', 'method': 'direct'}]
     """
     doc = pymupdf.open(pdf_path)

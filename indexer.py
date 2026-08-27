@@ -630,6 +630,37 @@ def remove_document(source_name: str) -> int:
     return len(matching)
 
 
+def get_chunk(chunk_id: str, source_name: str) -> dict | None:
+    """Return one indexed passage after verifying its displayed source name.
+
+    Looking up the stable Chroma id is constant-size work. Fetching every chunk
+    from a long book just to display one citation would make the evidence viewer
+    increasingly slow as documents grow.
+    """
+    got = _get_collection().get(
+        ids=[chunk_id], include=["documents", "metadatas"]
+    )
+    if not got["ids"]:
+        return None
+
+    md = (got["metadatas"] or [{}])[0] or {}
+    if md.get("source_name", "").casefold() != source_name.casefold():
+        return None
+
+    return {
+        "chunk_id": got["ids"][0],
+        "source": md.get("source_name", source_name),
+        "text": (got["documents"] or [""])[0],
+        "page_number": md.get("page_number", 0),
+        "chunk_index": md.get("chunk_index", 0),
+        "extraction_method": md.get("extraction_method", "unknown"),
+        "content_hash": md.get("content_hash", ""),
+        "source_type": md.get("source_type", "unknown"),
+        "start_seconds": md.get("start_seconds"),
+        "end_seconds": md.get("end_seconds"),
+    }
+
+
 def get_document_chunks(source_name: str) -> list[dict]:
     """Every stored chunk for one document, in reading order.
 
@@ -700,10 +731,13 @@ def get_stats() -> dict:
         chunks_by_source: dict[str, int] = {}
         methods_by_source: dict[str, dict[str, int]] = {}
         types_by_source: dict[str, str] = {}
+        urls_by_source: dict[str, str] = {}
         for md in metadatas:
             md = md or {}
             source = md.get("source_name", "unknown")
             types_by_source[source] = md.get("source_type", "unknown")
+            if md.get("source_url"):
+                urls_by_source[source] = md["source_url"]
             chunks_by_source[source] = chunks_by_source.get(source, 0) + 1
             page = md.get("page_number")
             if page is not None:
@@ -725,6 +759,7 @@ def get_stats() -> dict:
                 "last_page": pages[-1] if pages else None,
                 "methods": methods_by_source.get(source, {}),
                 "source_type": types_by_source.get(source, "unknown"),
+                "source_url": urls_by_source.get(source),
             })
 
         return {

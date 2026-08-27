@@ -1,9 +1,9 @@
-"""FastAPI interface for the Hindi Textbook RAG pipeline."""
+"""FastAPI interface for the Sarthi AI RAG pipeline."""
 
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -28,7 +28,7 @@ from document_ingester import (
 
 
 app = FastAPI(
-    title="Hindi Textbook RAG API",
+    title="Sarthi AI API",
     description="Index PDF, TXT, Markdown, and YouTube sources, then ask grounded questions.",
     version="1.3.0",
 )
@@ -103,7 +103,7 @@ def _resolve_data_document(filename: str) -> Path:
 @app.get("/")
 def root() -> dict:
     return {
-        "name": "Hindi Textbook RAG API",
+        "name": "Sarthi AI API",
         "docs": "/docs",
         "health": "/health",
     }
@@ -130,6 +130,20 @@ def open_document(source_path: str) -> FileResponse:
         ".md": "text/markdown; charset=utf-8",
     }
     return FileResponse(document_path, media_type=media_types[document_path.suffix.lower()])
+
+
+@app.get("/passages/{chunk_id}")
+async def passage_detail(
+    chunk_id: str,
+    source: str = Query(min_length=1, max_length=4096),
+) -> dict:
+    """Return one cited passage, scoped to its source to prevent id confusion."""
+    from indexer import get_chunk
+
+    passage = await run_in_threadpool(get_chunk, chunk_id, source)
+    if passage is None:
+        raise HTTPException(status_code=404, detail="Passage not found.")
+    return passage
 
 
 @app.post("/ask")

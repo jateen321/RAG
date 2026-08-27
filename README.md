@@ -1,27 +1,40 @@
-<img width="1318" height="641" alt="image" src="https://github.com/user-attachments/assets/f4ff5b58-b10c-4700-99d8-a9b6acfa7b51" />
 
-# 📚 Hindi Textbook RAG
+# 📚 Sarthi AI
 
-Query scanned Hindi textbook PDFs with a local OCR and vector-search pipeline,
-then use Gemini to generate answers from the retrieved text.
+Query documents and YouTube transcripts in Hindi or English with an adaptive
+extraction and vector-search pipeline, then use Gemini to generate grounded answers.
 
-Uses **Google Gemini** for embeddings and answers, and **Tesseract OCR** for Hindi + Sanskrit + English text extraction. No LangChain — the whole pipeline is hand-rolled.
+Uses **Google Gemini** for query planning, embeddings, reranking, and answers.
+PDF pages with clean text layers are read directly; scanned or garbled pages use
+the configured OCR backend: **Google Cloud Vision** (default), **Tesseract**, or
+**Gemini multimodal OCR**. No LangChain — the pipeline is hand-rolled.
 
-Tesseract and ChromaDB run locally. Gemini cost and availability depend on the
-selected backend, model, billing status, and project-specific quotas; do not
-assume every configuration is free.
+ChromaDB runs locally. OCR and Gemini cost and availability depend on the selected
+backends, models, billing status, and project-specific quotas; do not assume every
+configuration is free.
 
 ## 🚀 Quick Start
 
-### 1. Install Tesseract (the OCR engine)
+### 1. Choose an OCR backend
 
-Tesseract is a **native binary**, not a Python package — install it first, plus the Hindi/Sanskrit language data:
+The default is Google Cloud Vision. Authenticate it with Application Default
+Credentials after installing and initializing the Google Cloud CLI:
+
+```bash
+gcloud auth application-default login
+```
+
+For fully local OCR, set `OCR_BACKEND=tesseract` in `.env`. Tesseract is a native
+binary, so install it separately with the Hindi/Sanskrit language data:
 
 ```bash
 brew install tesseract tesseract-lang
 ```
 
 > 🐧 On Debian/Ubuntu: `sudo apt install tesseract-ocr tesseract-ocr-hin tesseract-ocr-san`
+>
+> Gemini OCR uses the API backend and key selected by `LLM_BACKEND`; it needs no
+> separate OCR binary or Google Cloud Vision credentials.
 
 ### 2. Create a Virtual Environment
 
@@ -268,13 +281,13 @@ quota is exhausted — a rate limit upstream becomes a "try again later" downstr
 ```
                     ┌─ clean text layer ──→ use it directly (fast, no OCR)
 PDF page ──routing ─┤
-                    └─ scanned / garbled ─→ rasterize → Tesseract (hin+san+eng)
+                    └─ scanned / garbled ─→ rasterize → configured OCR backend
                                                      ↓
                         Boundary-aware chunks → Gemini Embeddings* → ChromaDB
                                                                         ↓
-Your Question → Gemini Embedding → Similarity Search → Top 5 Chunks
+Your Question → Gemini query rewrites → batched vector search → RRF fusion
                                                                         ↓
-                                            Gemini Flash + Context → Answer!
+                         Gemini reranking → Top 5 → Gemini + Context → Answer!
 ```
 
 YouTube follows a parallel ingestion path: `yt-dlp` reads video/playlist
@@ -282,7 +295,8 @@ metadata, `youtube-transcript-api` retrieves timestamped captions, and the
 resulting chunks enter the same Gemini embedding and ChromaDB pipeline. Answers
 cite transcript timestamps instead of PDF page numbers.
 
-`*` Embeddings and answer generation use the backend selected by `LLM_BACKEND`.
+`*` Query planning, embeddings, reranking, and answer generation use the backend
+selected by `LLM_BACKEND`.
 
 **Two defenses worth knowing about:**
 - **Per-page routing** — pages with a usable text layer skip OCR entirely, so indexing is much faster on mixed PDFs.
@@ -290,19 +304,20 @@ cite transcript timestamps instead of PDF page numbers.
 
 ### Retrieval behavior and current limitations
 
-- The question is embedded as one query vector.
-- ChromaDB searches the shared `hindi_textbook` collection and returns `TOP_K=5`
-  chunks ordered by vector distance.
-- The five complete chunk texts are inserted into the Gemini prompt; the
-  terminal displays only short previews.
-- There is currently no minimum relevance threshold, reranker, or source/PDF
-  filter. A weak or general question can therefore retrieve unrelated chunks.
+- Gemini keeps the original question and can generate up to nine distinct rewrites.
+- All query embeddings are sent in one batch. ChromaDB retrieves five candidates
+  per query from the shared `hindi_textbook` collection.
+- Stable chunk IDs deduplicate candidates; reciprocal rank fusion (RRF) combines
+  their rankings into a deterministic shortlist.
+- Gemini listwise-reranks up to 15 candidates and returns the final `TOP_K=5`.
+  If planning or reranking fails, the pipeline falls back to the original query
+  or the RRF order respectively.
+- The five complete chunk texts are inserted into the answer prompt; the terminal
+  displays only short previews.
+- There is no minimum relevance threshold or source/PDF filter. A weak or general
+  question can therefore still retrieve unrelated chunks.
 - All indexed PDFs share one collection. Use `remove` to delete one source or
   `reset` to rebuild the complete index.
-- **Retrieval is not rate-paced.** `indexer.py` batches embedding calls and sleeps
-  between them, but `retriever.py` sends one unpaced embedding request per query.
-  A scripted batch of questions can therefore trip a burst-rate quota even though
-  indexing the same corpus succeeds.
 
 ## 🧪 Evaluation
 
@@ -352,7 +367,7 @@ RAG/
 ├── api.py              # FastAPI web interface (/ask, /index, /health)
 ├── config.py           # Configuration & constants
 ├── llm_client.py       # Gemini client factory (Developer API vs Vertex)
-├── ocr_engine.py       # PDF → text, per-page routing + Tesseract OCR
+├── ocr_engine.py       # PDF → text, per-page routing + selectable OCR
 ├── text_quality.py     # Scores the text layer to pick direct vs OCR
 ├── indexer.py          # Text → chunks → embeddings → ChromaDB
 ├── youtube_ingester.py # YouTube metadata + transcript → timestamped chunks
@@ -375,7 +390,8 @@ RAG/
 
 ## ⚙️ Configuration
 
-Edit `config.py` to tune these settings:
+Tune these settings in `config.py`; environment-backed options can be overridden
+in `.env` as shown in `.env.example`:
 
 | Setting | Default | Description |
 |---|---|---|
@@ -384,7 +400,13 @@ Edit `config.py` to tune these settings:
 | `MAX_CHUNK_OVERLAP` | 250 | **Maximum** overlap between chunks (ceiling). Takes precedence over the floor — prevents one long sentence being copied whole into the next chunk |
 | `MIN_CHUNK_LENGTH` | 50 | Skip chunks shorter than this |
 | `TOP_K` | 5 | Number of chunks to retrieve |
-| `PDF_DPI` | 300 | OCR scan resolution (Tesseract's recommended minimum) |
+| `QUERY_REWRITE_MAX_QUERIES` | 10 | Maximum total queries, including the original |
+| `QUERY_RETRIEVAL_TOP_K` | 5 | Candidates retrieved per query before fusion |
+| `RERANK_CANDIDATE_LIMIT` | 15 | Maximum RRF candidates sent to Gemini reranking |
+| `OCR_BACKEND` | `google_vision` | OCR implementation: `google_vision`, `tesseract`, or `gemini` |
+| `OCR_MAX_WORKERS` | backend-specific | Concurrent OCR calls/processes; defaults to Vision 8, Gemini 2, Tesseract up to 4 |
+| `PDF_DPI` | 300 | Resolution used when rasterizing pages for any OCR backend |
+| `GOOGLE_VISION_LANGUAGE_HINTS` | `hi,sa,en` | Soft language hints for Google Cloud Vision |
 | `TESSERACT_LANG` | `eng+hin+san` | OCR languages (English + Hindi + Sanskrit) |
 | `LAYER_CHECK_SAMPLE` | 3 | Pages OCR'd per document to spot-check the text layer |
 | `LAYER_CHECK_MIN_SIMILARITY` | 0.4 | Median OCR-vs-layer similarity below this → distrust the layer and OCR the whole document |
@@ -402,27 +424,22 @@ Edit `config.py` to tune these settings:
 
 ## 💡 Tips
 
-- **OCR resolution trade-off**: `PDF_DPI` defaults to 300, Tesseract's recommended
-  minimum for small glyphs such as Devanagari matras. Pixel count scales with the
+- **OCR resolution trade-off**: `PDF_DPI` defaults to 300. Pixel count scales with the
   *square* of DPI, so 300 costs ~2.25× the OCR time of 200. Drop to 200 if your
-  scans are clean and indexing is too slow; going above 300 rarely helps.
-- **Changing `PDF_DPI` requires a re-index — and `remove` first**: a new DPI
-  produces different OCR text, which produces different chunk IDs. Re-indexing
-  without removing first *adds* a second copy of every page instead of replacing
-  it. Run `python app.py remove "<source>"`, then index again.
+  scans are clean and indexing is too slow; validate quality before changing it.
+- **Changing OCR settings requires a re-index**: current position-based chunk IDs
+  and `upsert` replace existing positions safely, and stale trailing positions are
+  removed only after the new document is stored successfully.
 - **Index multiple books**: Run `index` on multiple PDFs — they all go into the same database.
 - **Ask in any language**: Questions can be in Hindi, English, or mixed.
 - **Rate limits vary**: Limits depend on the backend, model, region, billing tier,
   and Google Cloud project. Check the quota assigned to your credential instead
   of assuming a fixed requests-per-minute value.
-- **Embedding pacing is weaker than it looks**: The *indexer* embeds up to 20 chunks
-  per call and retries a quota-related failure once after 30 seconds. Note that
-  `_embed_texts` contains a one-second inter-batch delay that **never executes** in
-  practice: `index_document` pre-slices into batches of 20 and then calls
-  `_embed_texts(batch, batch_size=len(batch))`, so the inner loop always runs exactly
-  one iteration and its delay guard is never true. The *retriever* has no batching,
-  pacing, or retry at all. Both paths are therefore effectively unpaced, and only the
-  indexer recovers from a `429`.
+- **Embedding quota handling**: indexing batches embeddings, spaces calls with an
+  adaptive shared delay, honors server retry hints, and retries transient quota
+  failures with exponential backoff. Daily quota exhaustion fails fast because
+  waiting seconds cannot clear a daily window. Query rewrites are embedded in one
+  batch to avoid multiplying request pressure.
 - **Model migration**: Do not query existing vectors with a different embedding
   model, even when both models output the same number of dimensions. Create a
   new collection or reset and reindex every PDF.
@@ -432,9 +449,10 @@ Edit `config.py` to tune these settings:
 | Issue | Solution |
 |---|---|
 | `LLM_BACKEND=developer but GEMINI_API_KEY is not set` | Add the matching key to `.env` for the backend you chose |
-| `tesseract is not installed` / empty OCR output | `brew install tesseract tesseract-lang` (see step 1) |
+| Google Vision authentication fails | Run `gcloud auth application-default login` and confirm the credential's project has Vision enabled and billing configured |
+| `tesseract is not installed` / empty OCR output | When `OCR_BACKEND=tesseract`, run `brew install tesseract tesseract-lang` (see step 1) |
 | Garbled Hindi from a PDF that looks fine | Expected — corrupt-layer detection should force OCR automatically |
-| OCR gives poor results | `PDF_DPI` is already 300; raising it further rarely helps. Confirm `TESSERACT_LANG` covers the script, and check whether the page was routed to `direct` rather than `ocr` |
+| OCR gives poor results | Confirm the configured `OCR_BACKEND`, its language settings, and whether the page was routed to `direct` or `ocr`; compare backends with `benchmark_ocr.py` before changing DPI |
 | `429` / rate limit errors | Check the quota for the selected backend/model/region, reduce request frequency, and retry with backoff |
 | `429` partway through `evaluate.py` | The retriever is unpaced (see Tips). Re-run in smaller batches, or wait for the per-minute window to reset — a mid-run failure is a burst-rate limit, not an exhausted daily allowance |
 | `No indexed documents` (HTTP 503) | Run `python app.py index <pdf>` first |

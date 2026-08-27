@@ -9,6 +9,7 @@ type DocumentInfo = {
   chunks: number;
   pages?: number;
   source_type?: string;
+  source_url?: string;
 };
 
 type HealthResponse = {
@@ -18,6 +19,7 @@ type HealthResponse = {
 };
 
 type Source = {
+  chunk_id?: string;
   page?: number;
   source: string;
   distance: number;
@@ -27,6 +29,24 @@ type Source = {
   timestamp_url?: string;
   source_url?: string;
   video_title?: string;
+};
+
+type Passage = {
+  chunk_id: string;
+  source: string;
+  text: string;
+  page_number?: number;
+  chunk_index?: number;
+  source_type?: string;
+  start_seconds?: number;
+  end_seconds?: number;
+};
+
+type PassageViewer = {
+  source: Source;
+  passage?: Passage;
+  loading: boolean;
+  error?: string;
 };
 
 type AskResponse = {
@@ -116,6 +136,13 @@ function sourceHref(source: Source) {
   return `${API_URL}/documents/${encodedPath}${pageAnchor}`;
 }
 
+function documentHref(document: DocumentInfo) {
+  if (document.source_type === 'youtube') return document.source_url || null;
+  if (!['pdf', 'text', 'markdown'].includes(document.source_type || '')) return null;
+  const encodedPath = document.source.split('/').map(encodeURIComponent).join('/');
+  return `${API_URL}/documents/${encodedPath}`;
+}
+
 function LoadingAnswer() {
   return (
     <div className="thinking" role="status">
@@ -134,6 +161,7 @@ export default function ChatWorkspace() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [activeSources, setActiveSources] = useState<Source[]>([]);
+  const [passageViewer, setPassageViewer] = useState<PassageViewer | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null);
@@ -378,13 +406,35 @@ export default function ChatWorkspace() {
     setSidebarCollapsed((collapsed) => !collapsed);
   }
 
+  async function viewPassage(source: Source) {
+    if (!source.chunk_id) {
+      const href = sourceHref(source);
+      if (href) window.open(href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    setPassageViewer({ source, loading: true });
+    try {
+      const passage = await requestJson<Passage>(
+        `/passages/${encodeURIComponent(source.chunk_id)}?source=${encodeURIComponent(source.source)}`,
+      );
+      setPassageViewer({ source, passage, loading: false });
+    } catch (error) {
+      setPassageViewer({
+        source,
+        loading: false,
+        error: error instanceof Error ? error.message : 'The cited passage could not be loaded.',
+      });
+    }
+  }
+
   return (
     <main className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <aside id="library-sidebar" className={`library-panel ${mobileLibraryOpen ? 'mobile-open' : ''}`}>
         <div className="mobile-panel-head">
           <div className="brand">
-            <span className="brand-mark">प</span>
-            <div><strong>Pustak AI</strong><span>Grounded study companion</span></div>
+            <span className="brand-mark">स</span>
+            <div><strong>Sarthi AI</strong><span>Grounded study companion</span></div>
           </div>
           <button className="close-panel" type="button" onClick={() => setMobileLibraryOpen(false)} aria-label="Close library">×</button>
         </div>
@@ -436,15 +486,26 @@ export default function ChatWorkspace() {
         <div className="document-list">
           {!health && !healthError && <div className="library-loading"><span /><span /><span /></div>}
           {healthError && <button className="inline-error" type="button" onClick={() => void refreshHealth()}>{healthError} <strong>Retry</strong></button>}
-          {health?.documents.map((document) => (
-            <div className="document-card" key={document.source} title={document.source}>
+          {health?.documents.map((document) => {
+            const href = documentHref(document);
+            const content = <>
               <BookIcon youtube={document.source_type === 'youtube'} />
               <span>
                 <strong>{document.source}</strong>
                 <small>{document.pages ? `${document.pages} pages · ` : ''}{document.chunks} passages</small>
               </span>
-            </div>
-          ))}
+            </>;
+
+            return href ? (
+              <a className="document-card" href={href} key={document.source} title={`Open ${document.source}`} target="_blank" rel="noopener noreferrer">
+                {content}
+              </a>
+            ) : (
+              <div className="document-card" key={document.source} title={`${document.source} cannot be opened because its source URL is unavailable.`}>
+                {content}
+              </div>
+            );
+          })}
           {health && health.documents.length === 0 && <p className="empty-library">Your library is empty. Add a document or YouTube source to begin.</p>}
         </div>
 
@@ -489,9 +550,9 @@ export default function ChatWorkspace() {
               <article className="exchange" key={message.id}>
                 <div className="question-bubble"><span>You</span><p>{message.question}</p></div>
                 <div className="answer-block">
-                  <div className="assistant-badge">प</div>
+                  <div className="assistant-badge">स</div>
                   <div className="answer-content">
-                    <div className="answer-heading"><strong>Pustak AI</strong>{message.totalSeconds != null && <small>{message.totalSeconds.toFixed(1)}s · {message.sources?.length ?? 0} sources</small>}</div>
+                    <div className="answer-heading"><strong>Sarthi AI</strong>{message.totalSeconds != null && <small>{message.totalSeconds.toFixed(1)}s · {message.sources?.length ?? 0} sources</small>}</div>
                     {message.pending && <LoadingAnswer />}
                     {message.error && <div className="answer-error"><strong>I couldn’t answer that.</strong><p>{message.error}</p><button type="button" onClick={() => void ask(message.question)}>Try again</button></div>}
                     {message.answer && <div className="answer-copy">{message.answer}</div>}
@@ -504,7 +565,9 @@ export default function ChatWorkspace() {
                           {message.sources.map((source, index) => {
                             const href = sourceHref(source);
                             const content = <><strong>{index + 1}. {locationLabel(source)}</strong><span>{source.source}</span></>;
-                            return href
+                            return source.chunk_id
+                              ? <button type="button" onClick={() => void viewPassage(source)} aria-label={`View cited passage from ${source.source}`} key={`${source.source}-${index}`}>{content}</button>
+                              : href
                               ? <a href={href} target="_blank" rel="noreferrer" aria-label={`Open ${source.source} at ${locationLabel(source)}`} key={`${source.source}-${index}`}>{content}</a>
                               : <div key={`${source.source}-${index}`}>{content}</div>;
                           })}
@@ -547,7 +610,11 @@ export default function ChatWorkspace() {
                     <small>{source.source_type === 'youtube' ? 'YouTube transcript' : source.source}</small>
                   </>
                 );
-                return href ? <a className="source-card" href={href} target="_blank" rel="noreferrer" aria-label={`Open ${source.source}`} key={`${source.source}-${index}`}>{content}</a> : <article className="source-card" key={`${source.source}-${index}`}>{content}</article>;
+                return source.chunk_id
+                  ? <button className="source-card" type="button" onClick={() => void viewPassage(source)} aria-label={`View cited passage from ${source.source}`} key={`${source.source}-${index}`}>{content}</button>
+                  : href
+                    ? <a className="source-card" href={href} target="_blank" rel="noreferrer" aria-label={`Open ${source.source}`} key={`${source.source}-${index}`}>{content}</a>
+                    : <article className="source-card" key={`${source.source}-${index}`}>{content}</article>;
               })}
             </div>
           </>
@@ -565,6 +632,34 @@ export default function ChatWorkspace() {
         )}
       </aside>
 
+      {passageViewer && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setPassageViewer(null);
+        }}>
+          <section className="modal passage-modal" role="dialog" aria-modal="true" aria-labelledby="passage-title">
+            <button className="modal-close" type="button" onClick={() => setPassageViewer(null)} aria-label="Close passage">×</button>
+            <p className="eyebrow">RETRIEVED EVIDENCE</p>
+            <h2 id="passage-title">{locationLabel(passageViewer.source)}</h2>
+            <p className="passage-source">{passageViewer.source.video_title || passageViewer.source.source}</p>
+
+            {passageViewer.loading && <div className="passage-loading" role="status"><span /><span /><span /></div>}
+            {passageViewer.error && <div className="passage-error"><strong>Passage unavailable</strong><p>{passageViewer.error}</p></div>}
+            {passageViewer.passage && (
+              <blockquote className="passage-text">{passageViewer.passage.text}</blockquote>
+            )}
+
+            <div className="modal-actions">
+              <button type="button" className="secondary" onClick={() => setPassageViewer(null)}>Close</button>
+              {sourceHref(passageViewer.source) && (
+                <a className="primary" href={sourceHref(passageViewer.source) || undefined} target="_blank" rel="noreferrer">
+                  Open original at {locationLabel(passageViewer.source)}
+                </a>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
       {pendingUpload && (
         <div className="modal-backdrop" role="presentation">
           <section className="modal" role="dialog" aria-modal="true" aria-labelledby="upload-title">
@@ -572,7 +667,7 @@ export default function ChatWorkspace() {
             <span className="modal-icon">{pendingUpload.folderName ? 'DIR' : 'DOC'}</span>
             <p className="eyebrow">ADD TO YOUR LIBRARY</p>
             <h2 id="upload-title">Index this {pendingUpload.folderName ? 'folder' : 'document'}?</h2>
-            <p className="modal-copy">Pustak AI will extract the text, create searchable passages, and preserve the selected folder path in your local library.</p>
+            <p className="modal-copy">Sarthi AI will extract the text, create searchable passages, and preserve the selected folder path in your local library.</p>
             <div className="selected-file"><BookIcon /><span><strong>{pendingUpload.folderName || pendingUpload.files[0].name}</strong><small>{pendingUpload.folderName ? `${pendingUpload.files.length} supported top-level document${pendingUpload.files.length === 1 ? '' : 's'}` : `${(pendingUpload.files[0].size / 1024 / 1024).toFixed(1)} MB`}</small></span></div>
             {pendingUpload.folderName && (pendingUpload.skippedNested > 0 || pendingUpload.skippedUnsupported > 0 || pendingUpload.skippedOversize > 0) && (
               <p className="selection-note">Skipped: {pendingUpload.skippedNested} from nested folders, {pendingUpload.skippedUnsupported} unsupported, {pendingUpload.skippedOversize} over 500 MB.</p>

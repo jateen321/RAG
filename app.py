@@ -1,14 +1,18 @@
 """
-📚 Hindi Textbook RAG Application
-==================================
-Query your scanned Hindi textbook PDFs using AI.
-Uses free Google Gemini API for embeddings and answers.
+📚 Sarthi AI
+============
+Query documents and YouTube transcripts in Hindi or English using AI.
+Uses Google Gemini for retrieval and answers, with adaptive extraction that keeps
+clean document text and routes scanned or garbled pages through the configured
+OCR backend (Google Vision, Tesseract, or Gemini).
 
 Usage:
     python app.py index                  Pick a PDF from data/ and index it
     python app.py index <pdf_file>       Index a specific PDF
+    python app.py index-folder <folder>  Index PDF, TXT, and Markdown files
+    python app.py index-youtube <url>     Index a video or playlist transcript
     python app.py ask "your question"    Ask a one-shot question
-    python app.py  chat                   Start interactive chat
+    python app.py chat                   Start interactive chat
     python app.py status                 Show database statistics
     python app.py remove <source>        Delete one document from the index
     python app.py reset                  Clear all indexed data
@@ -40,9 +44,9 @@ console = Console()
 def print_banner():
     """Print a nice welcome banner."""
     banner = """
-[bold cyan]📚 Hindi Textbook RAG[/bold cyan]
-[dim]Query your scanned Hindi textbooks using AI[/dim]
-[dim]Powered by Google Gemini (Free) + EasyOCR[/dim]
+[bold cyan]📚 Sarthi AI[/bold cyan]
+[dim]Query documents and YouTube transcripts in Hindi or English[/dim]
+[dim]Gemini-powered retrieval · Adaptive text-layer + OCR routing[/dim]
     """
     console.print(Panel(banner.strip(), border_style="cyan"))
 
