@@ -16,7 +16,29 @@
       "महासुदस्सन"
     ],
     "evidence": "बहुत पहले कुशीनारा एक महान नगर था, जिसका नाम कुशावती था। वह महासुदस्सन नामक राजा की राजधानी थी।",
-    "match": "page"
+    "match": "page",
+    "difficulty": "easy"
+  },
+  {
+    "id": "hist-01-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "प्राचीन समय में कुशीनारा को किस दूसरे नाम से जाना जाता था और वहाँ कौन राजा था?",
+    "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      307
+    ],
+    "answer_keywords": [
+      "कुशावती",
+      "महासुदस्सन"
+    ],
+    "evidence": "बहुत पहले कुशीनारा एक महान नगर था, जिसका नाम कुशावती था। वह महासुदस्सन नामक राजा की राजधानी थी।",
+    "match": "page",
+    "difficulty": "hard",
+    "easy_twin": "hist-01-hi"
   },
   {
     "id": "hist-02-hi",
@@ -35,7 +57,29 @@
       "लिच्छवि"
     ],
     "evidence": "बिहार के मुजफ्फरपुर जिला में स्थित बसार को प्राचीन वैशाली के रूप में चिन्हित किया गया है। यह लिच्छवियों और वज्जि गण संघ की राजधानी थी",
-    "match": "page"
+    "match": "page",
+    "difficulty": "easy"
+  },
+  {
+    "id": "hist-02-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "आजकल बिहार में कौन-सी जगह को पुरानी वैशाली माना जाता है, और वहाँ किन लोगों का शासन था?",
+    "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      336
+    ],
+    "answer_keywords": [
+      "बसार",
+      "लिच्छवि"
+    ],
+    "evidence": "बिहार के मुजफ्फरपुर जिला में स्थित बसार को प्राचीन वैशाली के रूप में चिन्हित किया गया है। यह लिच्छवियों और वज्जि गण संघ की राजधानी थी",
+    "match": "page",
+    "difficulty": "hard",
+    "easy_twin": "hist-02-hi"
   },
   {
     "id": "hist-03-en",
@@ -55,7 +99,30 @@
       "Pandya"
     ],
     "evidence": "संगम काव्यों में जिस अंतिम चेर शासक का नाम दर्ज है वह कुदको इलनजेरल इरमपोरई है। उसने चोलों और पांड्यों के विरुद्ध सफल युद्ध किए।",
-    "match": "page"
+    "match": "page",
+    "difficulty": "easy"
+  },
+  {
+    "id": "hist-03-en-hard",
+    "language": "en",
+    "category": "factual",
+    "question": "Who was the final ruler of that southern dynasty named in the old Tamil poems, and which neighbouring kingdoms did he defeat?",
+    "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      449
+    ],
+    "answer_keywords": [
+      "Chera",
+      "Chola",
+      "Pandya"
+    ],
+    "evidence": "संगम काव्यों में जिस अंतिम चेर शासक का नाम दर्ज है वह कुदको इलनजेरल इरमपोरई है। उसने चोलों और पांड्यों के विरुद्ध सफल युद्ध किए।",
+    "match": "page",
+    "difficulty": "hard",
+    "easy_twin": "hist-03-en"
   },
   {
     "id": "arth-01-hi",
@@ -73,7 +140,28 @@
       "आठ"
     ],
     "evidence": "वह दिन और रात को आठ-आठ घड़ियों में बाँट दे",
-    "match": "page"
+    "match": "page",
+    "difficulty": "easy"
+  },
+  {
+    "id": "arth-01-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "राजा को अपने दिन और रात के समय को काम के लिए किस तरह बाँटना चाहिए?",
+    "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      140
+    ],
+    "answer_keywords": [
+      "आठ"
+    ],
+    "evidence": "वह दिन और रात को आठ-आठ घड़ियों में बाँट दे",
+    "match": "page",
+    "difficulty": "hard",
+    "easy_twin": "arth-01-hi"
   },
   {
     "id": "arth-02-hi",
@@ -92,7 +180,29 @@
       "सत्ताईस"
     ],
     "evidence": "साढ़े उनतीस दिन-रात का एक चान्द्रमास होता है । सत्ताईस दिन-रात का एक नक्षत्र- मास होता है।",
-    "match": "page"
+    "match": "page",
+    "difficulty": "easy"
+  },
+  {
+    "id": "arth-02-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "चाँद के हिसाब से और तारों के हिसाब से एक महीना कितने दिन का होता है?",
+    "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      262
+    ],
+    "answer_keywords": [
+      "साढ़े उनतीस",
+      "सत्ताईस"
+    ],
+    "evidence": "साढ़े उनतीस दिन-रात का एक चान्द्रमास होता है । सत्ताईस दिन-रात का एक नक्षत्र- मास होता है।",
+    "match": "page",
+    "difficulty": "hard",
+    "easy_twin": "arth-02-hi"
   },
   {
     "id": "arth-03-en",
@@ -112,7 +222,30 @@
       "elephant"
     ],
     "evidence": "हाथियों की सेवा में नियुक्ति कर्मचारियों का एक महीना, चालीस दिन-रात का होता है ।",
-    "match": "page"
+    "match": "page",
+    "difficulty": "easy"
+  },
+  {
+    "id": "arth-03-en-hard",
+    "language": "en",
+    "category": "factual",
+    "question": "How many days are counted as a month when working out the pay of those who look after the royal beasts used in war?",
+    "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      262
+    ],
+    "answer_keywords": [
+      "40",
+      "forty",
+      "elephant"
+    ],
+    "evidence": "हाथियों की सेवा में नियुक्ति कर्मचारियों का एक महीना, चालीस दिन-रात का होता है ।",
+    "match": "page",
+    "difficulty": "hard",
+    "easy_twin": "arth-03-en"
   },
   {
     "id": "gita-01-hi",
@@ -131,7 +264,29 @@
       "क्षेत्रज्ञ"
     ],
     "evidence": "इसलिये इसका नाम 'क्षेत्रक्षेत्रज्ञविभागयोग रखा गया है।",
-    "match": "page"
+    "match": "page",
+    "difficulty": "easy"
+  },
+  {
+    "id": "gita-01-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "तेरहवें अध्याय में किन दो चीज़ों के बीच का फर्क समझाया गया है, और उस अध्याय का नाम क्या है?",
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      301
+    ],
+    "answer_keywords": [
+      "क्षेत्र",
+      "क्षेत्रज्ञ"
+    ],
+    "evidence": "इसलिये इसका नाम 'क्षेत्रक्षेत्रज्ञविभागयोग रखा गया है।",
+    "match": "page",
+    "difficulty": "hard",
+    "easy_twin": "gita-01-hi"
   },
   {
     "id": "gita-02-hi",
@@ -149,7 +304,28 @@
       "पांच सहस्र"
     ],
     "evidence": "गीता का रचनाकाल कम से कम पांच सहस्र वर्ष पूर्व तो माना ही जाता है",
-    "match": "page"
+    "match": "page",
+    "difficulty": "easy"
+  },
+  {
+    "id": "gita-02-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "यह ग्रंथ कम से कम कितने साल पुराना बताया गया है?",
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      10
+    ],
+    "answer_keywords": [
+      "पांच सहस्र"
+    ],
+    "evidence": "गीता का रचनाकाल कम से कम पांच सहस्र वर्ष पूर्व तो माना ही जाता है",
+    "match": "page",
+    "difficulty": "hard",
+    "easy_twin": "gita-02-hi"
   },
   {
     "id": "ess-01-en",
@@ -169,7 +345,30 @@
       "protection",
       "mother"
     ],
-    "evidence": "Cow protection to me is one of the most wonderful phenomena in human evolution. It takes the human being beyond his species."
+    "evidence": "Cow protection to me is one of the most wonderful phenomena in human evolution. It takes the human being beyond his species.",
+    "difficulty": "easy"
+  },
+  {
+    "id": "ess-01-en-hard",
+    "language": "en",
+    "category": "factual",
+    "question": "What does the writer mean by safeguarding cattle, and why does he think that particular animal was singled out?",
+    "match": "page",
+    "expected_sources": [
+      "data/essence-of-hinduism.pdf",
+      "essence-of-hinduism.pdf"
+    ],
+    "expected_pages": [
+      55
+    ],
+    "answer_keywords": [
+      "cow",
+      "protection",
+      "mother"
+    ],
+    "evidence": "Cow protection to me is one of the most wonderful phenomena in human evolution. It takes the human being beyond his species.",
+    "difficulty": "hard",
+    "easy_twin": "ess-01-en"
   },
   {
     "id": "ess-02-en",
@@ -189,7 +388,30 @@
       "source",
       "impurities"
     ],
-    "evidence": "Hinduism is like the Ganges pure and unsullied at its source, but taking in its course the impurities in the way."
+    "evidence": "Hinduism is like the Ganges pure and unsullied at its source, but taking in its course the impurities in the way.",
+    "difficulty": "easy"
+  },
+  {
+    "id": "ess-02-en-hard",
+    "language": "en",
+    "category": "factual",
+    "question": "What flowing body of water does the writer use as an image for his religion, and what point is he making?",
+    "match": "page",
+    "expected_sources": [
+      "data/essence-of-hinduism.pdf",
+      "essence-of-hinduism.pdf"
+    ],
+    "expected_pages": [
+      27
+    ],
+    "answer_keywords": [
+      "Ganges",
+      "source",
+      "impurities"
+    ],
+    "evidence": "Hinduism is like the Ganges pure and unsullied at its source, but taking in its course the impurities in the way.",
+    "difficulty": "hard",
+    "easy_twin": "ess-02-en"
   },
   {
     "id": "ess-03-en",
@@ -209,7 +431,31 @@
       "good",
       "evil"
     ],
-    "evidence": "The fight is there, but the fight as it is going on within. The Pandavas and Kauravas are the forces of good and evil within."
+    "evidence": "The fight is there, but the fight as it is going on within. The Pandavas and Kauravas are the forces of good and evil within.",
+    "difficulty": "easy"
+  },
+  {
+    "id": "ess-03-en-hard",
+    "language": "en",
+    "category": "interpretive",
+    "question": "How does the writer read that famous battle — as a real war or as something else — and what do the two warring families stand for?",
+    "match": "page",
+    "expected_sources": [
+      "data/essence-of-hinduism.pdf",
+      "essence-of-hinduism.pdf"
+    ],
+    "expected_pages": [
+      169
+    ],
+    "answer_keywords": [
+      "spiritual",
+      "good",
+      "evil"
+    ],
+    "evidence": "The fight is there, but the fight as it is going on within. The Pandavas and Kauravas are the forces of good and evil within.",
+    "difficulty": "hard",
+    "easy_twin": "ess-03-en",
+    "cross_lingual": true
   },
   {
     "id": "panc-01-hi",
@@ -229,7 +475,30 @@
       "चाँदी",
       "सोने"
     ],
-    "evidence": "पीछे ताँबे की खान मिली थी। यहाँ चाँदी की खान मिली है; निश्चय ही आगे सोने की खान मिलेगी।"
+    "evidence": "पीछे ताँबे की खान मिली थी। यहाँ चाँदी की खान मिली है; निश्चय ही आगे सोने की खान मिलेगी।",
+    "difficulty": "easy"
+  },
+  {
+    "id": "panc-01-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "चार दोस्तों को रास्ते में एक के बाद एक किन धातुओं के भंडार मिले?",
+    "match": "page",
+    "expected_sources": [
+      "data/panchatantra.pdf",
+      "panchatantra.pdf"
+    ],
+    "expected_pages": [
+      182
+    ],
+    "answer_keywords": [
+      "ताँबे",
+      "चाँदी",
+      "सोने"
+    ],
+    "evidence": "पीछे ताँबे की खान मिली थी। यहाँ चाँदी की खान मिली है; निश्चय ही आगे सोने की खान मिलेगी।",
+    "difficulty": "hard",
+    "easy_twin": "panc-01-hi"
   },
   {
     "id": "panc-02-hi",
@@ -249,7 +518,30 @@
       "व्याध",
       "हिरण्यक"
     ],
-    "evidence": "चित्राँग व्याध के मार्ग में तालाब के किनारे जाकर लेट जाए।"
+    "evidence": "चित्राँग व्याध के मार्ग में तालाब के किनारे जाकर लेट जाए।",
+    "difficulty": "easy"
+  },
+  {
+    "id": "panc-02-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "कछुए को शिकारी के चंगुल से बचाने के लिए उसके साथियों ने क्या तरकीब निकाली?",
+    "match": "page",
+    "expected_sources": [
+      "data/panchatantra.pdf",
+      "panchatantra.pdf"
+    ],
+    "expected_pages": [
+      99
+    ],
+    "answer_keywords": [
+      "चित्राँग",
+      "व्याध",
+      "हिरण्यक"
+    ],
+    "evidence": "चित्राँग व्याध के मार्ग में तालाब के किनारे जाकर लेट जाए।",
+    "difficulty": "hard",
+    "easy_twin": "panc-02-hi"
   },
   {
     "id": "panc-03-hi",
@@ -268,7 +560,29 @@
       "चतुर्दन्त",
       "तालाब"
     ],
-    "evidence": "बहुत देर सोचने के बाद चतुर्दन्त ने कहा- मुझे एक तालाब याद आता है।"
+    "evidence": "बहुत देर सोचने के बाद चतुर्दन्त ने कहा- मुझे एक तालाब याद आता है।",
+    "difficulty": "easy"
+  },
+  {
+    "id": "panc-03-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "हाथियों के मुखिया का नाम क्या था, और पानी की तलाश में उसने क्या रास्ता बताया?",
+    "match": "page",
+    "expected_sources": [
+      "data/panchatantra.pdf",
+      "panchatantra.pdf"
+    ],
+    "expected_pages": [
+      107
+    ],
+    "answer_keywords": [
+      "चतुर्दन्त",
+      "तालाब"
+    ],
+    "evidence": "बहुत देर सोचने के बाद चतुर्दन्त ने कहा- मुझे एक तालाब याद आता है।",
+    "difficulty": "hard",
+    "easy_twin": "panc-03-hi"
   },
   {
     "id": "hist-04-hi",
@@ -287,7 +601,29 @@
       "घोष",
       "निहाररंजन"
     ],
-    "evidence": "घोष और निहाररंजन रे जैसे विद्वानों का मानना है कि गंगा नदी घाटी क्षेत्र के सघन वनों को जलाकर ही साफ किया जा सकता है"
+    "evidence": "घोष और निहाररंजन रे जैसे विद्वानों का मानना है कि गंगा नदी घाटी क्षेत्र के सघन वनों को जलाकर ही साफ किया जा सकता है",
+    "difficulty": "easy"
+  },
+  {
+    "id": "hist-04-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "किन लोगों ने यह विचार रखा कि गंगा के इलाके के घने जंगल आग से ही हटाए जा सकते थे?",
+    "match": "page",
+    "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      303
+    ],
+    "answer_keywords": [
+      "घोष",
+      "निहाररंजन"
+    ],
+    "evidence": "घोष और निहाररंजन रे जैसे विद्वानों का मानना है कि गंगा नदी घाटी क्षेत्र के सघन वनों को जलाकर ही साफ किया जा सकता है",
+    "difficulty": "hard",
+    "easy_twin": "hist-04-hi"
   },
   {
     "id": "arth-04-hi",
@@ -306,7 +642,29 @@
       "त्रिपौरुषी",
       "छाया"
     ],
-    "evidence": "सूर्योदय से लेकर जब तक पुरुष की छाया तिगुनी लंबी रहे, वह दिन का पहिला आठवाँ हिस्सा है । इस छाया को 'त्रिपौरुषी' छाया कहते हैं ।"
+    "evidence": "सूर्योदय से लेकर जब तक पुरुष की छाया तिगुनी लंबी रहे, वह दिन का पहिला आठवाँ हिस्सा है । इस छाया को 'त्रिपौरुषी' छाया कहते हैं ।",
+    "difficulty": "easy"
+  },
+  {
+    "id": "arth-04-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "जब किसी आदमी की परछाईं उसकी अपनी लंबाई से तीन गुनी हो जाए, उस समय को क्या कहा जाता है?",
+    "match": "page",
+    "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      140
+    ],
+    "answer_keywords": [
+      "त्रिपौरुषी",
+      "छाया"
+    ],
+    "evidence": "सूर्योदय से लेकर जब तक पुरुष की छाया तिगुनी लंबी रहे, वह दिन का पहिला आठवाँ हिस्सा है । इस छाया को 'त्रिपौरुषी' छाया कहते हैं ।",
+    "difficulty": "hard",
+    "easy_twin": "arth-04-hi"
   },
   {
     "id": "gita-03-hi",
@@ -326,7 +684,30 @@
       "नवां",
       "अठारहवां"
     ],
-    "evidence": "गीता के छठे अध्याय का नवां श्लोक, पांचवें अध्याय का अठारहवां श्लोक तथा छठे अध्याय का बत्तीसवां श्लोक विशेष द्रष्टव्य हैं"
+    "evidence": "गीता के छठे अध्याय का नवां श्लोक, पांचवें अध्याय का अठारहवां श्लोक तथा छठे अध्याय का बत्तीसवां श्लोक विशेष द्रष्टव्य हैं",
+    "difficulty": "easy"
+  },
+  {
+    "id": "gita-03-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "सबको एक समान देखने की बात किन-किन जगहों पर खास तौर से देखने को कहा गया है?",
+    "match": "page",
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      9
+    ],
+    "answer_keywords": [
+      "छठे अध्याय",
+      "नवां",
+      "अठारहवां"
+    ],
+    "evidence": "गीता के छठे अध्याय का नवां श्लोक, पांचवें अध्याय का अठारहवां श्लोक तथा छठे अध्याय का बत्तीसवां श्लोक विशेष द्रष्टव्य हैं",
+    "difficulty": "hard",
+    "easy_twin": "gita-03-hi"
   },
   {
     "id": "maha-01-en",
@@ -343,7 +724,28 @@
       "palace"
     ],
     "evidence": "And he forthwith built a magnificent palace for the son of Pandu",
-    "note": "Plain-text source: every chunk carries page_number=1, so page-level ground truth is meaningless. Scored on source match."
+    "note": "Plain-text source: every chunk carries page_number=1, so page-level ground truth is meaningless. Scored on source match.",
+    "difficulty": "easy"
+  },
+  {
+    "id": "maha-01-en-hard",
+    "language": "en",
+    "category": "factual",
+    "question": "Who constructed the great hall for the Pandava king, and what styles were blended in its design?",
+    "match": "source",
+    "expected_sources": [
+      "Mahabharata/maha02.txt"
+    ],
+    "expected_pages": [],
+    "answer_keywords": [
+      "Maya",
+      "palace"
+    ],
+    "evidence": "And he forthwith built a magnificent palace for the son of Pandu",
+    "note": "Plain-text source: every chunk carries page_number=1, so page-level ground truth is meaningless. Scored on source match.",
+    "difficulty": "hard",
+    "easy_twin": "maha-01-en",
+    "cross_lingual": true
   },
   {
     "id": "yt-01-hi",
@@ -359,7 +761,26 @@
       "दूध"
     ],
     "evidence": "ऑडियो सीरीज आयुर्वेदिक डाइटिशियन कोर्स पर यह उसका पहला एपिसोड है",
-    "note": "YouTube source: page_number is None; the locator is `timestamp`. Scored on source match."
+    "note": "YouTube source: page_number is None; the locator is `timestamp`. Scored on source match.",
+    "difficulty": "easy"
+  },
+  {
+    "id": "yt-01-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "इस कोर्स की सबसे पहली क्लास में किस चीज़ के बारे में विस्तार से समझाया गया है?",
+    "match": "source",
+    "expected_sources": [
+      "YouTube: 01 आयुर्वेदिक डाईटीशियन कोर्स (एपिसोड 01) - दूध | AYURVEDIC DIETITIAN COURSE (EPISODE 01) MILK [4sKFKOSJteU]"
+    ],
+    "expected_pages": [],
+    "answer_keywords": [
+      "दूध"
+    ],
+    "evidence": "ऑडियो सीरीज आयुर्वेदिक डाइटिशियन कोर्स पर यह उसका पहला एपिसोड है",
+    "note": "YouTube source: page_number is None; the locator is `timestamp`. Scored on source match.",
+    "difficulty": "hard",
+    "easy_twin": "yt-01-hi"
   },
   {
     "id": "unans-01-en",
@@ -371,7 +792,8 @@
     "expected_pages": [],
     "answer_keywords": [],
     "evidence": "",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-02-hi",
@@ -383,7 +805,8 @@
     "expected_pages": [],
     "answer_keywords": [],
     "evidence": "",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-03-en",
@@ -395,7 +818,8 @@
     "expected_pages": [],
     "answer_keywords": [],
     "evidence": "",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-04-hi",
@@ -407,7 +831,8 @@
     "expected_pages": [],
     "answer_keywords": [],
     "evidence": "",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-05-en",
@@ -419,7 +844,8 @@
     "expected_pages": [],
     "answer_keywords": [],
     "evidence": "",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-06-hi",
@@ -431,7 +857,8 @@
     "expected_pages": [],
     "answer_keywords": [],
     "evidence": "",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-07-hi",
@@ -444,7 +871,8 @@
     "answer_keywords": [],
     "evidence": "",
     "proximity": "adjacent",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-08-en",
@@ -457,7 +885,8 @@
     "answer_keywords": [],
     "evidence": "",
     "proximity": "far",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-09-hi",
@@ -470,7 +899,8 @@
     "answer_keywords": [],
     "evidence": "",
     "proximity": "far",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-10-en",
@@ -483,7 +913,8 @@
     "answer_keywords": [],
     "evidence": "",
     "proximity": "far",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-11-hi",
@@ -496,7 +927,8 @@
     "answer_keywords": [],
     "evidence": "",
     "proximity": "far",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-12-en",
@@ -509,7 +941,8 @@
     "answer_keywords": [],
     "evidence": "",
     "proximity": "far",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-13-hi",
@@ -522,7 +955,8 @@
     "answer_keywords": [],
     "evidence": "",
     "proximity": "far",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   },
   {
     "id": "unans-14-en",
@@ -535,6 +969,7 @@
     "answer_keywords": [],
     "evidence": "",
     "proximity": "far",
-    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating."
+    "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
+    "difficulty": "n/a"
   }
 ]

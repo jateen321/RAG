@@ -121,6 +121,7 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
             "language": item["language"],
             "category": item.get("category", "factual"),
             "match": _match_mode(item),
+            "difficulty": item.get("difficulty", "n/a"),
             "retrieval_hit": None if unanswerable else rank is not None,
             "first_relevant_rank": rank,
             # Contamination metric. hit_rate/MRR stop at the FIRST correct chunk,
@@ -196,6 +197,20 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
     for lang in sorted({r["language"] for r in scored}):
         sub = [r for r in scored if r["language"] == lang]
         summary[f"hit_rate_{lang}"] = round(sum(r["retrieval_hit"] for r in sub) / len(sub), 4)
+
+    # Per-difficulty breakdown. The easy tier names its own document and often
+    # repeats its answer keywords, so its hit rate is an upper bound. The hard
+    # tier is the SAME ground truth with that leakage removed (see
+    # evaluation/check_leakage.py), so the gap between the two is the cost of
+    # phrasing alone, not a difference in what is being asked.
+    for tier in sorted({r["difficulty"] for r in scored} - {"n/a"}):
+        sub = [r for r in scored if r["difficulty"] == tier]
+        rr = [1 / r["first_relevant_rank"] if r["first_relevant_rank"] else 0 for r in sub]
+        summary[f"hit_rate_{tier}"] = round(sum(r["retrieval_hit"] for r in sub) / len(sub), 4)
+        summary[f"mrr_{tier}"] = round(sum(rr) / len(sub), 4)
+        summary[f"source_precision_{tier}"] = round(
+            sum(r["source_precision"] for r in sub) / len(sub), 4
+        )
 
     if generate:
         summary["citation_accuracy"] = round(

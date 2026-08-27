@@ -105,6 +105,16 @@ Gemini handled Hindi, English, paraphrasing and OCR noise far better than MiniLM
 ## 4. OCR & ingestion
 
 ### 🟢 Repo-verified
+- **Cross-route identity (2026-08-27):** folder ingestion supplied an absolute
+  path as `document_key`, while direct ingestion hashed the displayed filename.
+  Deterministic chunk IDs therefore did not prevent copies across routes.
+  `test_document_identity.py` verifies content-based identity in temporary Chroma
+  databases for PDF/TXT/MD in both upload orders, including renamed copies,
+  distinct same-name documents, partial retries, and legacy citation-ID preservation.
+  These tests do not constitute cleanup of pre-existing duplicates in the live index.
+- **OCR cache collision (2026-08-27):** same-name files can share size and mtime
+  yet contain different bytes. The new regression fixture reproduces those
+  conditions; a file-content fingerprint now prevents their OCR cache reuse.
 - **Resolved 2026-08-27:** the interactive CLI banner advertised the removed EasyOCR
   integration. It now describes Gemini-powered retrieval and adaptive text-layer/OCR
   routing without hardcoding one of the configurable OCR backends (Google Vision,
@@ -705,6 +715,38 @@ router (e.g. Vision async batch on whole PDFs) forfeits that.
   preserve that ID. Legacy rows resolve only when `source + page + stored preview` identifies
   exactly one indexed chunk; a live pre-ID Mahabharata citation recovered its complete passage.
 
+## 15. Website conversations are stored but not sent back to the model (2026-08-27)
+
+### 🟢 Repo-verified
+- The `/ask` endpoint accepts a `conversation_id` and records each exchange, but calls
+  `ask_with_sources(question)` with only the latest question. That function sends one user
+  message containing the retrieved passages and current question; it does not load or include
+  earlier exchanges. Conversation history therefore supports display and persistence, not
+  contextual follow-ups. A question such as “What happened after that?” cannot rely on the
+  previous answer unless its missing subject is independently recoverable from the new query.
+
+## 16. Source language can overpower an underspecified response-language rule (2026-08-27)
+
+### 🟢 Live-verified
+- With predominantly Hindi passages, the English question `Hi, what is "Bhagya"?` produced
+  Hindi when the prompt merely said to identify the user's language. Selecting language from
+  the question's grammatical structure *before* considering passages fixed that observed case.
+  Four live Vertex/Gemini trials then behaved as specified: English framing → English,
+  Romanized-Hindi framing → Hindi, and explicit English/Hindi requests each overrode the
+  surrounding sentence language. This is a four-case regression check, not proof over every
+  possible code-switched question.
+
+## 17. Configured Gemini model limits (verified 2026-08-27)
+
+### 🟢 Repo + API verified
+- The effective runtime configuration is Vertex AI with `gemini-2.5-flash`; retrieval uses
+  `TOP_K=5`. A live Gemini Developer `models.get` call for the same model returned
+  `input_token_limit=1048576` and `output_token_limit=65536`, matching Google's model page.
+  These are model capacity limits, not request, rate, or embedding quotas. Vertex Express
+  prediction accepts its API key, but its `GetPublisherModel` metadata endpoint rejected that
+  key with HTTP 401 and requires principal-bearing OAuth credentials; the Developer Models API
+  therefore supplied the direct metadata verification.
+
 ## Main conclusion
 *(Revised 2026-08-22.)* The earlier conclusion — "retrieval experimentation is no longer
 the bottleneck, Gemini retrieval is reliable" — **does not survive §6**. It rested on
@@ -891,6 +933,11 @@ guessed).
 
 **Gap +0.023.** Any threshold in (0.307, 0.330) separates all 33; midpoint **0.318**.
 
+> ⚠️ **Superseded by §12.** Measured against the hard question tier the gap becomes
+> **−0.010** and the bands overlap. The 0.318 threshold below would wrongly refuse 4
+> answerable questions. The warning in this section turned out to be correct; read §12
+> before using any number from here.
+
 🟢 **Adjacency does not fool it.** "Who killed Gandhi?" asked against a corpus containing
 Gandhi's own writings scored 0.405 — mid-band, not borderline. The gate keys on whether the
 answer is present, not on topic overlap.
@@ -937,3 +984,55 @@ answerable Gita/Gandhi questions (~19 calls, not 33).
 
 ⚪ Caveat: rule 2 now mandates wording that `_is_refusal` matches, so that metric partly
 measures instruction-following rather than honesty. Read it alongside answer text.
+
+## 12. Hard question tier: the easy set was measuring phrasing (2026-08-27)
+
+§8.4's hit rate of 1.0 was an upper bound, as flagged. Confirmed by building a **hard twin
+for each of the 19 answerable questions** — same `evidence`, same page, same match mode,
+only the question wording changed. One variable, so the delta is attributable.
+
+🟢 **The old questions leaked their own answers.** `evaluation/check_leakage.py` scores two
+channels — a token shared with `answer_keywords`, and naming the source document:
+
+| tier | leaking |
+|---|---|
+| easy | **14 / 19** |
+| hard | 0 / 19 |
+
+`arth-04-hi` asked "अर्थशास्त्र के अनुसार 'त्रिपौरुषी' छाया किसे कहते हैं?" — the document
+name *and* both answer keywords, in the question.
+
+🟢 **Retrieval degrades, but does not collapse.**
+
+| metric | easy | hard |
+|---|---|---|
+| hit_rate | 1.0 | 0.9474 |
+| MRR | 0.9605 | 0.8246 |
+| source_precision | 0.8421 | 0.7789 |
+
+Rank worsened on 4/19, `source_precision` on 7/19. **Contamination falls faster than hit
+rate** — removing the document name is precisely what stopped the retriever discriminating
+between books, so this is the expected shape, not a regression.
+
+🔴 **The distance gate from §10 is dead as specified.** §10 warned "a vaguer real question
+would score higher and could cross the line." It does:
+
+| | easy | hard | unanswerable |
+|---|---|---|---|
+| max | 0.307 | **0.340** | — |
+| min | — | — | **0.330** |
+
+**Gap +0.023 → −0.010.** The bands now overlap. The 0.318 midpoint would wrongly refuse
+4 answerable questions (`ess-03-en-hard` 0.340, `hist-03-en-hard` 0.338, `yt-01-hi-hard`
+0.334, `arth-03-en-hard` 0.320). Best achievable is now T≈0.340 at 1 error in 52, but that
+is fitted to this data — treat distance as a soft warning signal, not a gate. Do not ship a
+hard refusal threshold.
+
+⚪ The one hard miss, `arth-03-en-hard`, is a *page* miss, not a source miss
+(`source_precision` 1.00): it found the right book, wrong page. With `match: "page"` that
+scores identically to retrieving nothing, which overstates the failure.
+
+⚪ Method bug worth remembering: the first version of `check_leakage.py` reported 0 leaks in
+Hindi because `[^\W\d_]+` drops Devanagari matras (Unicode Mn/Mc), shattering every Hindi
+word into single consonants below the length floor. A checker that silently passes
+everything looks exactly like a clean result.
