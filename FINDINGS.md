@@ -903,3 +903,37 @@ source text and re-measure. Until then it is a good soft signal (warn/log), not 
 
 ⚪ Method note: a naive substring scan for absence gives false positives on short tokens —
 "gst" matched 340 times inside unrelated words. Absence terms are now >= 6 characters.
+
+## 11. System prompt rewritten against measured corpus properties (2026-08-27)
+
+Corpus the prompt actually serves: 21,360 chunks, 45 documents. **68.1% OCR**, 15.2% text,
+14.8% direct PDF, 1.9% transcript.
+
+| Defect in the old prompt | Evidence | Fix |
+|---|---|---|
+| Never forbade parametric knowledge | corpus is famous texts (Gita, Gandhi, Mahabharata) | rule 1: no prior knowledge, *even when certain* |
+| "Answer from context" invited using *all* context | `mean_source_precision` 0.842 → ~16% of retrieved chunks are off-document | rule 5: ignore irrelevant passages; flag disagreement |
+| Refusal was untemplated | `_is_refusal` is a heuristic that can miss | rule 2: fixed opening sentence, EN + HI |
+| No citation format at all | 3 label shapes exist in `_build_user_message` | rule 4: `(source, locator)`, copied verbatim |
+| Silent about OCR noise | 68.1% of chunks | rule 6: read through damage, quote as-is, admit corruption |
+
+🟢 **Rule numbers are load-bearing.** Five references across `evaluate.py`, `rag_engine.py`
+and this file cite "rule 2" (refusal) and "rule 4" (citation). Both kept at their numbers;
+a comment above `SYSTEM_PROMPT` now says so.
+
+🔴 **`_has_expected_citation` cannot score text-file documents.** Its regex is
+`(?:page|पृष्ठ)\s*[:#-]?\s*N`, but text chunks are labelled "Document section N". Verified:
+`(mahabharata.txt, Document section 301)` → `False`. A *correct* citation on 15.2% of the
+corpus scores as a miss. Harness bug, not a prompt bug — fix before trusting citation
+accuracy.
+
+⚪ **Unmeasured, and deliberately so.** `--generate` has never run, so there is no before
+baseline; this change rests on reasoning about the numbers above, not on a measured
+improvement. Baseline prompt is preserved at `git show 018e208:rag_engine.py` for a later
+A/B. Success is a *pair* of metrics: `refusal_rate_on_unanswerable` up **and**
+`false_refusal_rate` still 0 — a prompt told to distrust famous texts can start refusing
+answerable ones. Cheapest next test: `--generate` on the 14 unanswerable questions plus 4-5
+answerable Gita/Gandhi questions (~19 calls, not 33).
+
+⚪ Caveat: rule 2 now mandates wording that `_is_refusal` matches, so that metric partly
+measures instruction-following rather than honesty. Read it alongside answer text.
