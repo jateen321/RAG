@@ -5,6 +5,7 @@
     "category": "factual",
     "question": "कुशीनारा प्राचीन काल में किस नाम से एक महान नगर था और वह किस राजा की राजधानी थी?",
     "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
       "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
     ],
     "expected_pages": [
@@ -23,6 +24,7 @@
     "category": "factual",
     "question": "बिहार के मुजफ्फरपुर जिले के किस स्थान को प्राचीन वैशाली के रूप में चिन्हित किया गया है, और वह किसकी राजधानी थी?",
     "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
       "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
     ],
     "expected_pages": [
@@ -41,6 +43,7 @@
     "category": "factual",
     "question": "According to the Sangam poems, who was the last Chera ruler recorded, and against whom did he wage successful wars?",
     "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
       "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
     ],
     "expected_pages": [
@@ -60,6 +63,7 @@
     "category": "factual",
     "question": "कौटिल्य के अर्थशास्त्र के अनुसार राजा को राजकार्य के लिए दिन और रात को कितने भागों में बाँटना चाहिए?",
     "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
       "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
     ],
     "expected_pages": [
@@ -77,6 +81,7 @@
     "category": "factual",
     "question": "अर्थशास्त्र के अनुसार चान्द्रमास और नक्षत्र-मास कितने दिन-रात के होते हैं?",
     "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
       "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
     ],
     "expected_pages": [
@@ -95,6 +100,7 @@
     "category": "factual",
     "question": "In the Arthasastra, how many days long is the month used for paying staff assigned to the service of elephants?",
     "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
       "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
     ],
     "expected_pages": [
@@ -114,7 +120,8 @@
     "category": "factual",
     "question": "श्रीमद्भगवद्गीता के तेरहवें अध्याय का नाम क्या है और उसमें किन दो तत्त्वों का विभाग किया गया है?",
     "expected_sources": [
-      "SRIMAD-BHAGAVAD-GITA.pdf"
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
     ],
     "expected_pages": [
       301
@@ -132,7 +139,8 @@
     "category": "factual",
     "question": "इस संस्करण के अनुसार गीता का रचनाकाल कम से कम कितने वर्ष पूर्व माना जाता है?",
     "expected_sources": [
-      "SRIMAD-BHAGAVAD-GITA.pdf"
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
     ],
     "expected_pages": [
       10
@@ -210,6 +218,7 @@
     "question": "पंचतंत्र की कथा में चार मित्रों को यात्रा के दौरान क्रमशः किन-किन धातुओं की खानें मिलीं?",
     "match": "page",
     "expected_sources": [
+      "data/panchatantra.pdf",
       "panchatantra.pdf"
     ],
     "expected_pages": [
@@ -229,6 +238,7 @@
     "question": "कछुए मन्थरक को व्याध से छुड़ाने के लिए उसके मित्रों ने क्या उपाय सोचा?",
     "match": "page",
     "expected_sources": [
+      "data/panchatantra.pdf",
       "panchatantra.pdf"
     ],
     "expected_pages": [
@@ -248,6 +258,7 @@
     "question": "पंचतंत्र की कथा में हाथियों के गजराज का नाम क्या था और उसने पानी के लिए क्या सुझाया?",
     "match": "page",
     "expected_sources": [
+      "data/panchatantra.pdf",
       "panchatantra.pdf"
     ],
     "expected_pages": [
@@ -266,6 +277,7 @@
     "question": "किन विद्वानों का मानना है कि गंगा नदी घाटी के सघन वनों को जलाकर ही साफ किया जा सकता था?",
     "match": "page",
     "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
       "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
     ],
     "expected_pages": [
@@ -284,6 +296,7 @@
     "question": "अर्थशास्त्र के अनुसार 'त्रिपौरुषी' छाया किसे कहते हैं?",
     "match": "page",
     "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
       "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
     ],
     "expected_pages": [
@@ -302,7 +315,8 @@
     "question": "गीता में समता के प्रसंग में किन श्लोकों को विशेष रूप से द्रष्टव्य बताया गया है?",
     "match": "page",
     "expected_sources": [
-      "SRIMAD-BHAGAVAD-GITA.pdf"
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
     ],
     "expected_pages": [
       9

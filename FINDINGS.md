@@ -691,6 +691,19 @@ router (e.g. Vision async batch on whole PDFs) forfeits that.
   and converted a submitted suggestion into a retryable inline error. Sidebar toggling and
   conversation reset still worked, but library data, retrieval, uploads, and source links
   could not be exercised without the FastAPI server.
+- Older folder-indexed sources retain a repository-relative `data/` prefix. Retrieval still
+  works because ChromaDB uses that stored source verbatim, but the document endpoint previously
+  resolved it as `data/data/...` and returned 404. Accepting both prefixed and canonical paths
+  restored original-document links; a live evidence link opened the cited PDF at Page 82.
+
+## 14. Citation UI consistency depends on durable chunk identity (2026-08-27)
+
+### 🟢 Repo-verified
+- Some saved citations opened the original document while others opened the evidence dialog.
+  The difference was not source type: `rag_engine` had omitted Chroma's stable `chunk_id`, so
+  rows without an ID fell back to direct links. The retriever and response serializer now
+  preserve that ID. Legacy rows resolve only when `source + page + stored preview` identifies
+  exactly one indexed chunk; a live pre-ID Mahabharata citation recovered its complete passage.
 
 ## Main conclusion
 *(Revised 2026-08-22.)* The earlier conclusion — "retrieval experimentation is no longer
@@ -742,3 +755,89 @@ decide about thresholds, rerankers or embedding-model comparisons.
       embedding-001 vs embedding-2 comparison that originally motivated this is a
       dead end (§10): `gemini-embedding-2` 404s on this project and cannot batch.
       Multi-region round-robin is NOT affected — same model, byte-identical vectors.
+
+## 8. RAG evaluation on the current corpus (2026-08-27)
+
+Corpus at time of run: **21,360 chunks** — 17,472 PDF, 3,241 plain text, 407 YouTube;
+13,903 of them OCR'd. State this number with any result: §8 is not comparable to the
+Jul 18 `results_*.json` files, which ran against a ~50x smaller corpus with the same
+questions. Reporting those side by side would attribute corpus growth to retrieval quality.
+
+### 8.1 🔴 The old question set could no longer measure anything
+All 20 questions in `questions.json` target `CIL.pdf` — **64 of 21,360 chunks (0.3%)**.
+Written 2026-08-14, when that PDF was most of the corpus. A sample retrieval for its first
+question returned five chunks of ancient Indian history at distances 0.4815–0.4880, i.e.
+no discrimination at all. The set measures needle-in-a-haystack retrieval of a recruitment
+notice, not the study-assistant use case.
+
+### 8.2 🟢 `questions_v2.json` — 25 questions, weighted to the corpus
+18 factual, 6 unanswerable, 1 interpretive; 16 hi / 9 en. Every question carries an
+`evidence` field: a verbatim snippet from the source chunk, authored **from** text pulled
+out of Chroma rather than from knowledge of the books. `verify_questions.py` re-checks all
+25 against the live index (evidence present for answerable; no lexical support for
+unanswerable). 25/25 pass.
+
+### 8.3 🔴 `page_number` only locates content in PDFs
+| source_type | chunks | distinct page_number |
+|---|---|---|
+| pdf | 17,472 | 889 |
+| text | 3,241 | **1 (always 1)** |
+| youtube | 407 | **all None** |
+
+The old `_rank_expected_source` required `chunk["page"] in expected_pages`, so it matched
+plain text *trivially* and YouTube *never* — the Mahabharata and every transcript were
+invisible to scoring. v2 adds `match: page | source | none`.
+
+### 8.4 🟢 Results at k=5 (retrieval only)
+| Metric | Value |
+|---|---|
+| retrieval_hit_rate | **1.0** (19/19) |
+| mean_reciprocal_rank | 0.9605 |
+| mean_source_precision | 0.8421 |
+| hit_rate_hi / hit_rate_en | 1.0 / 1.0 |
+| avg retrieval latency | 1.193 s |
+
+MRR < 1.0 comes from one question: `arth-01-hi` ("how should the king divide day and
+night?") found the Arthasastra only at **rank 4** — the history textbook outranked it for a
+question naming a specific text.
+
+**Read the hit rate as an upper bound, not a grade.** The questions were authored from
+distinctive passages, which is what makes ground truth auditable but also makes them easier
+than organic student questions. It shows retrieval is not broken; it does not show it is
+good on hard queries.
+
+### 8.5 🟢 Distance separates answerable from unanswerable perfectly — no threshold exists yet
+| | min | median | max |
+|---|---|---|---|
+| answerable (19) | 0.127 | 0.227 | **0.307** |
+| unanswerable (6) | **0.330** | 0.397 | 0.482 |
+
+**Zero overlap.** A gate at ~0.32 would have rejected all six unanswerable questions and
+none of the nineteen answerable ones. Nothing in the pipeline does this today: retrieval
+always returns k chunks, so an unanswerable question still reaches the LLM with five
+confident-looking passages, and refusal depends entirely on `SYSTEM_PROMPT` rule 2. This is
+the cheapest available accuracy win — it costs one comparison and saves a generation call.
+Six points is a small sample; widen before hard-coding the constant.
+
+### 8.6 🔴 Duplicate indexing is spreading, and it understates the metric
+Documents indexed under **both** `X.pdf` and `data/X.pdf`, 2026-08-27:
+
+| document | copy A | copy B |
+|---|---|---|
+| SRIMAD-BHAGAVAD-GITA.pdf | 857 | 240 (partial) |
+| CIL.pdf | 64 | 64 |
+| 027. Bhagya Likhne Ki Kalam - Karm.pdf | 79 | 81 |
+| bhagya-bada-ya-karm.pdf | 30 | 30 |
+| Jateen_Resume.pdf | 6 | 6 |
+
+Three documents at 11:30, five by 12:10 — this is ongoing, not historical. Cost is
+measurable: listing both spellings in `expected_sources` moved `mean_source_precision`
+**0.8105 → 0.8421**, so the bug was understating retrieval quality by 3.2 points. The two
+copies also carry *different* `content_hash` values, meaning the same PDF OCR'd twice
+produced different text.
+
+### 8.7 ⚪ Not yet measured
+`--generate`: citation accuracy, keyword recall, and `refusal_rate_on_unanswerable` — the
+first real test of rule 2. The harness now passes `top_k` through to `ask_with_sources`
+(it previously retrieved a second time at the config default, so citation scores described
+a *different* retrieval than the ranks beside them). Not run here to avoid generation spend.
