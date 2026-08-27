@@ -773,8 +773,10 @@ decide about thresholds, rerankers or embedding-model comparisons.
 - [ ] Re-index every PDF at `PDF_DPI = 300` on the fixed chunker (config says 300; the old
       corpus was built at 200, so committed config and measured results disagreed).
 - [ ] Record per-chunk `distance` in `evaluate.py` rows — blocks §6.9.
-- [ ] Negative eval questions (no answer in corpus) + questions targeting non-CIL
-      documents — blocks §6.5.
+- [x] ~~Negative eval questions (no answer in corpus) + questions targeting non-CIL
+      documents~~ — done: 14 unanswerable questions (§8.2) and a corpus-wide set with a
+      hard tier (§12). The v1 `questions.json` has been deleted; it is recoverable from
+      git history if an old result ever needs reproducing.
 - [x] ~~Put `source_name` into the generation prompt~~ — done, §6.6.
 - [x] ~~Collapse the duplicated context/prompt construction in `rag_engine`; make `ask`
       raise like `ask_with_sources`~~ — done, §6.6.

@@ -346,9 +346,6 @@ python evaluate.py --generate           # ALSO generate answers (costs LLM calls
 | `refusal_rate_on_unanswerable`, `false_refusal_rate` | Generation metrics. Read them as a **pair**: a prompt that refuses everything scores well on the first alone |
 
 **Dataset:** `evaluation/questions_v2.json` — 52 questions across the whole corpus.
-(`questions.json` is the retired v1 set: all 20 of its questions expected `CIL.pdf`,
-which is 0.3% of the index, so it could not measure cross-document contamination and
-contained no unanswerable questions at all.)
 
 | tier | n | what it is for |
 |---|---|---|
@@ -424,8 +421,8 @@ RAG/
 ├── evaluation/
 │   ├── questions_v2.json      # Eval dataset (easy / hard / unanswerable tiers)
 │   ├── verify_questions.py    # Audits ground truth against what is actually indexed
-│   ├── check_leakage.py       # Flags questions that give away their own answer
-│   └── questions.json         # Retired v1 set; results_*.json stay local, uncommitted
+│   └── check_leakage.py       # Flags questions that give away their own answer
+│                              # results_*.json are written locally, not committed
 ├── data/               # Drop your PDFs here
 └── chroma_db/          # Vector database (auto-created)
 ```
