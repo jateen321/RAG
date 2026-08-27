@@ -454,8 +454,7 @@
     ],
     "evidence": "The fight is there, but the fight as it is going on within. The Pandavas and Kauravas are the forces of good and evil within.",
     "difficulty": "hard",
-    "easy_twin": "ess-03-en",
-    "cross_lingual": true
+    "easy_twin": "ess-03-en"
   },
   {
     "id": "panc-01-hi",
@@ -744,8 +743,7 @@
     "evidence": "And he forthwith built a magnificent palace for the son of Pandu",
     "note": "Plain-text source: every chunk carries page_number=1, so page-level ground truth is meaningless. Scored on source match.",
     "difficulty": "hard",
-    "easy_twin": "maha-01-en",
-    "cross_lingual": true
+    "easy_twin": "maha-01-en"
   },
   {
     "id": "yt-01-hi",

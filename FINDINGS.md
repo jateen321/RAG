@@ -1006,7 +1006,8 @@ name *and* both answer keywords, in the question.
 
 | metric | easy | hard |
 |---|---|---|
-| hit_rate | 1.0 | 0.9474 |
+| hit_rate (page granularity) | 1.0 | 0.9474 |
+| hit_rate (source granularity) | 1.0 | **1.0** |
 | MRR | 0.9605 | 0.8246 |
 | source_precision | 0.8421 | 0.7789 |
 
@@ -1024,9 +1025,12 @@ would score higher and could cross the line." It does:
 
 **Gap +0.023 → −0.010.** The bands now overlap. The 0.318 midpoint would wrongly refuse
 4 answerable questions (`ess-03-en-hard` 0.340, `hist-03-en-hard` 0.338, `yt-01-hi-hard`
-0.334, `arth-03-en-hard` 0.320). Best achievable is now T≈0.340 at 1 error in 52, but that
-is fitted to this data — treat distance as a soft warning signal, not a gate. Do not ship a
-hard refusal threshold.
+0.334, `arth-03-en-hard` 0.320).
+
+**The finding is that the gate does not survive harder phrasing — not that the threshold
+needs retuning.** No re-fitted constant should be quoted from here: any value that looks
+good on these 52 points was chosen using those same 52 points. Distance stays a soft
+warning signal (log/warn), never a refusal gate.
 
 ⚪ The one hard miss, `arth-03-en-hard`, is a *page* miss, not a source miss
 (`source_precision` 1.00): it found the right book, wrong page. With `match: "page"` that
