@@ -878,3 +878,28 @@ working is far more often a config problem than five bad scans.
 ### 9.4 ⚪ Still unmeasured
 Real end-to-end throughput at `OCR_MAX_WORKERS=8`. The 3.3x figure in commit `7813768`
 came from a run whose provenance this session did not verify.
+
+## 10. Distance gate: separation holds at 33 questions (2026-08-27)
+
+Widened §8.5 from 6 unanswerable questions to 14 (terms scanned for absence first, not
+guessed).
+
+| | n | min | max |
+|---|---|---|---|
+| answerable | 19 | 0.127 | **0.307** |
+| unanswerable | 14 | **0.330** | 0.498 |
+
+**Gap +0.023.** Any threshold in (0.307, 0.330) separates all 33; midpoint **0.318**.
+
+🟢 **Adjacency does not fool it.** "Who killed Gandhi?" asked against a corpus containing
+Gandhi's own writings scored 0.405 — mid-band, not borderline. The gate keys on whether the
+answer is present, not on topic overlap.
+
+🔴 **Do not hard-code 0.318 yet.** The 19 answerable questions were authored from
+distinctive passages, so that side is optimistically low; a vaguer real question would score
+higher and could cross the line. The gap is 0.023 wide — roughly one question's noise.
+Before shipping a hard refusal, add answerable questions written *without* looking at the
+source text and re-measure. Until then it is a good soft signal (warn/log), not a gate.
+
+⚪ Method note: a naive substring scan for absence gives false positives on short tokens —
+"gst" matched 340 times inside unrelated words. Absence terms are now >= 6 characters.

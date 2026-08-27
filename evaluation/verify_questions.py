@@ -32,6 +32,17 @@ ABSENCE_TERMS = {
     "unans-04-hi": ["पायथन", "मशीन लर्निंग"],
     "unans-05-en": ["WiFi password", "wifi password"],
     "unans-06-hi": ["क्रिप्टोकरेंसी", "बिटकॉइन"],
+    # Batch 2. Terms picked by scanning the corpus first, not guessed. Note a
+    # naive substring scan gives false positives on short tokens ("gst" matched
+    # 340 times inside other words), so these are all >= 6 characters.
+    "unans-07-hi": ["नाथूराम", "गोडसे"],
+    "unans-08-en": ["penicillin", "पेनिसिलिन"],
+    "unans-09-hi": ["क्वांटम", "quantum"],
+    "unans-10-en": ["vaccine", "टीकाकरण"],
+    "unans-11-hi": ["चैटजीपीटी", "chatgpt", "openai"],
+    "unans-12-en": ["insulin", "इंसुलिन"],
+    "unans-13-hi": ["ब्लॉकचेन", "blockchain"],
+    "unans-14-en": ["मौसम पूर्वानुमान", "imd forecast"],
 }
 
 
