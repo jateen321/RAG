@@ -19,6 +19,32 @@ console = Console()
 _client = get_embedding_client()
 
 
+def _locator(md: dict):
+    """The position label a reader can actually navigate to, per source type.
+
+    ``page_number`` only locates content in PDFs (889 distinct values across
+    17,472 chunks). Every plain-text chunk stores page_number=1 and every
+    YouTube chunk stores None, so passing it through unchanged produced
+    citations like "Document section 1" for all 3,241 text chunks and a bare
+    None for all 407 transcript chunks. The usable locator differs by type:
+
+      pdf      -> page_number
+      text/md  -> chunk_index, the only thing that varies within the file
+      youtube  -> timestamp, which is also what timestamp_url links to
+
+    Note ``md.get("page_number", "?")`` could not fix the YouTube case: the key
+    is present with a None value, so the default never applied.
+    """
+    source_type = md.get("source_type")
+    if source_type == "youtube":
+        return md.get("timestamp") or "0:00"
+    if source_type in {"text", "markdown"}:
+        index = md.get("chunk_index")
+        return index if index is not None else md.get("page_number", "?")
+    page = md.get("page_number")
+    return page if page is not None else "?"
+
+
 def retrieve(query: str, top_k: int = None) -> list[dict]:
     """
     Retrieve the most relevant chunks for a given query.
@@ -72,8 +98,9 @@ def retrieve(query: str, top_k: int = None) -> list[dict]:
     for i in range(len(results["ids"][0])):
         md = results["metadatas"][0][i] or {}
         retrieved.append({
+            "chunk_id": results["ids"][0][i],
             "text": results["documents"][0][i],
-            "page": md.get("page_number", "?"),
+            "page": _locator(md),
             "source": md.get("source_name", "unknown"),
             "distance": results["distances"][0][i],
             # Passed through so callers can diagnose *why* a chunk was returned:
