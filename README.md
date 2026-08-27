@@ -340,16 +340,55 @@ python evaluate.py --generate           # ALSO generate answers (costs LLM calls
 | `retrieval_hit_rate` | Fraction of questions where **some** retrieved chunk was the expected source *and* page |
 | `mean_reciprocal_rank` | Average of `1 / rank_of_first_correct_chunk` — rewards putting the answer at rank 1, not just somewhere in the top k |
 | `mean_source_precision` | Fraction of the top-k drawn from the **expected document** — catches wrong-book contamination that hit rate and MRR structurally cannot see, because both stop counting at the first correct chunk |
+| `hit_rate_easy` / `hit_rate_hard` | Same metric split by question tier — see the dataset note below |
+| `mrr_*`, `source_precision_*` | Per-tier and per-language variants of the two metrics above |
 | `citation_accuracy`, `average_keyword_recall` | Generation metrics, only with `--generate` |
+| `refusal_rate_on_unanswerable`, `false_refusal_rate` | Generation metrics. Read them as a **pair**: a prompt that refuses everything scores well on the first alone |
 
-**Dataset:** `evaluation/questions.json` — 20 questions, 10 English and 10 Hindi.
+**Dataset:** `evaluation/questions_v2.json` — 52 questions across the whole corpus.
+(`questions.json` is the retired v1 set: all 20 of its questions expected `CIL.pdf`,
+which is 0.3% of the index, so it could not measure cross-document contamination and
+contained no unanswerable questions at all.)
 
-> ⚠️ **Known limit of the current eval set:** every question expects `CIL.pdf`.
-> Because CIL is also the majority of the indexed corpus, `source_precision` scores
-> near 1.00 for structural reasons rather than because retrieval is well-scoped. This
-> set therefore cannot measure cross-document contamination, and it contains no
-> *negative* questions (ones with no answer in the corpus) — so it cannot detect that
-> retrieval always returns `TOP_K` chunks whether or not any are relevant.
+| tier | n | what it is for |
+|---|---|---|
+| easy | 19 | Authored from a distinctive passage. Names its own document and often repeats its answer keywords — an **upper bound**, not a grade |
+| hard | 19 | The *same* ground truth with that leakage removed; only the wording differs, so the easy→hard delta is attributable to phrasing |
+| unanswerable | 14 | No answer exists in the corpus. Tests refusal, and the retriever's distance signal |
+
+Every answerable question carries an `evidence` snippet that must be present in a chunk
+at the stated source and page, so ground truth is auditable rather than written from
+memory of the book. Two scripts enforce this:
+
+```bash
+python evaluation/verify_questions.py    # evidence really is at that source/page;
+                                         # unanswerable questions really have no support
+python evaluation/check_leakage.py       # does a question give away its own answer?
+```
+
+`check_leakage.py` scores two leak channels — a token shared with the question's own
+`answer_keywords`, and naming the source document. It currently reports **14 of 19**
+easy questions leaking and **0 of 19** hard. Run it after adding any question; a new
+question that leaks will inflate the hit rate without improving the system.
+
+**Latest retrieval run** (k=5, 52 questions, 2026-08-27 — retrieval only, no generation):
+
+| metric | easy | hard |
+|---|---|---|
+| `retrieval_hit_rate` | 1.0 | 0.947 |
+| `mean_reciprocal_rank` | 0.961 | 0.825 |
+| `mean_source_precision` | 0.842 | 0.779 |
+
+Read the easy column as a ceiling and the gap as the real signal. `source_precision`
+falls further than hit rate does, because dropping the document name from a question is
+exactly what stops the retriever telling the books apart. The single hard-tier miss
+retrieved the correct document at the wrong page, so hit rate is 1.0 at *source*
+granularity and 0.947 at *page* granularity.
+
+> ⚠️ **Answer quality is unmeasured.** `--generate` has never been run, so there are no
+> citation, keyword-recall, or refusal numbers. Retrieval being sound says nothing about
+> whether the model fabricates — and this corpus is mostly famous texts the model already
+> knows, which is precisely the risk `--generate` would test.
 
 Measured results, and which of them are reproducible from this repository versus
 carried over from a separate session, are tracked in **[FINDINGS.md](FINDINGS.md)**.
@@ -383,7 +422,10 @@ RAG/
 ├── .claude/
 │   └── settings.json   # Repo-local hooks (uncommitted-file + README-staleness reminders)
 ├── evaluation/
-│   └── questions.json  # Eval dataset; results_*.json are written locally, not committed
+│   ├── questions_v2.json      # Eval dataset (easy / hard / unanswerable tiers)
+│   ├── verify_questions.py    # Audits ground truth against what is actually indexed
+│   ├── check_leakage.py       # Flags questions that give away their own answer
+│   └── questions.json         # Retired v1 set; results_*.json stay local, uncommitted
 ├── data/               # Drop your PDFs here
 └── chroma_db/          # Vector database (auto-created)
 ```
