@@ -50,6 +50,16 @@ class DocumentUploadValidationTests(unittest.TestCase):
         self.assertEqual(response.text, "Mahabharata passage")
         self.assertTrue(response.headers["content-type"].startswith("text/plain"))
 
+    def test_document_route_accepts_legacy_data_prefix(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            document = Path(data_dir) / "essence-of-hinduism.pdf"
+            document.write_bytes(b"%PDF-1.4\n")
+            with patch.object(api, "DATA_DIR", data_dir):
+                response = self.client.get("/documents/data/essence-of-hinduism.pdf")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers["content-type"].startswith("application/pdf"))
+
     def test_passage_route_returns_the_exact_indexed_chunk(self):
         passage = {
             "chunk_id": "doc_p0002_c003",
@@ -76,6 +86,33 @@ class DocumentUploadValidationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["detail"], "Passage not found.")
+
+    def test_legacy_passage_route_resolves_an_exact_citation(self):
+        passage = {
+            "chunk_id": "doc_p0002_c003",
+            "source": "book.pdf",
+            "text": "The complete cited paragraph.",
+            "page_number": 2,
+            "chunk_index": 3,
+            "source_type": "pdf",
+        }
+        with patch(
+            "indexer.get_chunk_by_citation", return_value=passage
+        ) as resolve:
+            response = self.client.get(
+                "/passages/resolve-legacy",
+                params={
+                    "source": "book.pdf",
+                    "page": 2,
+                    "preview": "The complete cited paragraph.",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), passage)
+        resolve.assert_called_once_with(
+            "book.pdf", 2, "The complete cited paragraph."
+        )
 
     def test_rejects_non_utf8_text(self):
         with tempfile.TemporaryDirectory() as data_dir:
@@ -105,7 +142,7 @@ class DocumentUploadValidationTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 201)
                 self.assertEqual(response.json()["source"], filename)
                 index_document.assert_called_once_with(
-                    pages, filename, source_type
+                    pages, filename, source_type, file_path=Path(data_dir).resolve() / filename
                 )
 
     def test_existing_unindexed_pdf_is_indexed_without_overwrite(self):
@@ -126,7 +163,9 @@ class DocumentUploadValidationTests(unittest.TestCase):
                 )
 
             self.assertEqual(existing.read_bytes(), b"original content")
-            index_document.assert_called_once_with(pages, "lesson.pdf", "pdf")
+            index_document.assert_called_once_with(
+                pages, "lesson.pdf", "pdf", file_path=existing.resolve()
+            )
 
         self.assertEqual(response.status_code, 201)
         self.assertTrue(response.json()["used_existing_file"])
@@ -170,7 +209,8 @@ class DocumentUploadValidationTests(unittest.TestCase):
                 b"content",
             )
             index_document.assert_called_once_with(
-                pages, "psychology/lesson.pdf", "pdf"
+                pages, "psychology/lesson.pdf", "pdf",
+                file_path=Path(data_dir).resolve() / "psychology" / "lesson.pdf",
             )
 
     def test_upload_rejects_relative_path_traversal(self):

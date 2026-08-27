@@ -110,7 +110,9 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = typeof payload.detail === 'string' ? payload.detail : `Request failed (${response.status}).`;
+    const message = payload !== null && typeof payload === 'object' && 'detail' in payload && typeof payload.detail === 'string'
+      ? payload.detail
+      : `Request failed (${response.status}).`;
     throw new Error(message);
   }
   return payload as T;
@@ -407,16 +409,13 @@ export default function ChatWorkspace() {
   }
 
   async function viewPassage(source: Source) {
-    if (!source.chunk_id) {
-      const href = sourceHref(source);
-      if (href) window.open(href, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
     setPassageViewer({ source, loading: true });
     try {
+      const passagePath = source.chunk_id
+        ? `/passages/${encodeURIComponent(source.chunk_id)}?source=${encodeURIComponent(source.source)}`
+        : `/passages/resolve-legacy?source=${encodeURIComponent(source.source)}&page=${encodeURIComponent(String(source.page || 0))}&preview=${encodeURIComponent(source.preview)}`;
       const passage = await requestJson<Passage>(
-        `/passages/${encodeURIComponent(source.chunk_id)}?source=${encodeURIComponent(source.source)}`,
+        passagePath,
       );
       setPassageViewer({ source, passage, loading: false });
     } catch (error) {
@@ -455,27 +454,6 @@ export default function ChatWorkspace() {
             </div>
           ))}
           {!conversationHistory.length && <p className="empty-history">Your conversations will appear here.</p>}
-        </div>
-
-        <div className="library-actions">
-          <button type="button" onClick={() => fileInput.current?.click()}><span aria-hidden="true">↑</span> Add a document</button>
-          <label htmlFor="folder-upload"><span aria-hidden="true">▤</span> Add a folder</label>
-          <button type="button" onClick={() => setYoutubeOpen(true)}><span aria-hidden="true">▶</span> Add YouTube</button>
-          <input ref={fileInput} className="visually-hidden" type="file" accept="application/pdf,text/plain,text/markdown,.pdf,.txt,.md" onChange={chooseFile} />
-          <input
-            ref={(node) => {
-              folderInput.current = node;
-              if (node) {
-                node.setAttribute('webkitdirectory', '');
-                node.setAttribute('directory', '');
-              }
-            }}
-            id="folder-upload"
-            className="visually-hidden"
-            type="file"
-            multiple
-            onChange={chooseFolder}
-          />
         </div>
 
         <div className="library-heading">
@@ -528,6 +506,34 @@ export default function ChatWorkspace() {
             </button>
             <div><span className="eyebrow">STUDY WORKSPACE</span><h1>Ask your books</h1></div>
           </div>
+          <div className="header-actions" role="group" aria-label="Add sources">
+            <button type="button" onClick={() => fileInput.current?.click()} aria-label="Add a document" title="Add a document">
+              <span aria-hidden="true">↑</span><span className="header-action-label">Add a document</span>
+            </button>
+            <button type="button" onClick={() => folderInput.current?.click()} aria-label="Add a folder" title="Add a folder">
+              <span aria-hidden="true">▤</span><span className="header-action-label">Add a folder</span>
+            </button>
+            <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
+              <span aria-hidden="true">▶</span><span className="header-action-label">Add YouTube</span>
+            </button>
+          </div>
+          <input ref={fileInput} className="visually-hidden" type="file" accept="application/pdf,text/plain,text/markdown,.pdf,.txt,.md" onChange={chooseFile} tabIndex={-1} aria-hidden="true" />
+          <input
+            ref={(node) => {
+              folderInput.current = node;
+              if (node) {
+                node.setAttribute('webkitdirectory', '');
+                node.setAttribute('directory', '');
+              }
+            }}
+            id="folder-upload"
+            className="visually-hidden"
+            type="file"
+            multiple
+            onChange={chooseFolder}
+            tabIndex={-1}
+            aria-hidden="true"
+          />
         </header>
 
         {!hasConversation ? (
@@ -565,11 +571,11 @@ export default function ChatWorkspace() {
                           {message.sources.map((source, index) => {
                             const href = sourceHref(source);
                             const content = <><strong>{index + 1}. {locationLabel(source)}</strong><span>{source.source}</span></>;
-                            return source.chunk_id
+                            return source.preview
                               ? <button type="button" onClick={() => void viewPassage(source)} aria-label={`View cited passage from ${source.source}`} key={`${source.source}-${index}`}>{content}</button>
                               : href
-                              ? <a href={href} target="_blank" rel="noreferrer" aria-label={`Open ${source.source} at ${locationLabel(source)}`} key={`${source.source}-${index}`}>{content}</a>
-                              : <div key={`${source.source}-${index}`}>{content}</div>;
+                                ? <a href={href} target="_blank" rel="noreferrer" aria-label={`Open ${source.source} at ${locationLabel(source)}`} key={`${source.source}-${index}`}>{content}</a>
+                                : <div key={`${source.source}-${index}`}>{content}</div>;
                           })}
                         </div>
                       </>
@@ -610,7 +616,7 @@ export default function ChatWorkspace() {
                     <small>{source.source_type === 'youtube' ? 'YouTube transcript' : source.source}</small>
                   </>
                 );
-                return source.chunk_id
+                return source.preview
                   ? <button className="source-card" type="button" onClick={() => void viewPassage(source)} aria-label={`View cited passage from ${source.source}`} key={`${source.source}-${index}`}>{content}</button>
                   : href
                     ? <a className="source-card" href={href} target="_blank" rel="noreferrer" aria-label={`Open ${source.source}`} key={`${source.source}-${index}`}>{content}</a>
@@ -640,7 +646,20 @@ export default function ChatWorkspace() {
             <button className="modal-close" type="button" onClick={() => setPassageViewer(null)} aria-label="Close passage">×</button>
             <p className="eyebrow">RETRIEVED EVIDENCE</p>
             <h2 id="passage-title">{locationLabel(passageViewer.source)}</h2>
-            <p className="passage-source">{passageViewer.source.video_title || passageViewer.source.source}</p>
+            {sourceHref(passageViewer.source) ? (
+              <a
+                className="passage-source passage-source-link"
+                href={sourceHref(passageViewer.source) || undefined}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Open ${passageViewer.source.video_title || passageViewer.source.source} at ${locationLabel(passageViewer.source)}`}
+              >
+                {passageViewer.source.video_title || passageViewer.source.source}
+                <span aria-hidden="true">↗</span>
+              </a>
+            ) : (
+              <p className="passage-source">{passageViewer.source.video_title || passageViewer.source.source}</p>
+            )}
 
             {passageViewer.loading && <div className="passage-loading" role="status"><span /><span /><span /></div>}
             {passageViewer.error && <div className="passage-error"><strong>Passage unavailable</strong><p>{passageViewer.error}</p></div>}

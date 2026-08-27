@@ -163,7 +163,7 @@ def cmd_index(pdf_path: str = None, force: bool = False):
     if not force:
         from indexer import is_document_indexed
 
-        if is_document_indexed(os.path.basename(pdf_path)):
+        if is_document_indexed(os.path.basename(pdf_path), file_path=pdf_path):
             console.print(
                 f"[yellow]⏭  '{os.path.basename(pdf_path)}' is already indexed.[/yellow]"
             )
@@ -192,7 +192,7 @@ def cmd_index(pdf_path: str = None, force: bool = False):
     # Step 2: Index
     console.print("\n[bold]Step 2/2: Indexing for search...[/bold]")
     source_name = os.path.basename(pdf_path)
-    num_chunks = index_document(pages_text, source_name)
+    num_chunks = index_document(pages_text, source_name, file_path=pdf_path)
 
     if num_chunks > 0:
         console.print(Panel(

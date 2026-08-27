@@ -11,6 +11,7 @@ import json
 import hashlib
 import os
 import unicodedata
+import threading
 import chromadb
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
@@ -28,6 +29,27 @@ console = Console()
 # Embeddings have their own client so Vertex regional routing cannot affect
 # answer generation.
 _client = get_embedding_client()
+_document_index_lock = threading.RLock()
+
+
+def file_sha256(path) -> str:
+    """Content identity independent of filename and upload route."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _complete_documents(metadatas: list[dict]) -> dict[str, list[dict]]:
+    groups: dict[str, list[dict]] = {}
+    for md in metadatas:
+        if md and md.get("document_id"):
+            groups.setdefault(md["document_id"], []).append(md)
+    return {
+        key: rows for key, rows in groups.items()
+        if all(row.get("chunk_total", len(rows)) == len(rows) for row in rows)
+    }
 
 
 # Sentence-ending marks across our scripts:
@@ -512,6 +534,16 @@ def index_chunks(
 
     console.print("\n[bold]💾 Storing in vector database...[/bold]")
 
+    # Reused vectors still need current document-level metadata after a changed
+    # extraction (notably chunk_total and the complete-document fingerprint).
+    reused_positions = sorted(set(range(len(chunks))) - set(pending))
+    for start in range(0, len(reused_positions), EMBED_BATCH_SIZE):
+        positions = reused_positions[start:start + EMBED_BATCH_SIZE]
+        collection.update(
+            ids=[ids[i] for i in positions],
+            metadatas=[_metadata_for(i) for i in positions],
+        )
+
     # Upsert replaces current positions but cannot remove positions left over
     # from an older, longer extraction. Remove those only after all new chunks
     # are safely written; an embedding failure therefore leaves the old source
@@ -541,6 +573,7 @@ def index_document(
     *,
     document_key: str | None = None,
     source_metadata: dict | None = None,
+    file_path=None,
 ) -> int:
     """
     Index extracted text into ChromaDB.
@@ -551,6 +584,9 @@ def index_document(
         source_name: Name of the source file, e.g. "CIL.pdf" or "notes.md".
         source_type: Kind of source this text came from, such as "pdf", "text",
             "markdown", or "youtube".
+        file_path: Local source file, used for path-independent byte identity.
+        document_key: Retained for caller compatibility; local document identity
+            is now content-based rather than derived from this path/name hint.
 
     Returns:
         Number of chunks indexed.
@@ -568,13 +604,75 @@ def index_document(
             chunk["extraction_method"] = method
         all_chunks.extend(chunks)
 
-    return index_chunks(
-        all_chunks,
-        source_name,
-        source_type,
-        document_key=document_key,
-        source_metadata=source_metadata,
+    if not all_chunks:
+        return 0
+
+    # All local ingestion routes meet here. A path is provenance, NOT identity.
+    # Include positions so shared paragraphs in different books are not merged.
+    signature = sorted(
+        (c["page_number"], c["chunk_index"], c["text"]) for c in all_chunks
     )
+    text_hash = hashlib.sha256(
+        json.dumps(signature, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    file_hash = file_sha256(file_path) if file_path is not None else None
+    identity = "file:" + file_hash if file_hash else "text:" + text_hash
+    metadata = {
+        **(source_metadata or {}),
+        "document_text_sha256": text_hash,
+        **({"file_sha256": file_hash} if file_hash else {}),
+    }
+
+    # Serialize check-and-index in the API process; deterministic IDs also make
+    # concurrent writes of the same newly indexed file target the same rows.
+    with _document_index_lock:
+        collection = _get_collection()
+        stored = collection.get(include=["metadatas"])
+        complete = _complete_documents(stored["metadatas"] or [])
+        for doc_id, rows in complete.items():
+            if rows[0].get("source_type") != source_type:
+                continue
+            if len(rows) != len(all_chunks):
+                continue
+            if all(row.get("document_text_sha256") == text_hash for row in rows):
+                return 0
+            # Upgrade legacy records only after comparing the WHOLE document.
+            # Never infer equivalence from a filename or a single shared chunk.
+            if any(row.get("document_text_sha256") for row in rows):
+                continue
+            legacy = collection.get(
+                where={"document_id": doc_id}, include=["documents", "metadatas"]
+            )
+            legacy_signature = sorted(
+                (md.get("page_number", -1), md.get("chunk_index", -1), text)
+                for md, text in zip(legacy["metadatas"], legacy["documents"])
+            )
+            if signature == legacy_signature:
+                collection.update(
+                    ids=legacy["ids"],
+                    metadatas=[{**md, "document_text_sha256": text_hash,
+                                **({"file_sha256": file_hash} if file_hash else {})}
+                               for md in legacy["metadatas"]],
+                )
+                return 0
+
+        # Preserve the first source's location when resuming/re-extracting an
+        # identical file through a different route, so existing links stay valid.
+        doc_id = _document_id(identity, source_type)
+        previous = [md for md in stored["metadatas"] or []
+                    if md and md.get("document_id") == doc_id]
+        if previous:
+            source_name = previous[0]["source_name"]
+            metadata = {**previous[0], **metadata}
+            for field in ("folder_root", "relative_path"):
+                if field in previous[0]:
+                    metadata[field] = previous[0][field]
+                else:
+                    metadata.pop(field, None)
+        return index_chunks(
+            all_chunks, source_name, source_type,
+            document_key=identity, source_metadata=metadata,
+        )
 
 
 def _find_document_id(source_name: str) -> str | None:
@@ -589,26 +687,33 @@ def _find_document_id(source_name: str) -> str | None:
     return next(iter(matches)) if len(matches) == 1 else None
 
 
-def is_document_indexed(source_name: str) -> bool:
-    """Return whether ChromaDB already holds passages for ``source_name``.
+def is_document_indexed(source_name: str, *, file_path=None) -> bool:
+    """Check complete documents by file content when a local path is supplied.
 
-    Compares BASENAMES, not the full stored name. The ingestion paths spell the
-    same file differently -- ``app.py index`` stores "CIL.pdf", ``index_folder``
-    stores "data/CIL.pdf", the API stores the path relative to its data root --
-    so a full-name comparison answers "not indexed" for a file that is already
-    present and the corpus silently gains a second copy. Five documents were
-    duplicated this way, the Gita among them.
-
-    This is the same trade-off ``document_ingester.indexed_file_names()``
-    already makes and documents: two genuinely different files sharing a
-    filename in different folders look like one document. Callers report the
-    match rather than acting on it silently, and offer a force override.
+    Legacy records without a byte fingerprint are checked after extraction in
+    index_document. Name-only lookup is retained for compatibility, but is NOT
+    used as an ingestion guard: different books can share a filename.
     """
+    collection = _get_collection()
+    if file_path is not None:
+        fingerprint = file_sha256(file_path)
+        metadatas = collection.get(
+            where={"file_sha256": fingerprint}, include=["metadatas"]
+        )["metadatas"] or []
+        complete = _complete_documents(metadatas)
+        extension = os.path.splitext(str(file_path))[1].lower()
+        source_type = {".pdf": "pdf", ".txt": "text", ".md": "markdown"}.get(extension)
+        return any(
+            all(md.get("file_sha256") == fingerprint
+                and md.get("source_type") == source_type for md in rows)
+            for rows in complete.values()
+        )
+    metadatas = collection.get(include=["metadatas"])["metadatas"] or []
+    complete = _complete_documents(metadatas)
     target = os.path.basename(source_name).casefold()
-    metadatas = _get_collection().get(include=["metadatas"])["metadatas"] or []
     return any(
         md and os.path.basename(md.get("source_name", "")).casefold() == target
-        for md in metadatas
+        for rows in complete.values() for md in rows
     )
 
 

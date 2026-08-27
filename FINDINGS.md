@@ -1042,3 +1042,16 @@ scores identically to retrieving nothing, which overstates the failure.
 Hindi because `[^\W\d_]+` drops Devanagari matras (Unicode Mn/Mc), shattering every Hindi
 word into single consonants below the length floor. A checker that silently passes
 everything looks exactly like a clean result.
+
+## 13. Development reload needs two layers (2026-08-27)
+
+🟢 **Repo-verified mechanics:** `dev.py` delegates ordinary Python and React/CSS edits
+to Uvicorn reload and Vinext/Vite HMR, while its own small fingerprints restart processes
+for Git branch changes, backend/frontend environment files, and frontend dependency
+manifests. Seven unit tests cover restart classification, Git worktree pointer resolution,
+and fixed command construction. The launcher refuses occupied ports instead of killing an
+unrelated process and owns both child process groups for one-step shutdown.
+
+⚪ **Not live-verified in this session:** the complete dual-server lifecycle was not started
+because ports 3000 and 8000 were already occupied by the user's running application. The
+process-level restart and `Ctrl+C` behavior should be smoke-tested after those servers stop.

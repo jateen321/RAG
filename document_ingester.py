@@ -25,6 +25,7 @@ def _cache_fingerprint(document_path: Path) -> dict:
     Tesseract output for a document you have since re-run under Vision.
     """
     from config import OCR_BACKEND, PDF_DPI
+    from indexer import file_sha256
 
     stat = document_path.stat()
     return {
@@ -33,14 +34,16 @@ def _cache_fingerprint(document_path: Path) -> dict:
         "mtime_ns": stat.st_mtime_ns,
         "pdf_dpi": PDF_DPI,
         "ocr_backend": OCR_BACKEND,
+        "file_sha256": file_sha256(document_path),
     }
 
 
 def _cache_path(document_path: Path) -> Path:
     """Where a document's cached OCR lives.
 
-    Keyed by indexer._document_id() so the cache and the Chroma index agree on
-    document identity -- including its casefolding, which matters on macOS.
+    Keep the legacy filename-based cache location. Its fingerprint verifies
+    file bytes and extraction settings before reuse; Chroma identity is now
+    content-based and independent of this cache filename.
     """
     from indexer import _document_id
 
@@ -163,20 +166,10 @@ def resolve_allowed_folder(folder_path: str | Path, allowed_roots: list[str]) ->
 
 
 def indexed_file_names() -> set[str]:
-    """Base filenames of every document currently in the collection.
+    """Legacy basename inventory, retained for display/caller compatibility.
 
-    Matching on the BASENAME rather than on document_id is deliberate. Document
-    identity has varied across ingestion paths and versions: `app.py index`
-    stores "CIL.pdf", the current index_folder stores "data/CIL.pdf", and older
-    entries stored "Mahabharata/maha08.txt" under an id matching none of the
-    schemes derivable today. An id-based check therefore reports "not indexed"
-    for files that ARE present, and `index-folder data` would silently duplicate
-    the entire existing corpus -- 3241 Mahabharata chunks included.
-
-    The basename is the one thing every scheme agrees on. Trade-off: two
-    genuinely different files sharing a filename in different folders look like
-    one, so the skip is REPORTED with the stored name rather than done silently,
-    and `force=True` overrides it.
+    Do not use this as a duplicate guard: different documents can have the same
+    basename. Ingestion now checks file content and complete extracted text.
     """
     from indexer import _get_collection
 
@@ -226,7 +219,7 @@ def index_folder(
     but re-extracting a 902-page scan costs ~14 minutes and real Vision spend,
     so doing it by default makes the command needlessly expensive to re-run.
     """
-    from indexer import index_document
+    from indexer import index_document, is_document_indexed
 
     root = Path(folder_path).expanduser().resolve()
     documents = discover_documents(root, recursive=recursive)
@@ -237,9 +230,6 @@ def index_folder(
     # file in seconds rather than after 14 minutes on the largest scan.
     documents = sorted(documents, key=lambda path: path.stat().st_size)
 
-    # Read the collection once, not once per file.
-    already_present = set() if force else indexed_file_names()
-
     results = []
     chunks_indexed = 0
 
@@ -247,16 +237,15 @@ def index_folder(
         relative_path = document_path.relative_to(root).as_posix()
         source_name = f"{root.name}/{relative_path}"
 
-        if not force and document_path.name.casefold() in already_present:
-            results.append({
-                "source": source_name,
-                "status": "skipped",
-                "reason": "Already indexed (matched by filename) — use force=True to re-index.",
-                "chunks_indexed": 0,
-            })
-            continue
-
         try:
+            if not force and is_document_indexed(source_name, file_path=document_path):
+                results.append({
+                    "source": source_name,
+                    "status": "skipped",
+                    "reason": "Identical file content is already indexed.",
+                    "chunks_indexed": 0,
+                })
+                continue
             pages = extract(document_path)
             if not pages:
                 results.append({
@@ -271,7 +260,7 @@ def index_folder(
                 pages,
                 source_name,
                 SOURCE_TYPES[document_path.suffix.lower()],
-                document_key=str(document_path),
+                file_path=document_path,
                 source_metadata={
                     "folder_root": str(root),
                     "relative_path": relative_path,
@@ -281,7 +270,9 @@ def index_folder(
             chunks_indexed += chunk_count
             results.append({
                 "source": source_name,
-                "status": "indexed",
+                "status": "indexed" if chunk_count else "skipped",
+                **({"reason": "No new chunks; content already indexed or too short."}
+                   if not chunk_count else {}),
                 "pages_with_text": len(pages),
                 "chunks_indexed": chunk_count,
             })

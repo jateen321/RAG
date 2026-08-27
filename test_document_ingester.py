@@ -53,7 +53,10 @@ class FolderIngestionTests(unittest.TestCase):
                     raise ValueError("broken encoding")
                 return [{"page": 1, "text": "content", "method": "text"}]
 
-            with patch("indexer.index_document", return_value=3) as index_document:
+            with (
+                patch("indexer.index_document", return_value=3) as index_document,
+                patch("indexer.is_document_indexed", return_value=False),
+            ):
                 report = document_ingester.index_folder(root, extract=extract)
 
             self.assertEqual(report["files_found"], 2)
@@ -61,6 +64,8 @@ class FolderIngestionTests(unittest.TestCase):
             self.assertEqual(report["files_failed"], 1)
             self.assertEqual(report["chunks_indexed"], 3)
             kwargs = index_document.call_args.kwargs
+            self.assertEqual(kwargs["file_path"], good)
+            self.assertNotIn("document_key", kwargs)
             self.assertEqual(kwargs["source_metadata"]["relative_path"], "nested/good.md")
             self.assertEqual(kwargs["source_metadata"]["file_extension"], ".md")
 

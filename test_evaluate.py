@@ -13,9 +13,15 @@ import unittest
 _fake = types.ModuleType("retriever")
 _STORE: dict[str, list[dict]] = {}
 _fake.retrieve = lambda q, top_k=None: _STORE.get(q, [])[:top_k]
-sys.modules.setdefault("retriever", _fake)
-
-import evaluate as E  # noqa: E402
+_previous_retriever = sys.modules.get("retriever")
+sys.modules["retriever"] = _fake
+try:
+    import evaluate as E  # noqa: E402
+finally:
+    if _previous_retriever is None:
+        sys.modules.pop("retriever", None)
+    else:
+        sys.modules["retriever"] = _previous_retriever
 
 
 def chunk(source, page, distance=0.2):

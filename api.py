@@ -90,7 +90,13 @@ class FolderIndexRequest(BaseModel):
 def _resolve_data_document(filename: str) -> Path:
     """Resolve a supported document while preventing traversal outside ``data/``."""
     data_root = Path(DATA_DIR).resolve()
-    candidate = (data_root / filename).resolve()
+    relative_path = Path(filename)
+    # Older folder-indexing runs stored paths relative to the repository root,
+    # including the leading ``data/`` directory. Accept both that legacy form
+    # and the canonical path relative to DATA_DIR.
+    if relative_path.parts[:1] == ("data",):
+        relative_path = Path(*relative_path.parts[1:])
+    candidate = (data_root / relative_path).resolve()
     if data_root != candidate.parent and data_root not in candidate.parents:
         raise ValueError("The document must be located inside the data directory.")
     if candidate.suffix.lower() not in SUPPORTED_DOCUMENT_EXTENSIONS:
@@ -130,6 +136,23 @@ def open_document(source_path: str) -> FileResponse:
         ".md": "text/markdown; charset=utf-8",
     }
     return FileResponse(document_path, media_type=media_types[document_path.suffix.lower()])
+
+
+@app.get("/passages/resolve-legacy")
+async def resolve_legacy_passage(
+    source: str = Query(min_length=1, max_length=4096),
+    page: int = Query(ge=0),
+    preview: str = Query(min_length=1, max_length=500),
+) -> dict:
+    """Resolve citations saved before source responses included chunk IDs."""
+    from indexer import get_chunk_by_citation
+
+    passage = await run_in_threadpool(
+        get_chunk_by_citation, source, page, preview
+    )
+    if passage is None:
+        raise HTTPException(status_code=404, detail="Exact cited passage not found.")
+    return passage
 
 
 @app.get("/passages/{chunk_id}")
@@ -203,16 +226,23 @@ async def remove_conversation(conversation_id: str) -> None:
 
 @app.post("/index")
 async def index_file(request: IndexRequest) -> dict:
-    from indexer import index_document
+    from indexer import index_document, is_document_indexed
 
     try:
         document_path = _resolve_data_document(request.filename)
+        source_name = document_path.relative_to(Path(DATA_DIR).resolve()).as_posix()
+        if await run_in_threadpool(
+            is_document_indexed, source_name, file_path=document_path
+        ):
+            return {"source": source_name, "pages_with_text": 0,
+                    "chunks_indexed": 0, "deduplicated": True}
         pages = await run_in_threadpool(_extract_document, document_path)
         chunks = await run_in_threadpool(
             index_document,
             pages,
-            document_path.name,
+            source_name,
             SOURCE_TYPES[document_path.suffix.lower()],
+            file_path=document_path,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -220,7 +250,7 @@ async def index_file(request: IndexRequest) -> dict:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return {
-        "source": document_path.name,
+        "source": source_name,
         "pages_with_text": len(pages),
         "chunks_indexed": chunks,
         "deduplicated": chunks == 0 and bool(pages),
@@ -269,12 +299,6 @@ async def upload_document(
 
     from indexer import index_document, is_document_indexed
 
-    if await run_in_threadpool(is_document_indexed, source_name):
-        raise HTTPException(
-            status_code=409,
-            detail=f"'{source_name}' is already indexed in the library.",
-        )
-
     total = 0
     created_by_request = False
     used_existing_file = destination.exists()
@@ -292,6 +316,14 @@ async def upload_document(
                         )
                     output.write(chunk)
 
+        if await run_in_threadpool(
+            is_document_indexed, source_name, file_path=destination
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=f"'{source_name}' is already indexed in the library.",
+            )
+
         pages = await run_in_threadpool(_extract_document, destination)
         if not pages:
             raise HTTPException(
@@ -299,7 +331,8 @@ async def upload_document(
                 detail="No readable text could be extracted from this document.",
             )
         chunks = await run_in_threadpool(
-            index_document, pages, source_name, SOURCE_TYPES[extension]
+            index_document, pages, source_name, SOURCE_TYPES[extension],
+            file_path=destination,
         )
     except ValueError as exc:
         if created_by_request:

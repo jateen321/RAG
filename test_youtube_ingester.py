@@ -156,6 +156,11 @@ class FakeCollection:
             self.rows.pop(row_id, None)
             self.deleted.append(row_id)
 
+    def update(self, ids, metadatas):
+        for row_id, metadata in zip(ids, metadatas):
+            embedding, document, previous = self.rows[row_id]
+            self.rows[row_id] = (embedding, document, {**previous, **metadata})
+
 
 class SharedIndexerTests(unittest.TestCase):
     def test_stats_keep_youtube_source_url_for_library_links(self):
