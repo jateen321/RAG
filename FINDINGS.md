@@ -841,3 +841,40 @@ produced different text.
 first real test of rule 2. The harness now passes `top_k` through to `ask_with_sources`
 (it previously retrieved a second time at the config default, so citation scores described
 a *different* retrieval than the ranks beside them). Not run here to avoid generation spend.
+
+## 9. OCR concurrency: first execution, and two defects (2026-08-27)
+
+The parallel OCR path had been committed, merged to `main` and pushed without ever
+running. `test_ocr_concurrency.py` stubs the backend and `_prepare_page`, so it exercises
+the real control flow offline at zero API cost.
+
+### 9.1 🟢 The reassembly was already correct
+4 of the 7 tests passed against the unfixed code. `as_completed()` returns futures in
+completion order, and the `futures[fut] -> page number` mapping restored page order
+correctly for contiguous ranges, non-contiguous page lists, and batch sizes that are not a
+multiple of `workers * 2`. Sequential and parallel produce identical dicts. The concurrency
+design was sound; only its error handling was not.
+
+### 9.2 🔴 One corrupt page aborted the whole document — but only at workers > 1
+`prepared = [(n, _prepare_page(doc[n])) for n in batch]` sat OUTSIDE any `try`, while the
+sequential path had the same call INSIDE one. So a page that PyMuPDF could not render was
+tolerated at `OCR_MAX_WORKERS=1` and fatal at `OCR_MAX_WORKERS=8` — the docstring claimed
+the two paths matched. Confirmed by test: `ValueError: corrupt page` escaped `_ocr_pages`
+and would have discarded the other 19 pages. Each page is now prepared in its own `try`.
+
+### 9.3 🔴 Systemic failure produced a complete-looking index built from nothing
+A blanket per-page `except Exception` meant rejected credentials or a disabled Vision API
+yielded `""` for every page, printed 1877 red lines, and returned normally — so indexing
+proceeded and stored empty text. Before concurrency, the first page's exception aborted the
+run with one clear error.
+
+Fixed with a per-run tally: once the first `min(5, pages)` pages have all failed and NO page
+has succeeded, raise. Threshold rather than "every page failed" because waiting for a
+1877-page document to fail costs the full retry schedule (4 attempts, 2-8s backoff) on each
+one. Trade-off: a document whose first five pages genuinely fail but whose sixth would have
+succeeded now raises. That is the right default — five consecutive failures with nothing
+working is far more often a config problem than five bad scans.
+
+### 9.4 ⚪ Still unmeasured
+Real end-to-end throughput at `OCR_MAX_WORKERS=8`. The 3.3x figure in commit `7813768`
+came from a run whose provenance this session did not verify.

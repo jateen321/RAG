@@ -332,25 +332,66 @@ def _ocr_pages(doc, page_nums: list[int], progress=None, task=None) -> dict[int,
 
     A page that fails every retry yields "" and is reported, rather than
     aborting the run — losing one page of a 3653-page index should not cost the
-    other 3652.
+    other 3652. But a run where NOTHING succeeds is not a page problem, it is a
+    configuration problem (rejected credentials, a disabled API), and returning
+    3653 empty strings would build a complete-looking index out of nothing. So
+    total failure raises instead. See _Outcome below.
     """
     backend = _OCR_BACKENDS[OCR_BACKEND]
     results: dict[int, str] = {}
+
+    class _Outcome:
+        """Per-run tally that turns systemic failure into a loud error.
+
+        Threshold rather than "all pages": on a 1877-page scan with bad
+        credentials, waiting for every page to fail costs the full retry
+        schedule on each one. Once the first few pages have all failed with no
+        success anywhere, the next 1872 will fail the same way.
+        """
+
+        limit = min(5, len(page_nums))
+
+        def __init__(self):
+            self.ok = 0
+            self.failed = 0
+            self.last_exc = None
+
+        def record(self, exc=None):
+            if exc is None:
+                self.ok += 1
+                return
+            self.failed += 1
+            self.last_exc = exc
+            if self.ok == 0 and self.failed >= self.limit:
+                raise RuntimeError(
+                    f"OCR failed on the first {self.failed} page(s) with no page "
+                    f"succeeding — this looks like a configuration problem "
+                    f"(backend {OCR_BACKEND!r}), not a bad scan. Last error: {exc}"
+                ) from exc
+
+    outcome = _Outcome()
 
     def _done(n, text):
         results[n] = text
         if progress is not None:
             progress.update(task, advance=1)
 
-    # workers == 1 takes the plain sequential path, byte-for-byte the old
-    # behaviour, so there is always a fallback if concurrency misbehaves.
+    def _failed(n, exc):
+        console.print(f"   [red]page {n + 1}: OCR failed — {exc}[/red]")
+        _done(n, "")
+        outcome.record(exc)
+
+    # workers == 1 takes the plain sequential path, so there is always a
+    # fallback if concurrency misbehaves.
     if OCR_MAX_WORKERS <= 1:
         for n in page_nums:
             try:
-                _done(n, backend(_prepare_page(doc[n])))
+                text = backend(_prepare_page(doc[n]))
             except Exception as exc:                       # noqa: BLE001
-                console.print(f"   [red]page {n + 1}: OCR failed — {exc}[/red]")
-                _done(n, "")
+                _failed(n, exc)
+            else:
+                _done(n, text)
+                outcome.record()
         return results
 
     # One pool for the whole document; chunking below is what bounds memory, so
@@ -361,15 +402,29 @@ def _ocr_pages(doc, page_nums: list[int], progress=None, task=None) -> dict[int,
             batch = page_nums[start:start + chunk]
             # Rasterize + encode HERE, on the main thread. Only `chunk` encoded
             # pages exist at once, so RAM is flat in document length.
-            prepared = [(n, _prepare_page(doc[n])) for n in batch]
+            #
+            # Each page is prepared inside its own try: this list comprehension
+            # used to sit outside one, so a single corrupt page raised straight
+            # out of the function and abandoned the whole document — while the
+            # sequential path above tolerated the same page. The two paths must
+            # agree, or workers>1 is not the same operation.
+            prepared = []
+            for n in batch:
+                try:
+                    prepared.append((n, _prepare_page(doc[n])))
+                except Exception as exc:                   # noqa: BLE001
+                    _failed(n, exc)
+
             futures = {pool.submit(backend, data): n for n, data in prepared}
             for fut in as_completed(futures):
                 n = futures[fut]
                 try:
-                    _done(n, fut.result())
+                    text = fut.result()
                 except Exception as exc:                   # noqa: BLE001
-                    console.print(f"   [red]page {n + 1}: OCR failed — {exc}[/red]")
-                    _done(n, "")
+                    _failed(n, exc)
+                else:
+                    _done(n, text)
+                    outcome.record()
     return results
 
 
