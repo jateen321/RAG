@@ -130,7 +130,18 @@ div.document-card:hover { border-color: transparent; background: transparent; }
 .answer-heading { display: flex; align-items: baseline; justify-content: space-between; min-height: 29px; }
 .answer-heading strong { font-family: Georgia, serif; font-size: 14px; }
 .answer-heading small { color: #95988f; font-size: 9px; }
-.answer-copy { color: #30443f; font-family: Georgia, 'Noto Serif Devanagari', serif; font-size: 15px; line-height: 1.75; white-space: pre-wrap; }
+/* No white-space: pre-wrap. It used to supply the paragraph breaks when the
+   answer was one raw text node; now that AnswerMarkdown emits real <p>/<ul>
+   elements, keeping it would also honour every newline *inside* a block and
+   double-space the lists. */
+.answer-copy { color: #30443f; font-family: Georgia, 'Noto Serif Devanagari', serif; font-size: 15px; line-height: 1.75; }
+.answer-copy > :first-child { margin-top: 0; }
+.answer-copy > :last-child { margin-bottom: 0; }
+.answer-copy p { margin: 0 0 12px; }
+.answer-copy ul, .answer-copy ol { margin: 0 0 12px; padding-left: 22px; }
+.answer-copy li { margin-bottom: 7px; padding-left: 3px; }
+.answer-copy li::marker { color: var(--orange); font-size: 13px; }
+.answer-copy strong { font-weight: 700; color: #1f332e; }
 .thinking { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 9px 0; color: var(--muted); }
 .thinking > span { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); animation: pulse 1s ease-in-out infinite; }
 .thinking > span:nth-child(2) { animation-delay: .15s; }

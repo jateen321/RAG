@@ -2,6 +2,8 @@
 
 import { ChangeEvent, FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 
+import { AnswerMarkdown } from './answer-markdown';
+
 const API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || 'http://127.0.0.1:8000';
 
 type DocumentInfo = {
@@ -561,7 +563,7 @@ export default function ChatWorkspace() {
                     <div className="answer-heading"><strong>Sarthi AI</strong>{message.totalSeconds != null && <small>{message.totalSeconds.toFixed(1)}s · {message.sources?.length ?? 0} sources</small>}</div>
                     {message.pending && <LoadingAnswer />}
                     {message.error && <div className="answer-error"><strong>I couldn’t answer that.</strong><p>{message.error}</p><button type="button" onClick={() => void ask(message.question)}>Try again</button></div>}
-                    {message.answer && <div className="answer-copy">{message.answer}</div>}
+                    {message.answer && <AnswerMarkdown text={message.answer} />}
                     {!!message.sources?.length && (
                       <>
                         <button className="show-sources" type="button" onClick={() => setActiveSources(message.sources || [])}>
