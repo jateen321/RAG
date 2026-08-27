@@ -146,7 +146,7 @@ def _resolve_or_suggest(pdf_path: str) -> str:
     return _pick_pdf()
 
 
-def cmd_index(pdf_path: str = None):
+def cmd_index(pdf_path: str = None, force: bool = False):
     """Index a PDF file. With no path given, show the picker."""
     if pdf_path is None:
         pdf_path = _pick_pdf()
@@ -156,6 +156,22 @@ def cmd_index(pdf_path: str = None):
     if not pdf_path.lower().endswith(".pdf"):
         console.print("[red]❌ Please provide a PDF file.[/red]")
         sys.exit(1)
+
+    # Guard BEFORE extraction: this path had no duplicate check at all, which is
+    # how "CIL.pdf" joined an already-indexed "data/CIL.pdf". Checking here
+    # rather than just before index_document also skips a pointless OCR pass.
+    if not force:
+        from indexer import is_document_indexed
+
+        if is_document_indexed(os.path.basename(pdf_path)):
+            console.print(
+                f"[yellow]⏭  '{os.path.basename(pdf_path)}' is already indexed.[/yellow]"
+            )
+            console.print(
+                "   Re-index with [bold]--force[/bold], or drop the existing copy "
+                "first with [bold]python app.py remove[/bold]."
+            )
+            return
 
     # Go through document_ingester rather than calling ocr_engine directly, so
     # the CLI shares the OCR disk cache with /upload and /index/folder. Calling
@@ -566,7 +582,8 @@ def main():
 
     if command == "index":
         # No path given → show the picker instead of erroring out.
-        cmd_index(sys.argv[2] if len(sys.argv) > 2 else None)
+        args = [a for a in sys.argv[2:] if a != "--force"]
+        cmd_index(args[0] if args else None, force="--force" in sys.argv[2:])
 
     elif command == "index-youtube":
         if len(sys.argv) < 3:

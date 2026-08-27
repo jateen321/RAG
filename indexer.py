@@ -590,10 +590,24 @@ def _find_document_id(source_name: str) -> str | None:
 
 
 def is_document_indexed(source_name: str) -> bool:
-    """Return whether ChromaDB contains passages for ``source_name``."""
+    """Return whether ChromaDB already holds passages for ``source_name``.
+
+    Compares BASENAMES, not the full stored name. The ingestion paths spell the
+    same file differently -- ``app.py index`` stores "CIL.pdf", ``index_folder``
+    stores "data/CIL.pdf", the API stores the path relative to its data root --
+    so a full-name comparison answers "not indexed" for a file that is already
+    present and the corpus silently gains a second copy. Five documents were
+    duplicated this way, the Gita among them.
+
+    This is the same trade-off ``document_ingester.indexed_file_names()``
+    already makes and documents: two genuinely different files sharing a
+    filename in different folders look like one document. Callers report the
+    match rather than acting on it silently, and offer a force override.
+    """
+    target = os.path.basename(source_name).casefold()
     metadatas = _get_collection().get(include=["metadatas"])["metadatas"] or []
     return any(
-        md and md.get("source_name", "").casefold() == source_name.casefold()
+        md and os.path.basename(md.get("source_name", "")).casefold() == target
         for md in metadatas
     )
 
@@ -659,6 +673,54 @@ def get_chunk(chunk_id: str, source_name: str) -> dict | None:
         "start_seconds": md.get("start_seconds"),
         "end_seconds": md.get("end_seconds"),
     }
+
+
+def get_chunk_by_citation(
+    source_name: str,
+    page_number: int,
+    preview: str,
+) -> dict | None:
+    """Resolve a legacy citation only when its preview identifies one exact chunk.
+
+    Conversation rows created before stable chunk IDs were exposed still retain
+    the source, page, and the first 120 characters of the retrieved text. Limit
+    the lookup to that document and page, then require an exact preview match so
+    an evidence dialog never displays a guessed passage.
+    """
+    doc_id = _find_document_id(source_name)
+    if not doc_id:
+        return None
+
+    got = _get_collection().get(
+        where={
+            "$and": [
+                {"document_id": doc_id},
+                {"page_number": page_number},
+            ]
+        },
+        include=["documents", "metadatas"],
+    )
+    matches = []
+    for chunk_id, text, metadata in zip(
+        got["ids"], got["documents"] or [], got["metadatas"] or []
+    ):
+        if text[:120].replace("\n", " ") != preview:
+            continue
+        md = metadata or {}
+        matches.append({
+            "chunk_id": chunk_id,
+            "source": md.get("source_name", source_name),
+            "text": text,
+            "page_number": md.get("page_number", page_number),
+            "chunk_index": md.get("chunk_index", 0),
+            "extraction_method": md.get("extraction_method", "unknown"),
+            "content_hash": md.get("content_hash", ""),
+            "source_type": md.get("source_type", "unknown"),
+            "start_seconds": md.get("start_seconds"),
+            "end_seconds": md.get("end_seconds"),
+        })
+
+    return matches[0] if len(matches) == 1 else None
 
 
 def get_document_chunks(source_name: str) -> list[dict]:
