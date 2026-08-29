@@ -1074,7 +1074,7 @@ plans searches from the current question plus the document catalog, but its plan
 receives no conversation history. The new contextualizer is therefore a separate prerequisite
 that can later feed that branch's multi-query planner.
 
-🟢 **Runtime-verified:** 97 offline unit tests pass in the project `.venv`, including
+🟢 **Runtime-verified:** 96 offline unit tests pass in the project `.venv`, including
 English, Hindi, and Romanized-Hindi follow-ups, self-contained-query bypass, malformed rewrite
 fallback, conversation isolation, and preservation of history in the generation request.
 
