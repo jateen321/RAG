@@ -12,21 +12,6 @@ Last updated: 2026-08-27.
 
 ---
 
-## Web integration
-
-- 🟢 **Repo-verified (2026-08-27):** The frontend preview at
-  `http://localhost:8081` could not read a healthy FastAPI server because that
-  origin was absent from the backend's CORS allowlist. The API returned `200` to
-  `/health` but omitted `Access-Control-Allow-Origin`, which browsers surface as
-  a generic failed `fetch`; the UI therefore reported the server as unreachable.
-  Port 8081 is now included in the local defaults and covered by a regression test.
-  More importantly, browser API calls now use same-origin `/api` URLs; Vite
-  removes that prefix and forwards to FastAPI on port 8000. Live checks returned
-  `200` through both `:3000/api/health` and the IDS path `:8081/api/health`, so
-  browser traffic no longer bypasses the IDS with a direct port-8000 request.
-
----
-
 ## Codex tooling
 
 - ⚪ **Hypothesis (2026-08-27):** The Codex TUI bootstrap error `thread/resume failed …

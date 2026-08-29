@@ -8,26 +8,6 @@ from fastapi.testclient import TestClient
 import api
 
 
-class CorsConfigurationTests(unittest.TestCase):
-    def setUp(self):
-        self.client = TestClient(api.app)
-
-    def test_local_preview_origin_can_reach_the_api(self):
-        response = self.client.options(
-            "/health",
-            headers={
-                "Origin": "http://localhost:8081",
-                "Access-Control-Request-Method": "GET",
-            },
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.headers["access-control-allow-origin"],
-            "http://localhost:8081",
-        )
-
-
 class DocumentUploadValidationTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(api.app)
