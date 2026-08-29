@@ -174,6 +174,32 @@ def get_conversation(database_path: str | Path, conversation_id: str) -> dict | 
     return {**dict(conversation), "exchanges": exchanges}
 
 
+def get_recent_history(
+    database_path: str | Path, conversation_id: str, limit: int = 12,
+) -> list[dict]:
+    """Fetch recent turns for this conversation only, oldest first.
+
+    Bound the database read as well as the eventual model prompt. rowid breaks
+    ties because timestamps have only second-level precision.
+    """
+    if limit < 1:
+        return []
+    with _database(database_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT question, answer FROM exchanges
+            WHERE conversation_id = ?
+            ORDER BY created_at DESC, rowid DESC LIMIT ?
+            """,
+            (conversation_id, limit),
+        ).fetchall()
+    return [
+        {"role": role, "parts": [{"text": row[field]}]}
+        for row in reversed(rows)
+        for role, field in (("user", "question"), ("model", "answer"))
+    ]
+
+
 def delete_conversation(database_path: str | Path, conversation_id: str) -> bool:
     with _database(database_path) as connection:
         cursor = connection.execute(

@@ -14,6 +14,7 @@ from conversation_store import (
     conversation_exists,
     delete_conversation,
     get_conversation,
+    get_recent_history,
     list_conversations,
     record_exchange,
 )
@@ -183,7 +184,18 @@ async def ask_question(request: AskRequest) -> dict:
 
     try:
         question = request.question.strip()
-        result = await run_in_threadpool(ask_with_sources, question)
+        if request.conversation_id:
+            from conversation_memory import MAX_HISTORY_EXCHANGES
+
+            history = await run_in_threadpool(
+                get_recent_history, CONVERSATION_DB_PATH,
+                request.conversation_id, MAX_HISTORY_EXCHANGES,
+            )
+            result = await run_in_threadpool(
+                ask_with_sources, question, chat_history=history,
+            )
+        else:
+            result = await run_in_threadpool(ask_with_sources, question)
         conversation_id = await run_in_threadpool(
             record_exchange,
             CONVERSATION_DB_PATH,
