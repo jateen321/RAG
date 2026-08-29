@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
@@ -14,9 +15,11 @@ from conversation_store import (
     conversation_exists,
     delete_conversation,
     get_conversation,
+    get_history_before_exchange,
     get_recent_history,
     list_conversations,
     record_exchange,
+    replace_exchange_and_truncate,
 )
 from document_ingester import (
     SOURCE_TYPES,
@@ -51,7 +54,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
@@ -59,6 +62,10 @@ app.add_middleware(
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     conversation_id: str | None = Field(default=None, min_length=1, max_length=64)
+
+
+class EditExchangeRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
 
 
 class IndexRequest(BaseModel):
@@ -193,6 +200,7 @@ async def ask_question(request: AskRequest) -> dict:
             )
         else:
             result = await run_in_threadpool(ask_with_sources, question)
+        exchange_id = str(uuid4())
         conversation_id = await run_in_threadpool(
             record_exchange,
             CONVERSATION_DB_PATH,
@@ -201,8 +209,13 @@ async def ask_question(request: AskRequest) -> dict:
             result["answer"],
             result.get("sources", []),
             result.get("timings", {}).get("total_s"),
+            exchange_id,
         )
-        return {**result, "conversation_id": conversation_id}
+        return {
+            **result,
+            "conversation_id": conversation_id,
+            "exchange_id": exchange_id,
+        }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -225,6 +238,53 @@ async def conversation_detail(conversation_id: str) -> dict:
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found.")
     return conversation
+
+
+@app.put("/conversations/{conversation_id}/exchanges/{exchange_id}")
+async def edit_exchange(
+    conversation_id: str,
+    exchange_id: str,
+    request: EditExchangeRequest,
+) -> dict:
+    """Edit one prompt, regenerate it, and discard later branch exchanges."""
+    from conversation_memory import MAX_HISTORY_EXCHANGES
+    from rag_engine import ask_with_sources
+
+    question = request.question.strip()
+    history = await run_in_threadpool(
+        get_history_before_exchange,
+        CONVERSATION_DB_PATH,
+        conversation_id,
+        exchange_id,
+        MAX_HISTORY_EXCHANGES,
+    )
+    if history is None:
+        raise HTTPException(status_code=404, detail="Exchange not found.")
+    try:
+        result = await run_in_threadpool(
+            ask_with_sources, question, chat_history=history,
+        )
+        replaced = await run_in_threadpool(
+            replace_exchange_and_truncate,
+            CONVERSATION_DB_PATH,
+            conversation_id,
+            exchange_id,
+            question,
+            result["answer"],
+            result.get("sources", []),
+            result.get("timings", {}).get("total_s"),
+        )
+        if not replaced:
+            raise HTTPException(status_code=404, detail="Exchange not found.")
+        return {
+            **result,
+            "conversation_id": conversation_id,
+            "exchange_id": exchange_id,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)

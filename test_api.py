@@ -348,6 +348,60 @@ class ConversationHistoryTests(unittest.TestCase):
         self.assertEqual(response.json()["detail"], "Conversation not found.")
         ask_with_sources.assert_not_called()
 
+    def test_editing_an_exchange_regenerates_from_that_point(self):
+        answers = [self.answer("First answer"), self.answer("Second answer"), self.answer("Third answer")]
+        with patch("rag_engine.ask_with_sources", side_effect=answers):
+            first = self.client.post("/ask", json={"question": "First question"})
+            conversation_id = first.json()["conversation_id"]
+            self.client.post("/ask", json={"question": "Second question", "conversation_id": conversation_id})
+            self.client.post("/ask", json={"question": "Third question", "conversation_id": conversation_id})
+
+        before = self.client.get(f"/conversations/{conversation_id}").json()["exchanges"]
+        edited_id = before[1]["id"]
+        edited_answer = self.answer("Edited answer")
+        with patch("rag_engine.ask_with_sources", return_value=edited_answer) as ask:
+            response = self.client.put(
+                f"/conversations/{conversation_id}/exchanges/{edited_id}",
+                json={"question": "Edited second question"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["exchange_id"], edited_id)
+        history = ask.call_args.kwargs["chat_history"]
+        self.assertEqual([item["parts"][0]["text"] for item in history], ["First question", "First answer"])
+        after = self.client.get(f"/conversations/{conversation_id}").json()["exchanges"]
+        self.assertEqual(len(after), 2)
+        self.assertEqual(after[1]["id"], edited_id)
+        self.assertEqual(after[1]["question"], "Edited second question")
+        self.assertEqual(after[1]["answer"], "Edited answer")
+
+    def test_editing_first_exchange_updates_title(self):
+        with patch("rag_engine.ask_with_sources", return_value=self.answer()):
+            created = self.client.post("/ask", json={"question": "Original title"})
+            conversation_id = created.json()["conversation_id"]
+            exchange_id = created.json()["exchange_id"]
+            response = self.client.put(
+                f"/conversations/{conversation_id}/exchanges/{exchange_id}",
+                json={"question": "Replacement title"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        detail = self.client.get(f"/conversations/{conversation_id}").json()
+        self.assertEqual(detail["title"], "Replacement title")
+
+    def test_editing_unknown_exchange_is_rejected_before_generation(self):
+        with patch("rag_engine.ask_with_sources", return_value=self.answer()):
+            created = self.client.post("/ask", json={"question": "First question"})
+        with patch("rag_engine.ask_with_sources") as ask:
+            response = self.client.put(
+                f"/conversations/{created.json()['conversation_id']}/exchanges/missing",
+                json={"question": "Edited question"},
+            )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "Exchange not found.")
+        ask.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

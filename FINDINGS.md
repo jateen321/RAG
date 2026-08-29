@@ -1094,3 +1094,11 @@ inside one parenthetical citation; some pages were absent from the five retrieve
 labels. The renderer correctly left that unmatched text visible instead of presenting it as
 verified evidence. Citation rule 4 now requires one exact retrieved source/locator per pair of
 parentheses, separate citations for separate passages, and forbids invented locators.
+
+## 17. Persisted prompt editing needs the exchange identity (2026-08-29)
+
+🟢 **Repo- and live-verified:** saved exchanges already had stable UUIDs, but `/ask` returned
+only the conversation UUID while the frontend displayed a temporary client UUID. A newly sent
+prompt therefore could not be edited reliably until the conversation was reloaded. `/ask` now
+returns the persisted exchange UUID. Editing regenerates with history strictly before that
+exchange, preserves its UUID, and deletes later exchanges as the abandoned conversation branch.

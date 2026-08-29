@@ -56,6 +56,7 @@ type AskResponse = {
   sources: Source[];
   timings?: { total_s?: number };
   conversation_id: string;
+  exchange_id: string;
 };
 
 type Conversation = {
@@ -160,6 +161,8 @@ export default function ChatWorkspace() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState('');
   const [question, setQuestion] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editedQuestion, setEditedQuestion] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -178,6 +181,7 @@ export default function ChatWorkspace() {
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const threadEnd = useRef<HTMLDivElement>(null);
+  const editInput = useRef<HTMLTextAreaElement>(null);
 
   const refreshHealth = useCallback(async () => {
     try {
@@ -193,6 +197,8 @@ export default function ChatWorkspace() {
     setLoadingConversation(true);
     try {
       const detail = await requestJson<ConversationDetail>(`/conversations/${conversationId}`);
+      setEditingMessageId(null);
+      setEditedQuestion('');
       setActiveConversationId(detail.id);
       setConversations(detail.exchanges.map((exchange) => ({
         id: exchange.id,
@@ -225,6 +231,7 @@ export default function ChatWorkspace() {
   useEffect(() => { void refreshHealth(); }, [refreshHealth]);
   useEffect(() => { void refreshConversationHistory(true); }, [refreshConversationHistory]);
   useEffect(() => { threadEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [conversations]);
+  useEffect(() => { editInput.current?.focus(); }, [editingMessageId]);
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(null), 5000);
@@ -249,6 +256,7 @@ export default function ChatWorkspace() {
       });
       setConversations((current) => current.map((message) => message.id === id ? {
         ...message,
+        id: data.exchange_id,
         pending: false,
         answer: data.answer,
         sources: data.sources,
@@ -266,7 +274,67 @@ export default function ChatWorkspace() {
     }
   }
 
+  function beginEditing(message: Conversation) {
+    setEditingMessageId(message.id);
+    setEditedQuestion(message.question);
+  }
+
+  function cancelEditing() {
+    setEditingMessageId(null);
+    setEditedQuestion('');
+  }
+
+  async function saveEditedQuestion(message: Conversation) {
+    const cleanQuestion = editedQuestion.trim();
+    if (!activeConversationId || !cleanQuestion || isAsking) return;
+    const previousMessages = conversations;
+    const messageIndex = previousMessages.findIndex((item) => item.id === message.id);
+    if (messageIndex === -1) return;
+
+    cancelEditing();
+    setConversations(previousMessages.slice(0, messageIndex + 1).map((item) => item.id === message.id ? {
+      ...item,
+      question: cleanQuestion,
+      answer: undefined,
+      sources: undefined,
+      totalSeconds: undefined,
+      error: undefined,
+      pending: true,
+    } : item));
+    try {
+      const data = await requestJson<AskResponse>(`/conversations/${activeConversationId}/exchanges/${message.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: cleanQuestion }),
+      });
+      setConversations((current) => current.map((item) => item.id === message.id ? {
+        ...item,
+        pending: false,
+        answer: data.answer,
+        sources: data.sources,
+        totalSeconds: data.timings?.total_s,
+      } : item));
+      setActiveSources(data.sources || []);
+      await refreshConversationHistory();
+    } catch (error) {
+      setConversations(previousMessages);
+      setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'The edited prompt could not be saved.' });
+    }
+  }
+
+  function handleEditKey(event: KeyboardEvent<HTMLTextAreaElement>, message: Conversation) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelEditing();
+    } else if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void saveEditedQuestion(message);
+    }
+  }
+
   function startNewConversation() {
+    setEditingMessageId(null);
+    setEditedQuestion('');
     setActiveConversationId(null);
     setConversations([]);
     setActiveSources([]);
@@ -557,7 +625,31 @@ export default function ChatWorkspace() {
           <div className="conversation-thread" aria-live="polite">
             {conversations.map((message) => (
               <article className="exchange" key={message.id}>
-                <div className="question-bubble"><span>You</span><p>{message.question}</p></div>
+                <div className={`question-bubble ${editingMessageId === message.id ? 'editing' : ''}`}>
+                  {editingMessageId === message.id ? (
+                    <form onSubmit={(event) => { event.preventDefault(); void saveEditedQuestion(message); }}>
+                      <label htmlFor={`edit-${message.id}`}>Edit prompt</label>
+                      <textarea
+                        id={`edit-${message.id}`}
+                        ref={editInput}
+                        value={editedQuestion}
+                        onChange={(event) => setEditedQuestion(event.target.value)}
+                        onKeyDown={(event) => handleEditKey(event, message)}
+                        rows={2}
+                        maxLength={2000}
+                      />
+                      <div className="question-edit-actions">
+                        <button type="button" onClick={cancelEditing}>Cancel</button>
+                        <button type="submit" className="save" disabled={!editedQuestion.trim()}>Save &amp; regenerate</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="question-label"><span>You</span>{activeConversationId && message.answer && !isAsking && <button type="button" onClick={() => beginEditing(message)} aria-label={`Edit prompt: ${message.question}`} title="Edit prompt"><span aria-hidden="true">✎</span></button>}</div>
+                      <p>{message.question}</p>
+                    </>
+                  )}
+                </div>
                 <div className="answer-block">
                   <div className="assistant-badge">स</div>
                   <div className="answer-content">

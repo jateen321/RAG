@@ -91,6 +91,7 @@ def record_exchange(
     answer: str,
     sources: list[dict],
     total_seconds: float | None,
+    exchange_id: str | None = None,
 ) -> str:
     timestamp = _now()
     resolved_id = conversation_id or str(uuid4())
@@ -111,7 +112,7 @@ def record_exchange(
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                str(uuid4()),
+                exchange_id or str(uuid4()),
                 resolved_id,
                 question,
                 answer,
@@ -126,6 +127,98 @@ def record_exchange(
         )
         connection.commit()
     return resolved_id
+
+
+def get_history_before_exchange(
+    database_path: str | Path,
+    conversation_id: str,
+    exchange_id: str,
+    limit: int = 12,
+) -> list[dict] | None:
+    """Return bounded history before one exchange, or ``None`` if it is absent."""
+    with _database(database_path) as connection:
+        target = connection.execute(
+            "SELECT rowid FROM exchanges WHERE id = ? AND conversation_id = ?",
+            (exchange_id, conversation_id),
+        ).fetchone()
+        if target is None:
+            return None
+        rows = connection.execute(
+            """
+            SELECT question, answer FROM exchanges
+            WHERE conversation_id = ? AND rowid < ?
+            ORDER BY rowid DESC LIMIT ?
+            """,
+            (conversation_id, target["rowid"], max(limit, 0)),
+        ).fetchall()
+    return [
+        {"role": role, "parts": [{"text": row[field]}]}
+        for row in reversed(rows)
+        for role, field in (("user", "question"), ("model", "answer"))
+    ]
+
+
+def replace_exchange_and_truncate(
+    database_path: str | Path,
+    conversation_id: str,
+    exchange_id: str,
+    question: str,
+    answer: str,
+    sources: list[dict],
+    total_seconds: float | None,
+) -> bool:
+    """Replace an exchange and delete later turns from the abandoned branch."""
+    timestamp = _now()
+    with _database(database_path) as connection:
+        target = connection.execute(
+            """
+            SELECT rowid FROM exchanges
+            WHERE id = ? AND conversation_id = ?
+            """,
+            (exchange_id, conversation_id),
+        ).fetchone()
+        if target is None:
+            return False
+        earlier = connection.execute(
+            """
+            SELECT 1 FROM exchanges
+            WHERE conversation_id = ? AND rowid < ? LIMIT 1
+            """,
+            (conversation_id, target["rowid"]),
+        ).fetchone()
+        connection.execute(
+            "DELETE FROM exchanges WHERE conversation_id = ? AND rowid >= ?",
+            (conversation_id, target["rowid"]),
+        )
+        connection.execute(
+            """
+            INSERT INTO exchanges(
+                id, conversation_id, question, answer, sources_json,
+                total_seconds, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                exchange_id,
+                conversation_id,
+                question,
+                answer,
+                json.dumps(sources, ensure_ascii=False),
+                total_seconds,
+                timestamp,
+            ),
+        )
+        if earlier is None:
+            connection.execute(
+                "UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?",
+                (_title_from_question(question), timestamp, conversation_id),
+            )
+        else:
+            connection.execute(
+                "UPDATE conversations SET updated_at = ? WHERE id = ?",
+                (timestamp, conversation_id),
+            )
+        connection.commit()
+    return True
 
 
 def list_conversations(database_path: str | Path, limit: int = 50) -> list[dict]:
