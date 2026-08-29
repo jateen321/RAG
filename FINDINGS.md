@@ -1070,3 +1070,34 @@ unrelated process and owns both child process groups for one-step shutdown.
 ⚪ **Not live-verified in this session:** the complete dual-server lifecycle was not started
 because ports 3000 and 8000 were already occupied by the user's running application. The
 process-level restart and `Ctrl+C` behavior should be smoke-tested after those servers stop.
+
+## 14. Saved history reaches generation, but not retrieval (2026-08-29)
+
+🟢 **Code-path verification:** `/ask` loads the selected conversation's recent exchanges
+from SQLite and passes them to `ask_with_sources`. That function bounds the history and
+includes it in Gemini's generation contents, so persistence and prompt delivery are wired.
+
+🟢 **Fixed:** retrieval previously called `retrieve(question, ...)` with only the latest
+user text. A conservative bilingual gate now detects likely references and continuations;
+one constrained model call rewrites those into a standalone search query before embedding.
+Self-contained questions skip the extra call, and API/malformed-output failures fall back to
+the original question rather than blocking an answer. Generation still receives the user's
+original wording plus bounded history and retrieved evidence.
+
+🟡 **The unmerged multi-query branch did not close this gap.** Commit `c8655de`
+plans searches from the current question plus the document catalog, but its planner also
+receives no conversation history. The new contextualizer is therefore a separate prerequisite
+that can later feed that branch's multi-query planner.
+
+🟢 **Runtime-verified:** 97 offline unit tests pass in the project `.venv`, including
+English, Hindi, and Romanized-Hindi follow-ups, self-contained-query bypass, malformed rewrite
+fallback, conversation isolation, and preservation of history in the generation request.
+
+## 15. Generated answers use multi-locator citations (2026-08-29)
+
+🟢 **Live UI evidence:** the model does not always emit one page per citation. A saved answer
+contained `(panchatantra.pdf, पृष्ठ 82, 87)`, so a renderer limited to one numeric locator
+left disruptive citation text in the prose. The citation renderer now resolves each listed
+page against that answer's retrieved-source metadata and renders one compact, hover/focusable
+marker per matching passage. At a 1280×717 viewport, the literal citation count was 0, both
+source markers were present, and the retrieved-preview tooltip became visible on hover.
