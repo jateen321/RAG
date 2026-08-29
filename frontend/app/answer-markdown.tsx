@@ -1,6 +1,15 @@
 'use client';
 
-import { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode, useId } from 'react';
+
+export type CitationSource = {
+  page?: number;
+  preview: string;
+  source: string;
+  source_type?: string;
+  timestamp?: string;
+  video_title?: string;
+};
 
 /**
  * Renders the small slice of Markdown the answer model actually emits.
@@ -22,22 +31,86 @@ import { Fragment, ReactNode } from 'react';
 
 const BULLET = /^\s*[*-]\s+(.*)$/;
 const ORDERED = /^\s*(\d+)\.\s+(.*)$/;
+const INLINE_TOKEN = /(\*\*[^*]+\*\*|\([^()\n]+?,\s*(?:(?:Page|पृष्ठ|पेज|Document section)\s+\d+(?:\s*,\s*\d+)*|Timestamp\s+\d{1,2}:\d{2})\))/gi;
+const CITATION = /^\((.+),\s*(?:(Page|पृष्ठ|पेज|Document section)\s+(\d+(?:\s*,\s*\d+)*)|(Timestamp)\s+(\d{1,2}:\d{2}))\)$/i;
+
+const normalized = (value: string) => value.trim().replace(/\\/g, '/').split('/').at(-1)?.toLocaleLowerCase() || '';
+
+function citedSources(citation: string, sources: CitationSource[]) {
+  const match = CITATION.exec(citation);
+  if (!match) return null;
+
+  const citedName = normalized(match[1]);
+  const citedNumbers = match[3] ? match[3].split(',').map((page) => Number(page.trim())) : [];
+  const citedTimestamp = match[5] || null;
+  const matches = sources.flatMap((source, index) => {
+    const sourceNames = [source.source, source.video_title].filter(Boolean).map((name) => normalized(name!));
+    const sameName = sourceNames.includes(citedName);
+    if (!sameName) return [];
+    if (citedTimestamp && source.timestamp === citedTimestamp) return [{ index, source }];
+    return citedNumbers.includes(source.page || -1) ? [{ index, source }] : [];
+  });
+
+  return matches.length ? matches : null;
+}
 
 /** `**bold**` -> <strong>. Splits on the delimiter, so odd/unclosed markers
  *  simply stay as literal text rather than swallowing the rest of the answer. */
-function inline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**') && part.length > 4
-      ? <strong key={i}>{part.slice(2, -2)}</strong>
-      : <Fragment key={i}>{part}</Fragment>
-  );
+function inline(
+  text: string,
+  sources: CitationSource[],
+  nextTooltipId: () => string,
+  onCitationClick?: (source: CitationSource) => void,
+): ReactNode[] {
+  return text.split(INLINE_TOKEN).filter(Boolean).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+
+    const citations = citedSources(part, sources);
+    if (!citations) return <Fragment key={i}>{part}</Fragment>;
+
+    return (
+      <Fragment key={i}>
+        {citations.map(({ index, source }) => {
+          const tooltipId = nextTooltipId();
+          return (
+            <span className="citation" key={`${index}-${tooltipId}`}>
+              <sup>
+                <button
+                  type="button"
+                  aria-label={`Source ${index + 1}: ${source.source}`}
+                  aria-describedby={tooltipId}
+                  onClick={() => onCitationClick?.(source)}
+                >
+                  {index + 1}
+                </button>
+              </sup>
+              <span className="citation-tooltip" id={tooltipId} role="tooltip">
+                <strong>{source.video_title || source.source}</strong>
+                <small>{part.slice(1, -1)}</small>
+                <span>{source.preview}</span>
+              </span>
+            </span>
+          );
+        })}
+      </Fragment>
+    );
+  });
 }
 
 /** A list item's continuation lines are indented under it; join them into one
  *  flowing line so the paragraph wraps naturally instead of breaking mid-thought. */
 const squash = (lines: string[]) => lines.join(' ').replace(/\s+/g, ' ').trim();
 
-export function AnswerMarkdown({ text }: { text: string }) {
+export function AnswerMarkdown({ text, sources = [], onCitationClick }: {
+  text: string;
+  sources?: CitationSource[];
+  onCitationClick?: (source: CitationSource) => void;
+}) {
+  const idPrefix = useId();
+  let tooltipSequence = 0;
+  const nextTooltipId = () => `${idPrefix}-citation-${tooltipSequence++}`;
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   const blocks: ReactNode[] = [];
   let para: string[] = [];
@@ -45,13 +118,13 @@ export function AnswerMarkdown({ text }: { text: string }) {
 
   const flushPara = () => {
     if (!para.length) return;
-    blocks.push(<p key={`p${blocks.length}`}>{inline(squash(para))}</p>);
+    blocks.push(<p key={`p${blocks.length}`}>{inline(squash(para), sources, nextTooltipId, onCitationClick)}</p>);
     para = [];
   };
   const flushList = () => {
     if (!items.length) return;
     const ordered = items[0].ordered;
-    const rendered = items.map((it, i) => <li key={i}>{inline(squash(it.parts))}</li>);
+    const rendered = items.map((it, i) => <li key={i}>{inline(squash(it.parts), sources, nextTooltipId, onCitationClick)}</li>);
     blocks.push(ordered
       ? <ol key={`l${blocks.length}`}>{rendered}</ol>
       : <ul key={`l${blocks.length}`}>{rendered}</ul>);

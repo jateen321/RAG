@@ -167,6 +167,7 @@ export default function ChatWorkspace() {
   const [activeSources, setActiveSources] = useState<Source[]>([]);
   const [passageViewer, setPassageViewer] = useState<PassageViewer | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [contextCollapsed, setContextCollapsed] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -430,7 +431,7 @@ export default function ChatWorkspace() {
   }
 
   return (
-    <main className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <main className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${contextCollapsed ? 'context-collapsed' : ''}`}>
       <aside id="library-sidebar" className={`library-panel ${mobileLibraryOpen ? 'mobile-open' : ''}`}>
         <div className="mobile-panel-head">
           <div className="brand">
@@ -563,7 +564,7 @@ export default function ChatWorkspace() {
                     <div className="answer-heading"><strong>Sarthi AI</strong>{message.totalSeconds != null && <small>{message.totalSeconds.toFixed(1)}s · {message.sources?.length ?? 0} sources</small>}</div>
                     {message.pending && <LoadingAnswer />}
                     {message.error && <div className="answer-error"><strong>I couldn’t answer that.</strong><p>{message.error}</p><button type="button" onClick={() => void ask(message.question)}>Try again</button></div>}
-                    {message.answer && <AnswerMarkdown text={message.answer} />}
+                    {message.answer && <AnswerMarkdown text={message.answer} sources={message.sources} onCitationClick={(source) => void viewPassage(source as Source)} />}
                     {!!message.sources?.length && (
                       <>
                         <button className="show-sources" type="button" onClick={() => setActiveSources(message.sources || [])}>
@@ -602,7 +603,19 @@ export default function ChatWorkspace() {
         </form>
       </section>
 
-      <aside className="context-panel">
+      <aside id="evidence-sidebar" className="context-panel">
+        <button
+          className="context-toggle"
+          type="button"
+          onClick={() => setContextCollapsed((collapsed) => !collapsed)}
+          aria-controls="evidence-sidebar"
+          aria-expanded={!contextCollapsed}
+          aria-label={contextCollapsed ? 'Expand supporting evidence' : 'Collapse supporting evidence'}
+          title={contextCollapsed ? 'Expand supporting evidence' : 'Collapse supporting evidence'}
+        >
+          <span aria-hidden="true">{contextCollapsed ? '‹' : '›'}</span>
+        </button>
+        <div className="context-panel-body">
         {activeSources.length ? (
           <>
             <p className="eyebrow">SUPPORTING EVIDENCE</p>
@@ -638,6 +651,7 @@ export default function ChatWorkspace() {
             <div className="source-note"><span className="quote-mark">“</span><p>Good answers show their work.</p><small>Source cards will appear here after your first question.</small></div>
           </>
         )}
+        </div>
       </aside>
 
       {passageViewer && (
