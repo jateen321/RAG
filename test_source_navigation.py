@@ -173,9 +173,11 @@ class PromptCitationContractTests(unittest.TestCase):
 
         self.assertIn("only an exact source and locator shown", prompt)
         self.assertIn("exactly one source and one locator", prompt)
-        self.assertIn("write separate citations", prompt)
-        self.assertIn("never combine multiple sources or locators", prompt)
+        self.assertIn("a separate citation for every locator", prompt)
+        self.assertIn("never combine sources or page lists with commas or semicolons", prompt)
         self.assertIn("Never invent a source, page, section, or timestamp", prompt)
+        self.assertIn("do not write \"(A_History_of_Ancient_and_Early_Medieval_India.pdf, Page 5, 25, 766;", prompt)
+        self.assertIn("(bhagya-bada-ya-karm.pdf, Page 3)\" instead", prompt)
 
 
 if __name__ == "__main__":
