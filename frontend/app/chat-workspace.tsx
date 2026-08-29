@@ -4,7 +4,7 @@ import { ChangeEvent, FormEvent, KeyboardEvent, useCallback, useEffect, useRef, 
 
 import { AnswerMarkdown } from './answer-markdown';
 
-const API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || 'http://127.0.0.1:8000';
+const API_URL = '/api';
 
 type DocumentInfo = {
   source: string;

@@ -317,9 +317,21 @@ npm install
 npm run dev -- --host 127.0.0.1
 ```
 
-Open **http://localhost:3000**. The frontend connects to
-`http://127.0.0.1:8000` by default. Copy `frontend/.env.example` to
-`frontend/.env.local` to configure a different API or site URL.
+Open **http://localhost:3000**. Browser requests use the same-origin `/api`
+path. Vite forwards `/api/*` to FastAPI at `http://127.0.0.1:8000` and removes
+the `/api` prefix before forwarding. Copy `frontend/.env.example` to
+`frontend/.env.local` to configure the site URL.
+
+Local previews may instead open the frontend through an IDS on
+**http://localhost:8081**. The browser still requests `/api` on port 8081, so
+traffic follows the local routing chain instead of bypassing the IDS:
+
+```text
+Browser -> IDS :8081 -> Frontend :3000 -> FastAPI :8000
+```
+
+The backend CORS allowlist still includes ports 3000 and 8081 for direct local
+development and diagnostics.
 
 ### Restarting after code or branch changes
 
@@ -348,9 +360,7 @@ port 8000 updates the API only; it does not rebuild or restart the frontend on p
 PDF, UTF-8 TXT, and UTF-8 Markdown uploads are limited to 500 MB, saved inside
 `data/`. A document already indexed in ChromaDB is rejected; when the file
 already exists in `data/` but is not indexed, that local copy is indexed without
-being overwritten. Set
-`RAG_ALLOWED_ORIGINS` in `.env` if
-the frontend runs on a different origin.
+being overwritten.
 
 **Status codes:** `400` for a bad request, `503` when nothing is indexed yet or the Gemini
 quota is exhausted — a rate limit upstream becomes a "try again later" downstream, never a 500.
