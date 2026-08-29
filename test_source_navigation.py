@@ -167,5 +167,16 @@ class PromptLanguageContractTests(unittest.TestCase):
         self.assertIn("explicitly requests a response language", prompt)
 
 
+class PromptCitationContractTests(unittest.TestCase):
+    def test_citations_use_one_exact_retrieved_label_each(self):
+        prompt = rag_engine.SYSTEM_PROMPT
+
+        self.assertIn("only an exact source and locator shown", prompt)
+        self.assertIn("exactly one source and one locator", prompt)
+        self.assertIn("write separate citations", prompt)
+        self.assertIn("never combine multiple sources or locators", prompt)
+        self.assertIn("Never invent a source, page, section, or timestamp", prompt)
+
+
 if __name__ == "__main__":
     unittest.main()

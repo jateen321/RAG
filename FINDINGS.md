@@ -1086,3 +1086,11 @@ left disruptive citation text in the prose. The citation renderer now resolves e
 page against that answer's retrieved-source metadata and renders one compact, hover/focusable
 marker per matching passage. At a 1280×717 viewport, the literal citation count was 0, both
 source markers were present, and the retrieved-preview tooltip became visible on hover.
+
+## 16. One citation can contain several unsupported locators (2026-08-29)
+
+🟢 **Live UI evidence:** a generated answer combined three documents and several page numbers
+inside one parenthetical citation; some pages were absent from the five retrieved passage
+labels. The renderer correctly left that unmatched text visible instead of presenting it as
+verified evidence. Citation rule 4 now requires one exact retrieved source/locator per pair of
+parentheses, separate citations for separate passages, and forbids invented locators.
