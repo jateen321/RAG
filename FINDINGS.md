@@ -1102,3 +1102,11 @@ only the conversation UUID while the frontend displayed a temporary client UUID.
 prompt therefore could not be edited reliably until the conversation was reloaded. `/ask` now
 returns the persisted exchange UUID. Editing regenerates with history strictly before that
 exchange, preserves its UUID, and deletes later exchanges as the abandoned conversation branch.
+
+## 18. Citation prose and citation transport need different syntax (2026-08-29)
+
+🟢 **Repo-verified:** parsing ordinary parenthetical citations made document references
+indistinguishable from normal prose and encouraged multi-source lists inside one parenthesis.
+Rule 4 and the renderer now share an explicit `⟦source, locator⟧` transport format. Only a
+delimiter pair matching retrieved metadata becomes a numbered hover marker; unmatched markup
+remains visible so unsupported citations are not silently presented as verified evidence.

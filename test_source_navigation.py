@@ -172,12 +172,16 @@ class PromptCitationContractTests(unittest.TestCase):
         prompt = rag_engine.SYSTEM_PROMPT
 
         self.assertIn("only an exact source and locator shown", prompt)
-        self.assertIn("exactly one source and one locator", prompt)
-        self.assertIn("a separate citation for every locator", prompt)
+        self.assertIn('opening symbol "⟦" and the closing symbol "⟧"', prompt)
+        self.assertIn('formatted exactly as "⟦source, locator⟧"', prompt)
+        self.assertIn("never use them for non-citation text", prompt)
+        self.assertIn("Do not use ordinary parentheses for citations", prompt)
+        self.assertIn("one source and one locator between each pair", prompt)
+        self.assertIn("a separately delimited citation for every locator", prompt)
         self.assertIn("never combine sources or page lists with commas or semicolons", prompt)
         self.assertIn("Never invent a source, page, section, or timestamp", prompt)
-        self.assertIn("do not write \"(A_History_of_Ancient_and_Early_Medieval_India.pdf, Page 5, 25, 766;", prompt)
-        self.assertIn("(bhagya-bada-ya-karm.pdf, Page 3)\" instead", prompt)
+        self.assertIn("⟦A_History_of_Ancient_and_Early_Medieval_India.pdf, Page 5⟧", prompt)
+        self.assertIn("⟦bhagya-bada-ya-karm.pdf, Page 3⟧\" instead", prompt)
 
 
 if __name__ == "__main__":

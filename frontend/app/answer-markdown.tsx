@@ -31,8 +31,8 @@ export type CitationSource = {
 
 const BULLET = /^\s*[*-]\s+(.*)$/;
 const ORDERED = /^\s*(\d+)\.\s+(.*)$/;
-const INLINE_TOKEN = /(\*\*[^*]+\*\*|\([^()\n]+?,\s*(?:(?:Page|पृष्ठ|पेज|Document section)\s+\d+(?:\s*,\s*\d+)*|Timestamp\s+\d{1,2}:\d{2})\))/gi;
-const CITATION = /^\((.+),\s*(?:(Page|पृष्ठ|पेज|Document section)\s+(\d+(?:\s*,\s*\d+)*)|(Timestamp)\s+(\d{1,2}:\d{2}))\)$/i;
+const INLINE_TOKEN = /(\*\*[^*]+\*\*|⟦[^⟦⟧\n]+⟧)/g;
+const CITATION = /^⟦(.+),\s*(?:(Page|पृष्ठ|पेज|Document section)\s+(\d+)|(Timestamp)\s+(\d{1,2}:\d{2}))⟧$/i;
 
 const normalized = (value: string) => value.trim().replace(/\\/g, '/').split('/').at(-1)?.toLocaleLowerCase() || '';
 
@@ -41,14 +41,14 @@ function citedSources(citation: string, sources: CitationSource[]) {
   if (!match) return null;
 
   const citedName = normalized(match[1]);
-  const citedNumbers = match[3] ? match[3].split(',').map((page) => Number(page.trim())) : [];
+  const citedNumber = match[3] ? Number(match[3]) : null;
   const citedTimestamp = match[5] || null;
   const matches = sources.flatMap((source, index) => {
     const sourceNames = [source.source, source.video_title].filter(Boolean).map((name) => normalized(name!));
     const sameName = sourceNames.includes(citedName);
     if (!sameName) return [];
     if (citedTimestamp && source.timestamp === citedTimestamp) return [{ index, source }];
-    return citedNumbers.includes(source.page || -1) ? [{ index, source }] : [];
+    return citedNumber === source.page ? [{ index, source }] : [];
   });
 
   return matches.length ? matches : null;
