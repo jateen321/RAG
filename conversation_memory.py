@@ -1,4 +1,4 @@
-"""Bounded chat context and conservative routing for explicit recall requests."""
+"""Bounded chat context and conservative follow-up detection."""
 
 import re
 
@@ -64,49 +64,3 @@ def needs_contextualization(question: str, history: list[dict]) -> bool:
         return False
     normalized = " ".join(question.casefold().split()).strip()
     return any(re.search(pattern, normalized) for pattern in _CONTEXT_DEPENDENT)
-
-
-# Full matches are intentional: "What did Arjuna ask earlier?" and mixed
-# requests about books must not be routed away from document retrieval.
-_PREVIOUS_EN = (
-    r"what (?:was|is) (?:my|the) (?:last|previous|earlier) (?:query|question|message)(?: of (?:mine|my))?",
-    r"what did i (?:ask|say)(?: you)? (?:earlier|before|last|previously)",
-    r"(?:repeat|show|tell)(?: me)? my (?:last|previous|earlier) (?:query|question|message)",
-    r"what was the (?:last|previous) (?:question|query) i asked(?: you)?",
-)
-_PREVIOUS_HI = (
-    r"(?:मेरा|मेरी) (?:पिछला|पिछली|पहले का) (?:सवाल|प्रश्न|क्वेरी) क्या (?:था|थी|है)",
-    r"मैंने (?:पहले|पिछली बार|अभी) क्या पूछा(?: था)?",
-    r"(?:mera|meri) (?:pichla|pichhla|pichli|pichhli|pehle ka) (?:sawal|savaal|prashn|question|query) kya (?:tha|thi|hai)",
-    r"maine (?:pehle|pichli baar|abhi) kya (?:pucha|poocha)(?: tha)?",
-)
-_HISTORY_EN = (
-    r"(?:summarize|summarise|recap)(?: our| this| my| the)? (?:conversation|chat|discussion)(?: so far)?",
-    r"what (?:have we|did we) (?:discuss|discussed|talk about)(?: so far| earlier)?",
-    r"(?:list|show|repeat)(?: me)? my (?:previous|earlier|last|recent) (?:questions|queries|messages)",
-    r"what (?:were|are) my (?:previous|earlier|last|recent) (?:questions|queries|messages)",
-)
-_HISTORY_HI = (
-    r"(?:हमारी|इस) (?:बातचीत|चैट) का सारांश (?:बताओ|बताएं|दो)",
-    r"हमने (?:अब तक|पहले) क्या (?:बात की|चर्चा की)(?: थी|है)?",
-    r"मेरे (?:पिछले|पहले के) (?:सवाल|प्रश्न) (?:बताओ|बताएं|क्या थे)",
-    r"(?:hamari|humari|is) (?:baatcheet|baat cheet|chat) ka (?:summary|saransh) (?:batao|bataiye|do)",
-)
-
-
-def recall_intent(question: str) -> tuple[str, str] | None:
-    normalized = " ".join(question.casefold().split()).strip(" ?!.।")
-    for intent, language, patterns in (
-        ("previous", "en", _PREVIOUS_EN), ("previous", "hi", _PREVIOUS_HI),
-        ("summary", "en", _HISTORY_EN), ("summary", "hi", _HISTORY_HI),
-    ):
-        if any(re.fullmatch(pattern, normalized) for pattern in patterns):
-            return intent, language
-    return None
-
-
-def previous_question(history: list[dict]) -> str | None:
-    for message in reversed(history):
-        if message["role"] == "user":
-            return message["parts"][0]["text"]
-    return None
