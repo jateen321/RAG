@@ -73,6 +73,36 @@ class ConversationMemoryTests(unittest.TestCase):
         self.assertEqual(model.models.generate_content.call_count, 1)
         self.assertFalse(result["retrieval"]["contextualized"])
 
+    def test_image_prompt_uses_retrieved_evidence_instead_of_answer(self):
+        chunk = {
+            "text": "Chlorophyll absorbs light used in photosynthesis.",
+            "page": 7,
+            "source": "biology.pdf",
+            "distance": 0.1,
+        }
+        model = Mock()
+        model.models.generate_content.return_value = document_response(
+            "A model-written summary that must not ground the image."
+        )
+        with (
+            patch.object(
+                rag_engine,
+                "retrieve_context",
+                return_value=retrieval_result([chunk]),
+            ),
+            patch.object(rag_engine, "_client", model),
+        ):
+            result = rag_engine.ask_with_sources(
+                "Show how photosynthesis works.",
+                prepare_image_prompt=True,
+            )
+
+        prompt = result["image_prompt"]
+        self.assertIn("Student request: Show how photosynthesis works.", prompt)
+        self.assertIn("biology.pdf · पृष्ठ 7 / Page 7", prompt)
+        self.assertIn("Chlorophyll absorbs light used in photosynthesis.", prompt)
+        self.assertNotIn("model-written summary", prompt)
+
     def test_insufficient_document_answer_does_not_enable_web_implicitly(self):
         chunk = {"text": "An unrelated passage", "page": 1, "source": "book.pdf", "distance": 0.9}
         model = Mock()

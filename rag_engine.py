@@ -99,6 +99,7 @@ _CONTEXTUAL_QUERY_SCHEMA = {
     "required": ["standalone_query"],
 }
 _MAX_CONTEXTUAL_QUERY_CHARACTERS = 1_000
+_MAX_IMAGE_PROMPT_CHARACTERS = 24_000
 
 
 def _quota_guard(exc: ClientError) -> NoReturn:
@@ -109,6 +110,23 @@ def _quota_guard(exc: ClientError) -> NoReturn:
             "Gemini quota/rate limit reached. Please try again later."
         ) from exc
     raise exc
+
+
+def _chunk_label(chunk: dict) -> str:
+    """Return the source-and-location label shared by grounded prompts."""
+    if chunk.get("source_type") == "youtube":
+        timestamp = chunk.get("timestamp") or "0:00"
+        return f"{chunk['source']} · Timestamp {timestamp}"
+    if chunk.get("source_type") in {"text", "markdown"}:
+        return f"{chunk['source']} · Document section {chunk['page']}"
+    return f"{chunk['source']} · पृष्ठ {chunk['page']} / Page {chunk['page']}"
+
+
+def _format_retrieved_context(chunks: list[dict]) -> str:
+    """Format retrieved chunks once for both answer and image generation."""
+    return "\n\n---\n\n".join(
+        f"[{_chunk_label(chunk)}]:\n{chunk['text']}" for chunk in chunks
+    )
 
 
 def _build_user_message(chunks: list[dict], question: str) -> str:
@@ -123,17 +141,7 @@ def _build_user_message(chunks: list[dict], question: str) -> str:
     This lives in one place because the two callers previously built the same
     prompt independently and had already drifted apart.
     """
-    def label(chunk: dict) -> str:
-        if chunk.get("source_type") == "youtube":
-            timestamp = chunk.get("timestamp") or "0:00"
-            return f"{chunk['source']} · Timestamp {timestamp}"
-        if chunk.get("source_type") in {"text", "markdown"}:
-            return f"{chunk['source']} · Document section {chunk['page']}"
-        return f"{chunk['source']} · पृष्ठ {chunk['page']} / Page {chunk['page']}"
-
-    context = "\n\n---\n\n".join(
-        f"[{label(chunk)}]:\n{chunk['text']}" for chunk in chunks
-    )
+    context = _format_retrieved_context(chunks)
     return f"""Context from indexed sources:
 
 {context}
@@ -356,6 +364,7 @@ def ask_with_sources(
     chat_history: list[dict] | None = None,
     image_data: bytes | None = None,
     image_mime_type: str | None = None,
+    prepare_image_prompt: bool = False,
 ) -> dict:
     """
     Answer a question and return the answer, its sources, and phase timings.
@@ -378,6 +387,8 @@ def ask_with_sources(
         chat_history: Prior messages from the selected conversation only.
         image_data: Optional image bytes used for this generation only.
         image_mime_type: MIME type for ``image_data``.
+        prepare_image_prompt: Build an internal image prompt from the same
+            retrieved chunks without running retrieval a second time.
 
     Returns:
         {"answer": str,
@@ -487,7 +498,10 @@ def ask_with_sources(
         "insufficient_information": insufficient,
         "web_search_available": False,
         "image_generation_available": False,
-        "image_prompt": "",
+        "image_prompt": (
+            image_prompt_for_context(question, chunks)
+            if prepare_image_prompt else ""
+        ),
         "retrieval": {
             "query": retrieval_query,
             "contextualized": retrieval_query != question,
@@ -553,7 +567,7 @@ def search_web(
 
 
 def image_prompt_for_answer(question: str, answer: str) -> str:
-    """Build a bounded visual prompt only after the user requests an image."""
+    """Build a visual prompt for modes, such as web search, without RAG chunks."""
     prompt = f"""Create one clear educational visual for this study answer.
 Use a clean, readable composition with concise labels in the answer's language.
 Do not add facts, claims, people, or numbers that are absent from the supplied answer.
@@ -561,14 +575,31 @@ Do not add facts, claims, people, or numbers that are absent from the supplied a
 Student question: {question}
 
 Grounded answer: {answer}"""
-    return prompt[:4_000].rstrip()
+    return prompt[:_MAX_IMAGE_PROMPT_CHARACTERS].rstrip()
+
+
+def image_prompt_for_context(question: str, chunks: list[dict]) -> str:
+    """Build an image prompt directly from the retriever-selected evidence."""
+    prompt = f"""Create one clear educational visual that answers the student's request.
+Use only the retrieved evidence below as the factual grounding.
+Use a clean, readable composition with concise labels in the student's language.
+Do not add facts, claims, people, or numbers that are absent from the retrieved evidence.
+
+Student request: {question}
+
+Retrieved evidence:
+{_format_retrieved_context(chunks)}"""
+    return prompt[:_MAX_IMAGE_PROMPT_CHARACTERS].rstrip()
 
 
 def generate_image(image_prompt: str) -> dict:
     """Generate one educational image from an approved structured prompt."""
     prompt = " ".join(image_prompt.split())
-    if not prompt or len(prompt) > 4_000:
-        raise ValueError("The image prompt must be between 1 and 4000 characters.")
+    if not prompt or len(prompt) > _MAX_IMAGE_PROMPT_CHARACTERS:
+        raise ValueError(
+            "The image prompt must be between 1 and "
+            f"{_MAX_IMAGE_PROMPT_CHARACTERS} characters."
+        )
     started = time.perf_counter()
     try:
         response = _client.models.generate_content(

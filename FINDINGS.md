@@ -1192,3 +1192,12 @@ overall source precision from 0.8105 to 0.8298 and hard-question precision from 
 1.116s to 5.066s (4.54×). It selected 5.654 chunks on average; one unanswerable case returned
 three because only three distinct candidates survived deduplication. This is evidence of a
 source-purity/context improvement, but not an unconditional robustness or speed improvement.
+
+## 25. Document image generation should share retrieval evidence (2026-08-30)
+
+🟢 **Repo-verified design:** document Image mode previously grounded the image model only in the
+user question and the already-generated text answer. It now prepares the visual prompt while the
+RAG engine still holds the selected chunks, so the answer and image calls share one retrieval run
+and the image model receives the original user request plus source-labelled retrieved passages.
+The generated text answer remains in the response but is not used as the document image's factual
+input. Web + Image mode retains its answer-based prompt because that path has no retriever context.

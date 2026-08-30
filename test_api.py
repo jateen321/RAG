@@ -358,10 +358,12 @@ class ConversationHistoryTests(unittest.TestCase):
 
     def test_image_mode_generates_and_attaches_image_when_selected(self):
         generated = {"image_data": b"generated", "image_mime_type": "image/png"}
+        grounded_prompt = "Student request: Explain photosynthesis\nRetrieved evidence: chlorophyll"
+        answer = {**self.answer(), "image_prompt": grounded_prompt}
         image_directory = Path(self.temp_dir.name) / "generated-images"
         with (
             patch.object(api, "GENERATED_IMAGE_DIR", image_directory),
-            patch("rag_engine.ask_with_sources", return_value=self.answer()),
+            patch("rag_engine.ask_with_sources", return_value=answer) as ask,
             patch("rag_engine.generate_image", return_value=generated) as generate,
         ):
             response = self.client.post(
@@ -370,8 +372,14 @@ class ConversationHistoryTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        generate.assert_called_once()
+        ask.assert_called_once_with(
+            "Explain photosynthesis",
+            chat_history=[],
+            prepare_image_prompt=True,
+        )
+        generate.assert_called_once_with(grounded_prompt)
         payload = response.json()
+        self.assertNotIn("image_prompt", payload)
         self.assertTrue(payload["generated_image_id"])
         self.assertTrue((image_directory / payload["generated_image_id"]).is_file())
         exchange = self.client.get(

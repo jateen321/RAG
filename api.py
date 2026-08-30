@@ -313,16 +313,23 @@ async def _answer_and_record(
                 **image_kwargs,
             )
         else:
+            document_kwargs = {
+                "prepare_image_prompt": True,
+            } if generate_image_requested else {}
             result = await run_in_threadpool(
                 ask_with_sources,
                 question,
                 chat_history=history,
                 **image_kwargs,
+                **document_kwargs,
             )
         image_result = None
-        image_prompt = ""
+        image_prompt = result.pop("image_prompt", "")
         if generate_image_requested:
-            image_prompt = image_prompt_for_answer(question, result["answer"])
+            if use_web:
+                image_prompt = image_prompt_for_answer(question, result["answer"])
+            if not image_prompt:
+                raise RuntimeError("No grounded image prompt was prepared.")
             image_result = await run_in_threadpool(generate_image, image_prompt)
         exchange_id = str(uuid4())
         conversation_id = await run_in_threadpool(
