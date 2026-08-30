@@ -8,7 +8,20 @@ Consolidated findings for the Hindi/English RAG app. Each result is tagged with 
   ported into this repo. *Action: port the script/results back to make it reproducible here.*
 - ⚪ **Hypothesis** — believed/expected, not yet measured.
 
-Last updated: 2026-08-27.
+Last updated: 2026-08-30.
+
+---
+
+## 7. Citation rendering contract
+
+- 🟢 **Repo-verified (2026-08-30):** Citation rendering depends on an exact
+  delimiter contract between `rag_engine.SYSTEM_PROMPT` and
+  `frontend/app/answer-markdown.tsx`. The renderer converts `⟦source, locator⟧` and
+  legacy `[[source, locator]]` forms into numbered source buttons only when the source
+  name and locator also match a returned source. The renderer now also recovers a
+  single-bracket `[source, locator]` form only after that exact source-and-locator match;
+  unrelated bracketed prose remains literal. The focused static-render check covers all
+  three wrappers, including the single-bracket delimiter drift seen in a saved answer.
 
 ---
 
@@ -1110,3 +1123,51 @@ indistinguishable from normal prose and encouraged multi-source lists inside one
 Rule 4 and the renderer now share an explicit `⟦source, locator⟧` transport format. Only a
 delimiter pair matching retrieved metadata becomes a numbered hover marker; unmatched markup
 remains visible so unsupported citations are not silently presented as verified evidence.
+
+## 19. Prompt images should be ephemeral, not conversation memory (2026-08-29)
+
+🟢 **Repo-verified design:** an optional PNG, JPEG, or WebP attachment is passed directly to
+Gemini alongside the grounded prompt for one generation. SQLite stores only the typed question,
+answer, and retrieved sources, so later turns cannot silently reuse an image the interface no
+longer displays. Clipboard and file-picker inputs converge on the same client/server validation.
+
+## 20. Stored answers make citation syntax a compatibility contract (2026-08-29)
+
+🟢 **Repo-verified design:** conversation answers persist as rendered model text, so changing the
+prompt's citation delimiters does not migrate earlier answers. The renderer must recognize legacy
+syntax while still requiring an exact returned source-and-locator match before showing a marker.
+🟢 **Live-data/code verification:** a mixed-format snake answer showed this compatibility boundary:
+citations emitted with ordinary single brackets remained readable literal text, while exact
+machine-delimited citations became numbered markers. The current tokenizer recognizes `⟦…⟧` and
+legacy `[[…]]`, but not single-bracket `[source, locator]` text.
+
+## 20. Web fallback needs an explicit sufficiency contract (2026-08-29)
+
+🟢 **Repo- and API-doc-verified:** nearest-neighbor retrieval always returns top-k passages when
+the collection is nonempty, so an empty result cannot represent semantic insufficiency. The
+document-grounded generation now returns a typed sufficiency decision. Only an insufficient
+latest exchange offers an opt-in Google Search call; grounding annotations, rather than model-
+invented URLs, supply the clickable web citations. This also keeps potentially billable search
+requests behind an explicit user action.
+
+## 21. Follow-up answers can outlive their retrieval set (2026-08-30)
+
+🟢 **Live-data/code verification:** a language-only follow-up reused exact citations from its
+preceding grounded answer, while the new turn stored five unrelated retrieval results. The UI
+therefore left citation transport syntax visible because none of that turn's source metadata
+could validate it. Language-only transformations now trigger contextual retrieval, and answer
+sources are reconciled against current plus previously validated conversation sources in exact
+citation order. Stored conversations are repaired when read; their SQLite rows are not rewritten.
+
+## 22. A top-k limit can be consumed by repeated evidence (2026-08-30)
+
+🟢 **Repo-verified:** stable chunk-ID fusion removes the same physical passage returned by
+several query rewrites, but it does not remove different chunks containing the same copied text.
+Three-word-shingle containment catches exact hashes and heavily overlapping near-copies before
+they occupy the reranker shortlist. Normal answers now pack up to ten distinct passages within a
+bounded context size, while explicit evaluation cutoffs remain fixed and comparable.
+
+🟢 **Official-model-doc-verified:** `gemini-2.5-flash-lite` is a stable endpoint with structured
+output support and is described by Google as optimized for high-frequency, lightweight work.
+The reranker uses it through a dedicated setting instead of inheriting the answer model. Source:
+https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-lite

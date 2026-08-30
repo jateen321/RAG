@@ -142,14 +142,54 @@ class CitationIdentityTests(unittest.TestCase):
             "source_type": "pdf",
         }
         model_client = Mock()
+        model_client.models.generate_content.return_value = SimpleNamespace(
+            text='{"answer":"Answer","insufficient_information":false}'
+        )
+        retrieval = {
+            "chunks": [chunk], "queries": ["question"],
+            "raw_candidate_count": 1, "unique_candidate_count": 1,
+            "rerank_candidate_count": 1, "timings": {},
+        }
         with (
-            patch.object(rag_engine, "retrieve", return_value=[chunk]),
+            patch.object(rag_engine, "retrieve_context", return_value=retrieval),
             patch.object(rag_engine, "_client", model_client),
-            patch.object(rag_engine, "_answer_text", return_value="Answer"),
         ):
             result = rag_engine.ask_with_sources("question", top_k=1)
 
         self.assertEqual(result["sources"][0]["chunk_id"], "doc_p0002_c003")
+
+    def test_prompt_image_is_sent_as_a_generation_part(self):
+        chunk = {
+            "chunk_id": "doc_p0002_c003",
+            "text": "The complete cited paragraph.",
+            "page": 2,
+            "source": "book.pdf",
+            "distance": 0.12,
+            "source_type": "pdf",
+        }
+        model_client = Mock()
+        model_client.models.generate_content.return_value = SimpleNamespace(
+            text='{"answer":"Image-aware answer","insufficient_information":false}'
+        )
+        retrieval = {
+            "chunks": [chunk], "queries": ["Explain this diagram"],
+            "raw_candidate_count": 1, "unique_candidate_count": 1,
+            "rerank_candidate_count": 1, "timings": {},
+        }
+        with (
+            patch.object(rag_engine, "retrieve_context", return_value=retrieval),
+            patch.object(rag_engine, "_client", model_client),
+        ):
+            rag_engine.ask_with_sources(
+                "Explain this diagram",
+                image_data=b"image bytes",
+                image_mime_type="image/png",
+            )
+
+        request = model_client.models.generate_content.call_args.kwargs
+        user_content = request["contents"][-1]
+        self.assertEqual(user_content.parts[1].inline_data.mime_type, "image/png")
+        self.assertEqual(user_content.parts[1].inline_data.data, b"image bytes")
 
 
 class PromptLanguageContractTests(unittest.TestCase):

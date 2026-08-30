@@ -17,6 +17,8 @@ _CONTEXT_DEPENDENT = (
     r"former|latter|same|above)\b",
     r"^(?:and|also|then|so|but|what about|how about)\b",
     r"^(?:tell me more|explain more|continue|go on|elaborate)(?:\b|$)",
+    r"^(?:explain|answer|translate|say|write)(?:\s+(?:it|this|that))?\s+in\s+"
+    r"(?:english|hindi|hind[iy]a?|देवनागरी)(?:\b|$)",
     # Devanagari Hindi references and short continuation phrases.
     r"(?:^|\s)(?:यह|ये|वह|वे|इसका|इसके|इसकी|इसे|उसका|उसके|उसकी|उसे|"
     r"उनका|उनके|उनकी|फिर|आगे)(?:\s|$)",

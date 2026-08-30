@@ -1,6 +1,7 @@
 """Offline tests for bounded context and conversation isolation."""
 
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,15 +23,33 @@ def messages(question="What is Bhagya?", answer="Earlier answer"):
     ]
 
 
+def document_response(answer="Grounded answer", insufficient=False):
+    return SimpleNamespace(text=json.dumps({
+        "answer": answer,
+        "insufficient_information": insufficient,
+    }))
+
+
+def retrieval_result(chunks):
+    return {
+        "chunks": chunks,
+        "queries": ["query"],
+        "raw_candidate_count": len(chunks),
+        "unique_candidate_count": len(chunks),
+        "rerank_candidate_count": len(chunks),
+        "timings": {},
+    }
+
+
 class ConversationMemoryTests(unittest.TestCase):
     def test_context_dependent_question_is_rewritten_before_retrieval(self):
         chunk = {"text": "A verified passage", "page": 1, "source": "book.pdf", "distance": 0.1}
         model = Mock()
         model.models.generate_content.side_effect = [
             SimpleNamespace(text='{"standalone_query":"What does the Bhagya book say?"}'),
-            SimpleNamespace(text="Grounded answer"),
+            document_response(),
         ]
-        with patch.object(rag_engine, "retrieve", return_value=[chunk]) as retrieve, patch.object(rag_engine, "_client", model):
+        with patch.object(rag_engine, "retrieve_context", return_value=retrieval_result([chunk])) as retrieve, patch.object(rag_engine, "_client", model):
             result = rag_engine.ask_with_sources(
                 "What does this book say?", top_k=3, chat_history=messages(),
             )
@@ -45,8 +64,8 @@ class ConversationMemoryTests(unittest.TestCase):
     def test_self_contained_question_skips_contextualizer(self):
         chunk = {"text": "A verified passage", "page": 1, "source": "book.pdf", "distance": 0.1}
         model = Mock()
-        model.models.generate_content.return_value = SimpleNamespace(text="Grounded answer")
-        with patch.object(rag_engine, "retrieve", return_value=[chunk]) as retrieve, patch.object(rag_engine, "_client", model):
+        model.models.generate_content.return_value = document_response()
+        with patch.object(rag_engine, "retrieve_context", return_value=retrieval_result([chunk])) as retrieve, patch.object(rag_engine, "_client", model):
             result = rag_engine.ask_with_sources(
                 "What is the meaning of Bhagya?", chat_history=messages(),
             )
@@ -54,14 +73,30 @@ class ConversationMemoryTests(unittest.TestCase):
         self.assertEqual(model.models.generate_content.call_count, 1)
         self.assertFalse(result["retrieval"]["contextualized"])
 
+    def test_insufficient_document_answer_does_not_enable_web_implicitly(self):
+        chunk = {"text": "An unrelated passage", "page": 1, "source": "book.pdf", "distance": 0.9}
+        model = Mock()
+        model.models.generate_content.return_value = document_response(
+            "The indexed sources do not contain enough information.", True,
+        )
+        with patch.object(rag_engine, "retrieve_context", return_value=retrieval_result([chunk])), patch.object(rag_engine, "_client", model):
+            result = rag_engine.ask_with_sources("What happened today?")
+
+        self.assertTrue(result["insufficient_information"])
+        self.assertFalse(result["web_search_available"])
+        self.assertEqual(result["answer_basis"], "documents")
+        config = model.models.generate_content.call_args.kwargs["config"]
+        self.assertEqual(config.response_mime_type, "application/json")
+        self.assertEqual(config.response_schema, rag_engine._ANSWER_SCHEMA)
+
     def test_contextualizer_failure_falls_back_to_original_question(self):
         chunk = {"text": "A verified passage", "page": 1, "source": "book.pdf", "distance": 0.1}
         model = Mock()
         model.models.generate_content.side_effect = [
             SimpleNamespace(text="not-json"),
-            SimpleNamespace(text="Grounded answer"),
+            document_response(),
         ]
-        with patch.object(rag_engine, "retrieve", return_value=[chunk]) as retrieve, patch.object(rag_engine, "_client", model):
+        with patch.object(rag_engine, "retrieve_context", return_value=retrieval_result([chunk])) as retrieve, patch.object(rag_engine, "_client", model):
             result = rag_engine.ask_with_sources(
                 "What does this book say?", chat_history=messages(),
             )
@@ -72,6 +107,7 @@ class ConversationMemoryTests(unittest.TestCase):
         history = messages()
         for question in (
             "What happened after that?", "इसके बाद क्या हुआ?", "phir kya hua?",
+            "explain in hindia", "translate this in Hindi",
         ):
             with self.subTest(question=question):
                 self.assertTrue(memory.needs_contextualization(question, history))
@@ -117,6 +153,75 @@ class StoredHistoryTests(unittest.TestCase):
             response = self.client.post("/ask", json={"question": "A new factual question", "conversation_id": first})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(ask.call_args.kwargs["chat_history"], messages("An earlier question", "An answer"))
+
+    def test_web_search_replaces_latest_eligible_exchange(self):
+        exchange_id = "eligible-exchange"
+        conversation_id = storage.record_exchange(
+            self.database,
+            None,
+            "What happened today?",
+            "The indexed sources do not contain enough information.",
+            [],
+            0.1,
+            exchange_id,
+            "documents",
+            True,
+        )
+        web_result = {
+            "answer": "A web-grounded answer. ⟦Web 1, Web⟧",
+            "sources": [{
+                "source": "Example",
+                "citation_label": "Web 1",
+                "source_url": "https://example.com/fact",
+                "source_type": "web",
+                "preview": "",
+                "distance": None,
+            }],
+            "answer_basis": "web",
+            "web_search_available": False,
+            "insufficient_information": False,
+            "timings": {"total_s": 0.2},
+        }
+
+        with patch.object(rag_engine, "search_web", return_value=web_result) as search:
+            response = self.client.post(
+                f"/conversations/{conversation_id}/exchanges/{exchange_id}/search-web"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        search.assert_called_once_with("What happened today?", chat_history=[])
+        saved = storage.get_conversation(self.database, conversation_id)["exchanges"][0]
+        self.assertEqual(saved["answer_basis"], "web")
+        self.assertFalse(saved["web_search_available"])
+        self.assertEqual(saved["sources"][0]["source_url"], "https://example.com/fact")
+
+    def test_web_search_rejects_an_ineligible_exchange(self):
+        conversation_id = self.seed("A grounded question")
+        exchange_id = storage.get_conversation(
+            self.database, conversation_id,
+        )["exchanges"][0]["id"]
+
+        response = self.client.post(
+            f"/conversations/{conversation_id}/exchanges/{exchange_id}/search-web"
+        )
+
+        self.assertEqual(response.status_code, 409)
+
+    def test_web_search_rejects_an_older_exchange_before_calling_gemini(self):
+        exchange_id = "older-eligible"
+        conversation_id = storage.record_exchange(
+            self.database, None, "Old question", "Insufficient", [], 0.1,
+            exchange_id, "documents", True,
+        )
+        self.seed("Newer question", conversation_id)
+
+        with patch.object(rag_engine, "search_web") as search:
+            response = self.client.post(
+                f"/conversations/{conversation_id}/exchanges/{exchange_id}/search-web"
+            )
+
+        self.assertEqual(response.status_code, 409)
+        search.assert_not_called()
 
 
 if __name__ == "__main__":

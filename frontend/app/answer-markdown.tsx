@@ -6,6 +6,7 @@ export type CitationSource = {
   page?: number;
   preview: string;
   source: string;
+  citation_label?: string;
   source_type?: string;
   timestamp?: string;
   video_title?: string;
@@ -31,22 +32,26 @@ export type CitationSource = {
 
 const BULLET = /^\s*[*-]\s+(.*)$/;
 const ORDERED = /^\s*(\d+)\.\s+(.*)$/;
-const INLINE_TOKEN = /(\*\*[^*]+\*\*|⟦[^⟦⟧\n]+⟧)/g;
-const CITATION = /^⟦(.+),\s*(?:(Page|पृष्ठ|पेज|Document section)\s+(\d+)|(Timestamp)\s+(\d{1,2}:\d{2}))⟧$/i;
+const INLINE_TOKEN = /(\*\*[^*]+\*\*|⟦[^⟦⟧\n]+⟧|\[\[[^\[\]\n]+\]\]|\[[^\[\]\n]+\])/g;
+const CITATION_WRAPPER = /^(?:⟦(.+)⟧|\[\[(.+)\]\]|\[(.+)\])$/;
+const CITATION_CONTENT = /^(.+),\s*(?:(?:(?:Page|पृष्ठ|पेज)\s+(\d+)(?:\s*\/\s*(?:Page|पृष्ठ|पेज)\s+\2)?|Document section\s+(\d+))|Timestamp\s+(\d{1,2}:\d{2})|(Web))$/i;
 
 const normalized = (value: string) => value.trim().replace(/\\/g, '/').split('/').at(-1)?.toLocaleLowerCase() || '';
 
 function citedSources(citation: string, sources: CitationSource[]) {
-  const match = CITATION.exec(citation);
+  const wrapper = CITATION_WRAPPER.exec(citation);
+  const match = wrapper && CITATION_CONTENT.exec(wrapper[1] || wrapper[2] || wrapper[3]);
   if (!match) return null;
 
   const citedName = normalized(match[1]);
-  const citedNumber = match[3] ? Number(match[3]) : null;
-  const citedTimestamp = match[5] || null;
+  const citedNumber = match[2] || match[3] ? Number(match[2] || match[3]) : null;
+  const citedTimestamp = match[4] || null;
+  const citedWeb = Boolean(match[5]);
   const matches = sources.flatMap((source, index) => {
-    const sourceNames = [source.source, source.video_title].filter(Boolean).map((name) => normalized(name!));
+    const sourceNames = [source.source, source.video_title, source.citation_label].filter(Boolean).map((name) => normalized(name!));
     const sameName = sourceNames.includes(citedName);
     if (!sameName) return [];
+    if (citedWeb && source.source_type === 'web') return [{ index, source }];
     if (citedTimestamp && source.timestamp === citedTimestamp) return [{ index, source }];
     return citedNumber === source.page ? [{ index, source }] : [];
   });
@@ -88,7 +93,7 @@ function inline(
               </sup>
               <span className="citation-tooltip" id={tooltipId} role="tooltip">
                 <strong>{source.video_title || source.source}</strong>
-                <small>{part.slice(1, -1)}</small>
+                <small>{part.startsWith('[[') ? part.slice(2, -2) : part.slice(1, -1)}</small>
                 <span>{source.preview}</span>
               </span>
             </span>

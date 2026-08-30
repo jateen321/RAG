@@ -35,7 +35,9 @@ else:
 
 # ── Model Configuration ──────────────────────────────────────────────
 EMBEDDING_MODEL = "gemini-embedding-001"  # bare name (no "models/"): works on Developer API AND Vertex/express
-LLM_MODEL = "gemini-2.5-flash"            # bare name; free-tier GA (2.x-flash-lite is closed to new keys)
+LLM_MODEL = "gemini-2.5-flash"            # answer generation and query planning
+RERANK_MODEL = os.getenv("RERANK_MODEL", "gemini-2.5-flash-lite").strip()
+IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gemini-3.1-flash-image").strip()
 
 # ── Chunking Configuration ────────────────────────────────────────────
 CHUNK_SIZE = 800          # Target characters per chunk (soft cap: a chunk may
@@ -124,7 +126,30 @@ VERTEX_EMBEDDING_TIMEOUT_S = float(
 )
 
 # ── Retrieval Configuration ───────────────────────────────────────────
-TOP_K = 5                 # Number of chunks to retrieve per query
+TOP_K = 5                 # Fixed cutoff used by explicit top_k/evaluation calls
+
+# Query rewrites widen recall before a separate lightweight model reranks the
+# fused candidates. Embeddings are batched, so rewrites still use one embedding
+# request. Every model-backed stage has a deterministic fallback.
+QUERY_REWRITE_ENABLED = os.getenv("QUERY_REWRITE_ENABLED", "1").strip().lower() not in {
+    "0", "false", "no"
+}
+QUERY_REWRITE_MAX_QUERIES = min(
+    10, max(1, int(os.getenv("QUERY_REWRITE_MAX_QUERIES", "10")))
+)
+QUERY_RETRIEVAL_TOP_K = max(1, int(os.getenv("QUERY_RETRIEVAL_TOP_K", "5")))
+RRF_RANK_CONSTANT = max(1, int(os.getenv("RRF_RANK_CONSTANT", "60")))
+RERANK_CANDIDATE_LIMIT = max(1, int(os.getenv("RERANK_CANDIDATE_LIMIT", "15")))
+RERANK_ENABLED = os.getenv("RERANK_ENABLED", "1").strip().lower() not in {
+    "0", "false", "no"
+}
+MAX_CONTEXT_CHUNKS = max(TOP_K, int(os.getenv("MAX_CONTEXT_CHUNKS", "10")))
+MAX_CONTEXT_CHARACTERS = max(
+    CHUNK_SIZE, int(os.getenv("MAX_CONTEXT_CHARACTERS", "9000"))
+)
+NEAR_DUPLICATE_OVERLAP = min(
+    1.0, max(0.5, float(os.getenv("NEAR_DUPLICATE_OVERLAP", "0.85")))
+)
 
 # ── ChromaDB Configuration ────────────────────────────────────────────
 CHROMA_DB_PATH = os.path.join(os.path.dirname(__file__), "chroma_db")
@@ -204,6 +229,10 @@ OCR_CACHE_ENABLED = os.getenv("OCR_CACHE_ENABLED", "1").strip().lower() not in {
 CONVERSATION_DB_PATH = os.getenv(
     "CONVERSATION_DB_PATH",
     os.path.join(os.path.dirname(__file__), "data", "conversations.sqlite3"),
+)
+GENERATED_IMAGE_DIR = os.getenv(
+    "GENERATED_IMAGE_DIR",
+    os.path.join(DATA_DIR, "generated_images"),
 )
 
 # Server-local folders that POST /index/folder may read. The CLI does not need

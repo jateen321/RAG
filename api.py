@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
@@ -10,16 +10,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from config import CONVERSATION_DB_PATH, DATA_DIR, INDEX_FOLDER_ROOTS
+from config import (
+    CONVERSATION_DB_PATH,
+    DATA_DIR,
+    GENERATED_IMAGE_DIR,
+    INDEX_FOLDER_ROOTS,
+)
 from conversation_store import (
+    attach_generated_image,
     conversation_exists,
     delete_conversation,
     get_conversation,
+    get_generated_image_metadata,
     get_history_before_exchange,
     get_recent_history,
     list_conversations,
     record_exchange,
     replace_exchange_and_truncate,
+    replace_latest_exchange_with_web_answer,
 )
 from document_ingester import (
     SOURCE_TYPES,
@@ -44,6 +52,8 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+MAX_PROMPT_IMAGE_BYTES = 10 * 1024 * 1024
+ALLOWED_PROMPT_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_CONTENT_TYPES = {
     ".pdf": {"application/pdf", "application/octet-stream"},
     ".txt": {"text/plain", "application/octet-stream"},
@@ -62,6 +72,8 @@ app.add_middleware(
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     conversation_id: str | None = Field(default=None, min_length=1, max_length=64)
+    use_web: bool = False
+    generate_image: bool = False
 
 
 class EditExchangeRequest(BaseModel):
@@ -93,6 +105,38 @@ class FolderIndexRequest(BaseModel):
         default=True,
         description="Include supported documents in nested folders.",
     )
+
+
+def _detected_prompt_image_type(data: bytes) -> str | None:
+    """Recognize the supported formats from their file signatures."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def _generated_image_path(image_id: str) -> Path:
+    """Resolve only canonical UUID filenames inside the generated-image root."""
+    try:
+        canonical_id = str(UUID(image_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Generated image not found.") from exc
+    if canonical_id != image_id:
+        raise HTTPException(status_code=404, detail="Generated image not found.")
+    return Path(GENERATED_IMAGE_DIR).resolve() / canonical_id
+
+
+def _save_generated_image(image_id: str, data: bytes) -> Path:
+    directory = Path(GENERATED_IMAGE_DIR).resolve()
+    directory.mkdir(parents=True, exist_ok=True)
+    destination = directory / image_id
+    temporary = directory / f".{image_id}.tmp"
+    temporary.write_bytes(data)
+    temporary.replace(destination)
+    return destination
 
 
 def _resolve_data_document(filename: str) -> Path:
@@ -179,43 +223,151 @@ async def passage_detail(
 
 @app.post("/ask")
 async def ask_question(request: AskRequest) -> dict:
-    from rag_engine import ask_with_sources
+    return await _answer_and_record(
+        request.question,
+        request.conversation_id,
+        use_web=request.use_web,
+        generate_image_requested=request.generate_image,
+    )
 
-    if request.conversation_id and not await run_in_threadpool(
-        conversation_exists, CONVERSATION_DB_PATH, request.conversation_id
+
+@app.post("/ask/image")
+async def ask_question_with_image(
+    question: str = Form(min_length=1, max_length=2000),
+    image: UploadFile = File(...),
+    conversation_id: str | None = Form(default=None, min_length=1, max_length=64),
+    use_web: bool = Form(default=False),
+    generate_image: bool = Form(default=False),
+) -> dict:
+    """Answer one multimodal prompt without persisting the attached image."""
+    if image.content_type not in ALLOWED_PROMPT_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Choose a PNG, JPEG, or WebP image.",
+        )
+    image_data = await image.read(MAX_PROMPT_IMAGE_BYTES + 1)
+    if len(image_data) > MAX_PROMPT_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Choose an image no larger than 10 MB.",
+        )
+    if not image_data:
+        raise HTTPException(status_code=400, detail="The attached image is empty.")
+    if _detected_prompt_image_type(image_data) != image.content_type:
+        raise HTTPException(
+            status_code=400,
+            detail="The image contents do not match its file type.",
+        )
+    return await _answer_and_record(
+        question,
+        conversation_id,
+        image_data=image_data,
+        image_mime_type=image.content_type,
+        use_web=use_web,
+        generate_image_requested=generate_image,
+    )
+
+
+async def _answer_and_record(
+    raw_question: str,
+    conversation_id: str | None,
+    *,
+    image_data: bytes | None = None,
+    image_mime_type: str | None = None,
+    use_web: bool = False,
+    generate_image_requested: bool = False,
+) -> dict:
+    from rag_engine import (
+        ask_with_sources,
+        generate_image,
+        image_prompt_for_answer,
+        search_web,
+    )
+
+    if conversation_id and not await run_in_threadpool(
+        conversation_exists, CONVERSATION_DB_PATH, conversation_id
     ):
         raise HTTPException(status_code=404, detail="Conversation not found.")
 
     try:
-        question = request.question.strip()
-        if request.conversation_id:
+        question = raw_question.strip()
+        image_kwargs = {}
+        if image_data is not None:
+            image_kwargs = {
+                "image_data": image_data,
+                "image_mime_type": image_mime_type,
+            }
+        history = []
+        if conversation_id:
             from conversation_memory import MAX_HISTORY_EXCHANGES
 
             history = await run_in_threadpool(
                 get_recent_history, CONVERSATION_DB_PATH,
-                request.conversation_id, MAX_HISTORY_EXCHANGES,
+                conversation_id, MAX_HISTORY_EXCHANGES,
             )
+        if use_web:
             result = await run_in_threadpool(
-                ask_with_sources, question, chat_history=history,
+                search_web,
+                question,
+                chat_history=history,
+                **image_kwargs,
             )
         else:
-            result = await run_in_threadpool(ask_with_sources, question)
+            result = await run_in_threadpool(
+                ask_with_sources,
+                question,
+                chat_history=history,
+                **image_kwargs,
+            )
+        image_result = None
+        image_prompt = ""
+        if generate_image_requested:
+            image_prompt = image_prompt_for_answer(question, result["answer"])
+            image_result = await run_in_threadpool(generate_image, image_prompt)
         exchange_id = str(uuid4())
         conversation_id = await run_in_threadpool(
             record_exchange,
             CONVERSATION_DB_PATH,
-            request.conversation_id,
+            conversation_id,
             question,
             result["answer"],
             result.get("sources", []),
             result.get("timings", {}).get("total_s"),
             exchange_id,
+            result.get("answer_basis", "documents"),
+            result.get("web_search_available", False),
+            generate_image_requested,
+            image_prompt,
         )
-        return {
+        response = {
             **result,
             "conversation_id": conversation_id,
             "exchange_id": exchange_id,
+            "web_search_available": False,
+            "image_generation_available": False,
         }
+        if image_result is not None:
+            image_id = str(uuid4())
+            destination = await run_in_threadpool(
+                _save_generated_image, image_id, image_result["image_data"]
+            )
+            attached = await run_in_threadpool(
+                attach_generated_image,
+                CONVERSATION_DB_PATH,
+                conversation_id,
+                exchange_id,
+                image_id,
+                image_result["image_mime_type"],
+            )
+            if not attached:
+                destination.unlink(missing_ok=True)
+                raise RuntimeError("The generated image could not be attached to the answer.")
+            response.update({
+                "generated_image_id": image_id,
+                "generated_image_url": f"/generated-images/{image_id}",
+                "generated_image_mime_type": image_result["image_mime_type"],
+            })
+        return response
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -273,6 +425,10 @@ async def edit_exchange(
             result["answer"],
             result.get("sources", []),
             result.get("timings", {}).get("total_s"),
+            result.get("answer_basis", "documents"),
+            result.get("web_search_available", False),
+            result.get("image_generation_available", False),
+            result.get("image_prompt", ""),
         )
         if not replaced:
             raise HTTPException(status_code=404, detail="Exchange not found.")
@@ -287,13 +443,151 @@ async def edit_exchange(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@app.post("/conversations/{conversation_id}/exchanges/{exchange_id}/search-web")
+async def search_web_for_exchange(conversation_id: str, exchange_id: str) -> dict:
+    """Run Google Search only after an eligible document answer offers it."""
+    from conversation_memory import MAX_HISTORY_EXCHANGES
+    from rag_engine import search_web
+
+    conversation = await run_in_threadpool(
+        get_conversation, CONVERSATION_DB_PATH, conversation_id
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    exchange = next(
+        (item for item in conversation["exchanges"] if item["id"] == exchange_id),
+        None,
+    )
+    if exchange is None:
+        raise HTTPException(status_code=404, detail="Exchange not found.")
+    if not exchange["web_search_available"]:
+        raise HTTPException(
+            status_code=409,
+            detail="Web search is not available for this answer.",
+        )
+    if conversation["exchanges"][-1]["id"] != exchange_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Only the latest eligible answer can search the web.",
+        )
+    history = await run_in_threadpool(
+        get_history_before_exchange,
+        CONVERSATION_DB_PATH,
+        conversation_id,
+        exchange_id,
+        MAX_HISTORY_EXCHANGES,
+    )
+    try:
+        result = await run_in_threadpool(
+            search_web, exchange["question"], chat_history=history or [],
+        )
+        replaced = await run_in_threadpool(
+            replace_latest_exchange_with_web_answer,
+            CONVERSATION_DB_PATH,
+            conversation_id,
+            exchange_id,
+            result["answer"],
+            result.get("sources", []),
+            result.get("timings", {}).get("total_s"),
+        )
+        if not replaced:
+            raise HTTPException(
+                status_code=409,
+                detail="Only the latest eligible answer can search the web.",
+            )
+        return {
+            **result,
+            "conversation_id": conversation_id,
+            "exchange_id": exchange_id,
+        }
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post("/conversations/{conversation_id}/exchanges/{exchange_id}/generate-image")
+async def generate_image_for_exchange(conversation_id: str, exchange_id: str) -> dict:
+    """Generate one image only after the structured answer offers the action."""
+    from rag_engine import generate_image
+
+    conversation = await run_in_threadpool(
+        get_conversation, CONVERSATION_DB_PATH, conversation_id
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    exchange = next(
+        (item for item in conversation["exchanges"] if item["id"] == exchange_id),
+        None,
+    )
+    if exchange is None:
+        raise HTTPException(status_code=404, detail="Exchange not found.")
+    if not exchange["image_generation_available"] or not exchange["image_prompt"]:
+        raise HTTPException(
+            status_code=409,
+            detail="Image generation is not available for this answer.",
+        )
+
+    try:
+        result = await run_in_threadpool(generate_image, exchange["image_prompt"])
+        image_id = str(uuid4())
+        destination = await run_in_threadpool(
+            _save_generated_image, image_id, result["image_data"]
+        )
+        attached = await run_in_threadpool(
+            attach_generated_image,
+            CONVERSATION_DB_PATH,
+            conversation_id,
+            exchange_id,
+            image_id,
+            result["image_mime_type"],
+        )
+        if not attached:
+            destination.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=409,
+                detail="An image has already been generated for this answer.",
+            )
+        return {
+            "conversation_id": conversation_id,
+            "exchange_id": exchange_id,
+            "generated_image_id": image_id,
+            "generated_image_url": f"/generated-images/{image_id}",
+            "generated_image_mime_type": result["image_mime_type"],
+            "timings": result.get("timings", {}),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/generated-images/{image_id}", response_class=FileResponse)
+async def generated_image(image_id: str) -> FileResponse:
+    path = _generated_image_path(image_id)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Generated image not found.")
+    metadata = await run_in_threadpool(
+        get_generated_image_metadata, CONVERSATION_DB_PATH, image_id
+    )
+    conversation_mime = (metadata or {}).get("generated_image_mime_type")
+    if conversation_mime not in ALLOWED_PROMPT_IMAGE_TYPES:
+        raise HTTPException(status_code=404, detail="Generated image not found.")
+    return FileResponse(path, media_type=conversation_mime)
+
+
 @app.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_conversation(conversation_id: str) -> None:
+    conversation = await run_in_threadpool(
+        get_conversation, CONVERSATION_DB_PATH, conversation_id
+    )
     deleted = await run_in_threadpool(
         delete_conversation, CONVERSATION_DB_PATH, conversation_id
     )
     if not deleted:
         raise HTTPException(status_code=404, detail="Conversation not found.")
+    for exchange in (conversation or {}).get("exchanges", []):
+        image_id = exchange.get("generated_image_id")
+        if image_id:
+            _generated_image_path(image_id).unlink(missing_ok=True)
 
 
 @app.post("/index")

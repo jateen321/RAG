@@ -45,65 +45,17 @@ def _locator(md: dict):
     return page if page is not None else "?"
 
 
-def retrieve(query: str, top_k: int = None) -> list[dict]:
-    """
-    Retrieve the most relevant chunks for a given query.
-
-    Args:
-        query: User's question (Hindi or English).
-        top_k: Number of results to return (default: from config).
-
-    Returns:
-        List of dicts with keys: 'text', 'page', 'source', 'distance',
-        'source_type', 'document_id', 'chunk_index', 'extraction_method',
-        'content_hash'
-        Sorted by relevance (most relevant first).
-    """
-    if top_k is None:
-        top_k = TOP_K
-
-    # Step 1: Embed the query
-    result = _client.models.embed_content(
-        model=EMBEDDING_MODEL,
-        contents=query,
-    )
-    query_embedding = result.embeddings[0].values
-
-    # Step 2: Search ChromaDB
-    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-
-    try:
-        collection = client.get_collection(name=COLLECTION_NAME)
-    except Exception:
-        console.print("[red]❌ No indexed documents found![/red]")
-        console.print("   Run: [bold]python app.py index <pdf_file>[/bold] first.")
-        return []
-
-    if collection.count() == 0:
-        console.print("[red]❌ Database is empty. Index a PDF first.[/red]")
-        return []
-
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=min(top_k, collection.count()),
-        include=["documents", "metadatas", "distances"],
-    )
-
-    # Step 3: Format results.
-    # 'page' and 'source' are kept as the caller-facing names even though the
-    # stored metadata now uses 'page_number' and 'source_name' — this module is
-    # the translation layer, so rag_engine/evaluate/api need no changes. The
-    # remaining metadata fields are passed through for diagnostics.
+def _format_results(results: dict, query_index: int) -> list[dict]:
+    """Translate one Chroma result row into caller-facing chunk dictionaries."""
     retrieved = []
-    for i in range(len(results["ids"][0])):
-        md = results["metadatas"][0][i] or {}
+    for i, chunk_id in enumerate(results["ids"][query_index]):
+        md = results["metadatas"][query_index][i] or {}
         retrieved.append({
-            "chunk_id": results["ids"][0][i],
-            "text": results["documents"][0][i],
+            "chunk_id": chunk_id,
+            "text": results["documents"][query_index][i],
             "page": _locator(md),
             "source": md.get("source_name", "unknown"),
-            "distance": results["distances"][0][i],
-            # Passed through so callers can diagnose *why* a chunk was returned:
+            "distance": results["distances"][query_index][i],
             "source_type": md.get("source_type", "unknown"),
             "document_id": md.get("document_id", "unknown"),
             "chunk_index": md.get("chunk_index"),
@@ -138,5 +90,53 @@ def retrieve(query: str, top_k: int = None) -> list[dict]:
             "playlist_index": md.get("playlist_index"),
             "playlist_url": md.get("playlist_url"),
         })
-
     return retrieved
+
+
+def retrieve_many(queries: list[str], top_k: int = None) -> list[list[dict]]:
+    """Retrieve one ranked list per query using one batched embedding call."""
+    if not queries:
+        return []
+    if top_k is None:
+        top_k = TOP_K
+
+    result = _client.models.embed_content(model=EMBEDDING_MODEL, contents=queries)
+    query_embeddings = [embedding.values for embedding in result.embeddings]
+
+    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+    try:
+        collection = client.get_collection(name=COLLECTION_NAME)
+    except Exception:
+        console.print("[red]❌ No indexed documents found![/red]")
+        console.print("   Run: [bold]python app.py index <pdf_file>[/bold] first.")
+        return [[] for _ in queries]
+
+    count = collection.count()
+    if count == 0:
+        console.print("[red]❌ Database is empty. Index a PDF first.[/red]")
+        return [[] for _ in queries]
+
+    results = collection.query(
+        query_embeddings=query_embeddings,
+        n_results=min(top_k, count),
+        include=["documents", "metadatas", "distances"],
+    )
+    return [_format_results(results, i) for i in range(len(queries))]
+
+
+def retrieve(query: str, top_k: int = None) -> list[dict]:
+    """
+    Retrieve the most relevant chunks for a given query.
+
+    Args:
+        query: User's question (Hindi or English).
+        top_k: Number of results to return (default: from config).
+
+    Returns:
+        List of dicts with keys: 'text', 'page', 'source', 'distance',
+        'source_type', 'document_id', 'chunk_index', 'extraction_method',
+        'content_hash'
+        Sorted by relevance (most relevant first).
+    """
+    rows = retrieve_many([query], top_k=top_k)
+    return rows[0] if rows else []

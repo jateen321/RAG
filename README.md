@@ -387,12 +387,14 @@ selected by `LLM_BACKEND`.
 - All query embeddings are sent in one batch. ChromaDB retrieves five candidates
   per query from the shared `hindi_textbook` collection.
 - Stable chunk IDs deduplicate candidates; reciprocal rank fusion (RRF) combines
-  their rankings into a deterministic shortlist.
-- Gemini listwise-reranks up to 15 candidates and returns the final `TOP_K=5`.
+  their rankings, and a text-overlap filter removes near-copy passages.
+- Gemini 2.5 Flash-Lite listwise-reranks up to 15 distinct candidates. Normal app
+  questions then pack up to 10 complete passages within a 9,000-character context
+  budget; explicit evaluation cutoffs remain fixed for comparable measurements.
   If planning or reranking fails, the pipeline falls back to the original query
   or the RRF order respectively.
-- The five complete chunk texts are inserted into the answer prompt; the terminal
-  displays only short previews.
+- The selected complete chunk texts are inserted into the answer prompt; the
+  terminal displays only short previews.
 - There is no minimum relevance threshold or source/PDF filter. A weak or general
   question can therefore still retrieve unrelated chunks.
 - All indexed PDFs share one collection. Use `remove` to delete one source or
@@ -518,10 +520,14 @@ in `.env` as shown in `.env.example`:
 | `CHUNK_OVERLAP` | 100 | **Minimum** overlap between chunks (floor) |
 | `MAX_CHUNK_OVERLAP` | 250 | **Maximum** overlap between chunks (ceiling). Takes precedence over the floor — prevents one long sentence being copied whole into the next chunk |
 | `MIN_CHUNK_LENGTH` | 50 | Skip chunks shorter than this |
-| `TOP_K` | 5 | Number of chunks to retrieve |
+| `TOP_K` | 5 | Fixed cutoff for explicit `top_k` calls and evaluation |
 | `QUERY_REWRITE_MAX_QUERIES` | 10 | Maximum total queries, including the original |
 | `QUERY_RETRIEVAL_TOP_K` | 5 | Candidates retrieved per query before fusion |
 | `RERANK_CANDIDATE_LIMIT` | 15 | Maximum RRF candidates sent to Gemini reranking |
+| `RERANK_MODEL` | `gemini-2.5-flash-lite` | Lightweight structured-output model used only for reranking |
+| `MAX_CONTEXT_CHUNKS` | 10 | Maximum distinct passages packed for a normal app question |
+| `MAX_CONTEXT_CHARACTERS` | 9000 | Passage-text budget for the answer prompt |
+| `NEAR_DUPLICATE_OVERLAP` | 0.85 | Three-word-shingle containment threshold for near-copy removal |
 | `OCR_BACKEND` | `google_vision` | OCR implementation: `google_vision`, `tesseract`, or `gemini` |
 | `OCR_MAX_WORKERS` | backend-specific | Concurrent OCR calls/processes; defaults to Vision 8, Gemini 2, Tesseract up to 4 |
 | `PDF_DPI` | 300 | Resolution used when rasterizing pages for any OCR backend |

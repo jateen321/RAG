@@ -314,6 +314,123 @@ class ConversationHistoryTests(unittest.TestCase):
         self.assertEqual(exchange["sources"][0]["source"], "geography.pdf")
         self.assertEqual(exchange["total_seconds"], 1.25)
 
+    def test_image_prompt_is_forwarded_but_not_persisted(self):
+        image_bytes = b"\x89PNG\r\n\x1a\nsmall payload"
+        with patch("rag_engine.ask_with_sources", return_value=self.answer()) as ask:
+            response = self.client.post(
+                "/ask/image",
+                data={"question": "Explain this diagram"},
+                files={"image": ("diagram.png", image_bytes, "image/png")},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        ask.assert_called_once_with(
+            "Explain this diagram",
+            chat_history=[],
+            image_data=image_bytes,
+            image_mime_type="image/png",
+        )
+        conversation_id = response.json()["conversation_id"]
+        exchange = self.client.get(
+            f"/conversations/{conversation_id}"
+        ).json()["exchanges"][0]
+        self.assertEqual(exchange["question"], "Explain this diagram")
+        self.assertNotIn("image", exchange)
+
+    def test_web_mode_uses_search_directly_when_selected(self):
+        web_answer = {
+            **self.answer("Current web answer."),
+            "answer_basis": "web",
+        }
+        with (
+            patch("rag_engine.search_web", return_value=web_answer) as search,
+            patch("rag_engine.ask_with_sources") as documents,
+        ):
+            response = self.client.post(
+                "/ask",
+                json={"question": "What happened today?", "use_web": True},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        search.assert_called_once_with("What happened today?", chat_history=[])
+        documents.assert_not_called()
+        self.assertEqual(response.json()["answer_basis"], "web")
+
+    def test_image_mode_generates_and_attaches_image_when_selected(self):
+        generated = {"image_data": b"generated", "image_mime_type": "image/png"}
+        image_directory = Path(self.temp_dir.name) / "generated-images"
+        with (
+            patch.object(api, "GENERATED_IMAGE_DIR", image_directory),
+            patch("rag_engine.ask_with_sources", return_value=self.answer()),
+            patch("rag_engine.generate_image", return_value=generated) as generate,
+        ):
+            response = self.client.post(
+                "/ask",
+                json={"question": "Explain photosynthesis", "generate_image": True},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        generate.assert_called_once()
+        payload = response.json()
+        self.assertTrue(payload["generated_image_id"])
+        self.assertTrue((image_directory / payload["generated_image_id"]).is_file())
+        exchange = self.client.get(
+            f"/conversations/{payload['conversation_id']}"
+        ).json()["exchanges"][0]
+        self.assertEqual(exchange["generated_image_id"], payload["generated_image_id"])
+
+    def test_image_prompt_rejects_unsupported_type(self):
+        with patch("rag_engine.ask_with_sources") as ask:
+            response = self.client.post(
+                "/ask/image",
+                data={"question": "Explain this"},
+                files={"image": ("vector.svg", b"<svg/>", "image/svg+xml")},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["detail"], "Choose a PNG, JPEG, or WebP image."
+        )
+        ask.assert_not_called()
+
+    def test_image_prompt_rejects_mismatched_contents(self):
+        with patch("rag_engine.ask_with_sources") as ask:
+            response = self.client.post(
+                "/ask/image",
+                data={"question": "Explain this"},
+                files={"image": ("fake.png", b"not a png", "image/png")},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["detail"],
+            "The image contents do not match its file type.",
+        )
+        ask.assert_not_called()
+
+    def test_image_prompt_rejects_oversized_file(self):
+        with (
+            patch.object(api, "MAX_PROMPT_IMAGE_BYTES", 8),
+            patch("rag_engine.ask_with_sources") as ask,
+        ):
+            response = self.client.post(
+                "/ask/image",
+                data={"question": "Explain this"},
+                files={
+                    "image": (
+                        "large.png",
+                        b"\x89PNG\r\n\x1a\nextra",
+                        "image/png",
+                    )
+                },
+            )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(
+            response.json()["detail"], "Choose an image no larger than 10 MB."
+        )
+        ask.assert_not_called()
+
     def test_existing_conversation_accepts_more_exchanges_and_can_be_deleted(self):
         with patch("rag_engine.ask_with_sources", return_value=self.answer()):
             first = self.client.post("/ask", json={"question": "First question"})
