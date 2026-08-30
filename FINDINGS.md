@@ -1172,3 +1172,23 @@ selection exactly; explicit evaluation cutoffs remain fixed and comparable.
 output support and is described by Google as optimized for high-frequency, lightweight work.
 The reranker uses it through a dedicated setting instead of inheriting the answer model. Source:
 https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-lite
+
+## 23. Gemini 2.5 Flash has a dated migration boundary (2026-08-30)
+
+🟢 **Official-doc- and live-verified:** Google lists Gemini 2.5 Flash retirement as October 20,
+2026, while Gemini 3.5 Flash-Lite is GA and has a retirement date of July 21, 2027 or later.
+Google also recommends `google-genai` 2.0.0+ and model-managed sampling for Gemini 3.x. The
+application now uses `gemini-3.5-flash-lite` for generation, query planning, and reranking;
+Vertex smoke tests completed both plain-text generation and schema-constrained passage reranking
+without fallback. This supersedes the model choice recorded at the end of finding 22. Source:
+https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/migrate
+
+## 24. Adaptive reranking improves source purity, not every retrieval metric (2026-08-30)
+
+🟢 **Matched-evaluation evidence:** on the same 52 questions, direct top-5 retrieval and the
+planner/RRF/Gemini 3.5 Flash-Lite pipeline both achieved 0.9737 hit rate. The pipeline raised
+overall source precision from 0.8105 to 0.8298 and hard-question precision from 0.7789 to
+0.8333, while overall MRR fell from 0.8925 to 0.8728 and average retrieval latency rose from
+1.116s to 5.066s (4.54×). It selected 5.654 chunks on average; one unanswerable case returned
+three because only three distinct candidates survived deduplication. This is evidence of a
+source-purity/context improvement, but not an unconditional robustness or speed improvement.

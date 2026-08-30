@@ -35,8 +35,9 @@ class QueryPlanningTests(unittest.TestCase):
             retrieval_pipeline._client.models,
             "generate_content",
             return_value=SimpleNamespace(text="not json"),
-        ):
+        ) as generate:
             self.assertEqual(retrieval_pipeline.generate_queries("original", []), ["original"])
+        self.assertEqual(generate.call_args.kwargs["model"], "gemini-3.5-flash-lite")
 
 
 class RankFusionTests(unittest.TestCase):
@@ -55,7 +56,7 @@ class RankFusionTests(unittest.TestCase):
         self.assertEqual([item["chunk_id"] for item in fused], ["b2", "a1", "c3"])
         self.assertEqual(fused[0]["query_hits"], 3)
 
-    def test_reranker_uses_flash_lite_and_discards_unselected_candidates(self):
+    def test_reranker_uses_gemini_35_flash_lite_and_discards_unselected_candidates(self):
         candidates = [chunk(f"a{i}") for i in range(6)]
         response = SimpleNamespace(
             text=(
@@ -71,7 +72,7 @@ class RankFusionTests(unittest.TestCase):
             ranked = retrieval_pipeline.rerank_candidates(
                 "question", candidates, minimum_chunks=5, maximum_chunks=6
             )
-        self.assertEqual(generate.call_args.kwargs["model"], "gemini-2.5-flash-lite")
+        self.assertEqual(generate.call_args.kwargs["model"], "gemini-3.5-flash-lite")
         self.assertEqual(
             [item["chunk_id"] for item in ranked],
             ["a5", "a3", "a2", "a1", "a0"],

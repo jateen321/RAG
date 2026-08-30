@@ -4,7 +4,7 @@
 # `pip freeze` only for emergency restore, not as this file.
 
 # ── LLM + vector store ───────────────────────────────────────────────
-google-genai>=1.47      # Gemini Developer API + Vertex/Agent Platform (import: google.genai)
+google-genai>=2.0.0     # Required for Gemini 3.5+ via Developer API or Vertex/Agent Platform
 chromadb>=1.5           # persistent vector database
 
 # ── PDF rendering + OCR ──────────────────────────────────────────────

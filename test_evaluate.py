@@ -9,6 +9,7 @@ mis-scoring would look like a retrieval result rather than a harness bug.
 import sys
 import types
 import unittest
+from unittest.mock import patch
 
 _fake = types.ModuleType("retriever")
 _STORE: dict[str, list[dict]] = {}
@@ -94,6 +95,20 @@ class UnanswerableScoringTests(unittest.TestCase):
         self.assertEqual(summary["retrieval_hit_rate"], 1.0)
         row = next(r for r in report["results"] if r["id"] == "u")
         self.assertIsNone(row["retrieval_hit"])
+
+
+class RetrievalModeTests(unittest.TestCase):
+    def test_pipeline_mode_uses_adaptive_retrieve_context(self):
+        expected = [chunk("X.pdf", 7)]
+        fake_pipeline = types.ModuleType("retrieval_pipeline")
+        fake_pipeline.retrieve_context = lambda question: {"chunks": expected}
+        with patch.dict(sys.modules, {"retrieval_pipeline": fake_pipeline}):
+            chunks = E._retrieve_chunks("question", top_k=2, retrieval_mode="pipeline")
+        self.assertIs(chunks, expected)
+
+    def test_unknown_retrieval_mode_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Unknown retrieval mode"):
+            E._retrieve_chunks("question", top_k=5, retrieval_mode="other")
 
 
 if __name__ == "__main__":

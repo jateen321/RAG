@@ -177,8 +177,8 @@ def _ocr_with_gemini(png: bytes) -> str:
     the model omitted them without any marker. Quiet data loss is harder to
     detect downstream than noise, so prefer 'google_vision' for bulk indexing.
 
-    thinking_budget=0 matters: 2.5-flash reasons by default and thinking tokens
-    bill at the OUTPUT rate, buying nothing for transcription.
+    Gemini 3.x manages sampling and reasoning settings for this request; the
+    prompt provides the deterministic transcription constraints.
     """
     global _gemini_client
     try:
@@ -202,10 +202,7 @@ def _ocr_with_gemini(png: bytes) -> str:
                 types.Part.from_bytes(data=png, mime_type="image/png"),
                 _GEMINI_OCR_PROMPT,
             ],
-            config=types.GenerateContentConfig(
-                temperature=0,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            ),
+            config=types.GenerateContentConfig(),
         )
 
     # 21 of 90 benchmark pages failed with 429 RESOURCE_EXHAUSTED (Vertex

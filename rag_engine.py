@@ -260,7 +260,6 @@ def _contextualize_question(question: str, history: list[dict]) -> str:
             contents=json.dumps(payload, ensure_ascii=False),
             config=types.GenerateContentConfig(
                 system_instruction=CONTEXTUALIZE_PROMPT,
-                temperature=0,
                 response_mime_type="application/json",
                 response_schema=_CONTEXTUAL_QUERY_SCHEMA,
             ),

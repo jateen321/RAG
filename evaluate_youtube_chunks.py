@@ -113,7 +113,6 @@ Return the questions in the supplied JSON schema.
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=EvalQuestionSet,
-            temperature=0.2,
         ),
     )
     parsed = EvalQuestionSet.model_validate_json(response.text)

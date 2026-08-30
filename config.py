@@ -35,8 +35,8 @@ else:
 
 # ── Model Configuration ──────────────────────────────────────────────
 EMBEDDING_MODEL = "gemini-embedding-001"  # bare name (no "models/"): works on Developer API AND Vertex/express
-LLM_MODEL = "gemini-2.5-flash"            # answer generation and query planning
-RERANK_MODEL = os.getenv("RERANK_MODEL", "gemini-2.5-flash-lite").strip()
+LLM_MODEL = "gemini-3.5-flash-lite"        # answer generation and query planning
+RERANK_MODEL = os.getenv("RERANK_MODEL", "gemini-3.5-flash-lite").strip()
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gemini-3.1-flash-image").strip()
 
 # ── Chunking Configuration ────────────────────────────────────────────

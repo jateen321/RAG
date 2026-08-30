@@ -10,7 +10,6 @@ from pathlib import Path
 
 from retriever import retrieve
 
-
 DEFAULT_DATASET = Path(__file__).parent / "evaluation" / "questions_v2.json"
 DEFAULT_OUTPUT = Path(__file__).parent / "evaluation" / "results.json"
 
@@ -102,7 +101,23 @@ def _is_refusal(answer: str) -> bool:
     return any(re.search(p, answer, flags=re.IGNORECASE) for p in _REFUSAL_PATTERNS)
 
 
-def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
+def _retrieve_chunks(question: str, top_k: int, retrieval_mode: str) -> list[dict]:
+    """Retrieve through either the historical baseline or the app pipeline."""
+    if retrieval_mode == "direct":
+        return retrieve(question, top_k=top_k)
+    if retrieval_mode == "pipeline":
+        from retrieval_pipeline import retrieve_context
+
+        return retrieve_context(question)["chunks"]
+    raise ValueError(f"Unknown retrieval mode: {retrieval_mode}")
+
+
+def evaluate(
+    dataset: list[dict],
+    top_k: int,
+    generate: bool = False,
+    retrieval_mode: str = "direct",
+) -> dict:
     rows = []
     total_latency = 0.0
 
@@ -111,7 +126,7 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
         unanswerable = item.get("category") == "unanswerable"
 
         started_at = time.perf_counter()
-        chunks = retrieve(item["question"], top_k=top_k)
+        chunks = _retrieve_chunks(item["question"], top_k, retrieval_mode)
         latency = time.perf_counter() - started_at
         total_latency += latency
         rank = _rank_expected_source(item, chunks)
@@ -135,6 +150,7 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
             # Which books actually answered — the diagnostic, not just the score.
             "sources_returned": sorted({c["source"] for c in chunks}),
             "best_distance": round(min((c["distance"] for c in chunks), default=0.0), 4),
+            "selected_chunk_count": len(chunks),
             "latency_s": round(latency, 3),
         }
 
@@ -145,7 +161,10 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
             # config default, so citation scores would describe a different
             # retrieval than the ranks scored above — and it doubles the
             # embedding calls against the quota that binds a full run.
-            generated = ask_with_sources(item["question"], top_k=top_k)
+            generated = ask_with_sources(
+                item["question"],
+                **({"top_k": top_k} if retrieval_mode == "direct" else {}),
+            )
             answer = generated["answer"]
             row["declined"] = _is_refusal(answer)
             row["answer_preview"] = answer[:160].replace("\n", " ")
@@ -183,7 +202,11 @@ def evaluate(dataset: list[dict], top_k: int, generate: bool = False) -> dict:
         "questions": len(rows),
         "scored_questions": len(scored),
         "unanswerable_questions": len(unans),
-        "top_k": top_k,
+        "retrieval_mode": retrieval_mode,
+        "top_k": top_k if retrieval_mode == "direct" else None,
+        "average_selected_chunks": round(
+            sum(r["selected_chunk_count"] for r in rows) / len(rows), 3
+        ),
         "retrieval_hit_rate": round(sum(r["retrieval_hit"] for r in scored) / len(scored), 4) if scored else None,
         "mean_reciprocal_rank": round(sum(reciprocal) / len(scored), 4) if scored else None,
         "mean_source_precision": round(
@@ -236,13 +259,27 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument(
+        "--retrieval-mode",
+        choices=("direct", "pipeline"),
+        default="direct",
+        help=(
+            "Use direct vector retrieval for historical baselines or the adaptive "
+            "planner/fusion/reranker pipeline used by the app."
+        ),
+    )
+    parser.add_argument(
         "--generate",
         action="store_true",
         help="Also generate answers and score citations, keywords and refusals.",
     )
     args = parser.parse_args()
 
-    report = evaluate(load_dataset(args.dataset), args.top_k, args.generate)
+    report = evaluate(
+        load_dataset(args.dataset),
+        args.top_k,
+        args.generate,
+        retrieval_mode=args.retrieval_mode,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2, ensure_ascii=False)

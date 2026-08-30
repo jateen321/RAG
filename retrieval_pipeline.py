@@ -131,7 +131,6 @@ def generate_queries(question: str, catalog: list[dict]) -> list[str]:
             contents=json.dumps(contents, ensure_ascii=False),
             config=types.GenerateContentConfig(
                 system_instruction=QUERY_PLANNER_PROMPT,
-                temperature=0.1,
                 response_mime_type="application/json",
                 response_schema=_QUERY_SCHEMA,
             ),
@@ -271,7 +270,6 @@ def rerank_candidates(
             ),
             config=types.GenerateContentConfig(
                 system_instruction=RERANK_PROMPT,
-                temperature=0,
                 response_mime_type="application/json",
                 response_schema=_rerank_schema(minimum, maximum),
             ),

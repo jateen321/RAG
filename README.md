@@ -388,7 +388,7 @@ selected by `LLM_BACKEND`.
   per query from the shared `hindi_textbook` collection.
 - Stable chunk IDs deduplicate candidates; reciprocal rank fusion (RRF) combines
   their rankings, and a text-overlap filter removes near-copy passages.
-- Gemini 2.5 Flash-Lite receives up to 15 distinct candidates and selects only the
+- Gemini 3.5 Flash-Lite receives up to 15 distinct candidates and selects only the
   answer-worthy passages. For normal app questions, it chooses a variable 5–15
   passages; explicit evaluation cutoffs remain fixed for comparable measurements.
   Every selected passage is passed to answer generation; omitted candidates are not
@@ -411,12 +411,14 @@ cannot tell you whether a bad answer came from bad retrieval or bad generation.
 python evaluate.py                      # retrieval only; --top-k defaults to 5
 python evaluate.py --top-k 10           # sweep k to see where recall saturates
 python evaluate.py --output evaluation/results_myrun.json
+python evaluate.py --retrieval-mode pipeline --output evaluation/results_pipeline.json
 python evaluate.py --generate           # ALSO generate answers (costs LLM calls)
 ```
 
 > ⚠️ `evaluate.py` does **not** read `TOP_K` from `config.py` — its `--top-k` default
 > is hardcoded to 5. Changing `config.TOP_K` alters the app's behaviour but not the
-> harness's, so pass `--top-k` explicitly when comparing the two.
+> harness's direct mode, so pass `--top-k` explicitly when comparing direct runs.
+> Pipeline mode uses the app's adaptive 5–15 selection and ignores `--top-k`.
 
 | Metric | Meaning |
 |---|---|
@@ -464,6 +466,22 @@ falls further than hit rate does, because dropping the document name from a ques
 exactly what stops the retriever telling the books apart. The single hard-tier miss
 retrieved the correct document at the wrong page, so hit rate is 1.0 at *source*
 granularity and 0.947 at *page* granularity.
+
+**Adaptive pipeline comparison** (52 matching questions, 2026-08-30):
+
+| metric | direct top-5 | planner + RRF + Gemini 3.5 reranker |
+|---|---:|---:|
+| `retrieval_hit_rate` | 0.9737 | 0.9737 |
+| `mean_reciprocal_rank` | 0.8925 | 0.8728 |
+| `mean_source_precision` | 0.8105 | 0.8298 |
+| hard `mean_source_precision` | 0.7789 | 0.8333 |
+| average retrieval latency | 1.116s | 5.066s |
+| average selected chunks | 5.0 | 5.654 |
+
+The adaptive workflow preserves recall and improves source purity, especially on hard
+questions, but it does not dominate the simpler baseline: overall rank quality is lower
+and retrieval is about 4.54× slower. Treat it as a precision/context tradeoff pending
+answer-quality evaluation, not as an unconditional robustness improvement.
 
 > ⚠️ **Answer quality is unmeasured.** `--generate` has never been run, so there are no
 > citation, keyword-recall, or refusal numbers. Retrieval being sound says nothing about
@@ -526,7 +544,7 @@ in `.env` as shown in `.env.example`:
 | `QUERY_REWRITE_MAX_QUERIES` | 10 | Maximum total queries, including the original |
 | `QUERY_RETRIEVAL_TOP_K` | 5 | Candidates retrieved per query before fusion |
 | `RERANK_CANDIDATE_LIMIT` | 15 | Maximum RRF candidates sent to Gemini reranking |
-| `RERANK_MODEL` | `gemini-2.5-flash-lite` | Lightweight structured-output model used only for reranking |
+| `RERANK_MODEL` | `gemini-3.5-flash-lite` | Lightweight structured-output model used only for reranking |
 | `MIN_CONTEXT_CHUNKS` | 5 | Minimum passages selected for a normal app question |
 | `MAX_CONTEXT_CHUNKS` | 15 | Maximum passages selected for a normal app question |
 | `NEAR_DUPLICATE_OVERLAP` | 0.85 | Three-word-shingle containment threshold for near-copy removal |
@@ -538,7 +556,7 @@ in `.env` as shown in `.env.example`:
 | `LAYER_CHECK_SAMPLE` | 3 | Pages OCR'd per document to spot-check the text layer |
 | `LAYER_CHECK_MIN_SIMILARITY` | 0.4 | Median OCR-vs-layer similarity below this → distrust the layer and OCR the whole document |
 | `EMBEDDING_MODEL` | `gemini-embedding-001` | Embedding model |
-| `LLM_MODEL` | `gemini-2.5-flash` | Generation model |
+| `LLM_MODEL` | `gemini-3.5-flash-lite` | Generation and query-planning model |
 
 > **Embedding model lifecycle:** This application currently uses
 > `gemini-embedding-001`, which remains available for text-only workloads.

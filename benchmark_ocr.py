@@ -144,12 +144,8 @@ Rules:
 def _ocr_gemini(png: bytes) -> str:
     """OCR PNG bytes with a multimodal LLM (config.LLM_MODEL).
 
-    Two settings are load-bearing:
-      * thinking_budget=0 — 2.5-flash reasons by default and thinking tokens
-        bill as OUTPUT ($2.50/1M). Transcription gains nothing from it, so
-        leaving it on measures the wrong cost AND the wrong latency.
-      * temperature=0 — otherwise the same page yields different text per run
-        and the comparison is not reproducible.
+    Gemini 3.x manages sampling and reasoning settings for this request; the
+    prompt provides the deterministic transcription constraints.
 
     NOTE the failure mode differs in KIND from the other two backends.
     Tesseract emits detectable garbage; Vision misorders blocks; an LLM emits
@@ -170,10 +166,7 @@ def _ocr_gemini(png: bytes) -> str:
         model=LLM_MODEL,
         contents=[types.Part.from_bytes(data=png, mime_type="image/png"),
                   GEMINI_OCR_PROMPT],
-        config=types.GenerateContentConfig(
-            temperature=0,
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-        ),
+        config=types.GenerateContentConfig(),
     )
     u = resp.usage_metadata
     # Read REAL token usage rather than estimating from the image tiling math:
