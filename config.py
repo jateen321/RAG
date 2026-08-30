@@ -143,9 +143,9 @@ RERANK_CANDIDATE_LIMIT = max(1, int(os.getenv("RERANK_CANDIDATE_LIMIT", "15")))
 RERANK_ENABLED = os.getenv("RERANK_ENABLED", "1").strip().lower() not in {
     "0", "false", "no"
 }
-MAX_CONTEXT_CHUNKS = max(TOP_K, int(os.getenv("MAX_CONTEXT_CHUNKS", "10")))
-MAX_CONTEXT_CHARACTERS = max(
-    CHUNK_SIZE, int(os.getenv("MAX_CONTEXT_CHARACTERS", "9000"))
+MIN_CONTEXT_CHUNKS = max(1, int(os.getenv("MIN_CONTEXT_CHUNKS", "5")))
+MAX_CONTEXT_CHUNKS = max(
+    MIN_CONTEXT_CHUNKS, int(os.getenv("MAX_CONTEXT_CHUNKS", "15"))
 )
 NEAR_DUPLICATE_OVERLAP = min(
     1.0, max(0.5, float(os.getenv("NEAR_DUPLICATE_OVERLAP", "0.85")))

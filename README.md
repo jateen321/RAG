@@ -388,9 +388,11 @@ selected by `LLM_BACKEND`.
   per query from the shared `hindi_textbook` collection.
 - Stable chunk IDs deduplicate candidates; reciprocal rank fusion (RRF) combines
   their rankings, and a text-overlap filter removes near-copy passages.
-- Gemini 2.5 Flash-Lite listwise-reranks up to 15 distinct candidates. Normal app
-  questions then pack up to 10 complete passages within a 9,000-character context
-  budget; explicit evaluation cutoffs remain fixed for comparable measurements.
+- Gemini 2.5 Flash-Lite receives up to 15 distinct candidates and selects only the
+  answer-worthy passages. For normal app questions, it chooses a variable 5–15
+  passages; explicit evaluation cutoffs remain fixed for comparable measurements.
+  Every selected passage is passed to answer generation; omitted candidates are not
+  silently added back.
   If planning or reranking fails, the pipeline falls back to the original query
   or the RRF order respectively.
 - The selected complete chunk texts are inserted into the answer prompt; the
@@ -525,8 +527,8 @@ in `.env` as shown in `.env.example`:
 | `QUERY_RETRIEVAL_TOP_K` | 5 | Candidates retrieved per query before fusion |
 | `RERANK_CANDIDATE_LIMIT` | 15 | Maximum RRF candidates sent to Gemini reranking |
 | `RERANK_MODEL` | `gemini-2.5-flash-lite` | Lightweight structured-output model used only for reranking |
-| `MAX_CONTEXT_CHUNKS` | 10 | Maximum distinct passages packed for a normal app question |
-| `MAX_CONTEXT_CHARACTERS` | 9000 | Passage-text budget for the answer prompt |
+| `MIN_CONTEXT_CHUNKS` | 5 | Minimum passages selected for a normal app question |
+| `MAX_CONTEXT_CHUNKS` | 15 | Maximum passages selected for a normal app question |
 | `NEAR_DUPLICATE_OVERLAP` | 0.85 | Three-word-shingle containment threshold for near-copy removal |
 | `OCR_BACKEND` | `google_vision` | OCR implementation: `google_vision`, `tesseract`, or `gemini` |
 | `OCR_MAX_WORKERS` | backend-specific | Concurrent OCR calls/processes; defaults to Vision 8, Gemini 2, Tesseract up to 4 |

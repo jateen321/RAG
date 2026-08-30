@@ -40,6 +40,12 @@ class QueryPlanningTests(unittest.TestCase):
 
 
 class RankFusionTests(unittest.TestCase):
+    def test_reranker_schema_uses_requested_selection_bounds(self):
+        schema = retrieval_pipeline._rerank_schema(2, 2)
+        selected_ids = schema["properties"]["selected_ids"]
+        self.assertEqual(selected_ids["minItems"], 2)
+        self.assertEqual(selected_ids["maxItems"], 2)
+
     def test_rrf_deduplicates_and_rewards_cross_query_hits(self):
         fused = retrieval_pipeline.reciprocal_rank_fusion([
             [chunk("a1"), chunk("b2")],
@@ -49,17 +55,43 @@ class RankFusionTests(unittest.TestCase):
         self.assertEqual([item["chunk_id"] for item in fused], ["b2", "a1", "c3"])
         self.assertEqual(fused[0]["query_hits"], 3)
 
-    def test_reranker_uses_flash_lite_and_keeps_unmentioned_candidates(self):
-        candidates = [chunk("a1"), chunk("b2"), chunk("c3")]
-        response = SimpleNamespace(text='{"ranked_ids":["candidate_2"]}')
+    def test_reranker_uses_flash_lite_and_discards_unselected_candidates(self):
+        candidates = [chunk(f"a{i}") for i in range(6)]
+        response = SimpleNamespace(
+            text=(
+                '{"selected_ids":["candidate_5","candidate_3",'
+                '"candidate_2","candidate_1","candidate_0"]}'
+            )
+        )
         with patch.object(
             retrieval_pipeline._client.models,
             "generate_content",
             return_value=response,
         ) as generate:
-            ranked = retrieval_pipeline.rerank_candidates("question", candidates, 2)
+            ranked = retrieval_pipeline.rerank_candidates(
+                "question", candidates, minimum_chunks=5, maximum_chunks=6
+            )
         self.assertEqual(generate.call_args.kwargs["model"], "gemini-2.5-flash-lite")
-        self.assertEqual([item["chunk_id"] for item in ranked], ["c3", "a1"])
+        self.assertEqual(
+            [item["chunk_id"] for item in ranked],
+            ["a5", "a3", "a2", "a1", "a0"],
+        )
+
+    def test_reranker_falls_back_to_minimum_rrf_candidates_for_short_output(self):
+        candidates = [chunk(f"a{i}") for i in range(8)]
+        response = SimpleNamespace(text='{"selected_ids":["candidate_7"]}')
+        with patch.object(
+            retrieval_pipeline._client.models,
+            "generate_content",
+            return_value=response,
+        ):
+            ranked = retrieval_pipeline.rerank_candidates(
+                "question", candidates, minimum_chunks=5, maximum_chunks=8
+            )
+        self.assertEqual(
+            [item["chunk_id"] for item in ranked],
+            ["a0", "a1", "a2", "a3", "a4"],
+        )
 
     def test_overlap_filter_removes_content_hash_and_near_copy_duplicates(self):
         original = chunk("a1")
@@ -76,16 +108,6 @@ class RankFusionTests(unittest.TestCase):
         )
         self.assertEqual([item["chunk_id"] for item in filtered], ["a1", "d4"])
 
-    def test_context_packer_respects_chunk_and_character_limits(self):
-        candidates = [chunk(f"a{i}") for i in range(1, 5)]
-        for candidate in candidates:
-            candidate["text"] = "x" * 10
-        packed = retrieval_pipeline.pack_context(
-            candidates, maximum_chunks=3, character_budget=25
-        )
-        self.assertEqual([item["chunk_id"] for item in packed], ["a1", "a2"])
-
-
 class RetrievalPipelineTests(unittest.TestCase):
     def test_pipeline_batches_queries_and_keeps_unique_candidates(self):
         result_lists = [
@@ -99,7 +121,9 @@ class RetrievalPipelineTests(unittest.TestCase):
             patch.object(
                 retrieval_pipeline,
                 "rerank_candidates",
-                side_effect=lambda question, candidates, top_k: candidates[:top_k],
+                side_effect=lambda question, candidates, **kwargs: candidates[
+                    :kwargs["maximum_chunks"]
+                ],
             ),
         ):
             result = retrieval_pipeline.retrieve_context("original", top_k=2)
@@ -121,7 +145,9 @@ class RetrievalPipelineTests(unittest.TestCase):
             patch.object(
                 retrieval_pipeline,
                 "rerank_candidates",
-                side_effect=lambda question, values, top_k: values[:top_k],
+                side_effect=lambda question, values, **kwargs: values[
+                    :kwargs["maximum_chunks"]
+                ],
             ),
         ):
             result = retrieval_pipeline.retrieve_context("original")
@@ -129,6 +155,30 @@ class RetrievalPipelineTests(unittest.TestCase):
         self.assertTrue(result["adaptive"])
         self.assertGreater(len(result["chunks"]), 5)
         self.assertLessEqual(len(result["chunks"]), retrieval_pipeline.MAX_CONTEXT_CHUNKS)
+
+    def test_default_pipeline_sends_fifteen_candidates_and_uses_variable_selection(self):
+        candidates = [chunk(f"candidate-{i}") for i in range(20)]
+
+        def select_seven(question, values, **kwargs):
+            self.assertEqual(len(values), 15)
+            self.assertEqual(kwargs["minimum_chunks"], 5)
+            self.assertEqual(kwargs["maximum_chunks"], 15)
+            return values[:7]
+
+        with (
+            patch.object(retrieval_pipeline, "_document_catalog", return_value=[]),
+            patch.object(retrieval_pipeline, "generate_queries", return_value=["original"]),
+            patch.object(retrieval_pipeline, "retrieve_many", return_value=[candidates]),
+            patch.object(
+                retrieval_pipeline,
+                "rerank_candidates",
+                side_effect=select_seven,
+            ),
+        ):
+            result = retrieval_pipeline.retrieve_context("original")
+
+        self.assertEqual(result["rerank_candidate_count"], 15)
+        self.assertEqual(len(result["chunks"]), 7)
 
 
 class BatchedRetrieverTests(unittest.TestCase):

@@ -1164,8 +1164,9 @@ citation order. Stored conversations are repaired when read; their SQLite rows a
 🟢 **Repo-verified:** stable chunk-ID fusion removes the same physical passage returned by
 several query rewrites, but it does not remove different chunks containing the same copied text.
 Three-word-shingle containment catches exact hashes and heavily overlapping near-copies before
-they occupy the reranker shortlist. Normal answers now pack up to ten distinct passages within a
-bounded context size, while explicit evaluation cutoffs remain fixed and comparable.
+they occupy the reranker shortlist. The former post-rerank character packer could silently remove
+model-selected evidence, so normal answers now preserve the reranker's validated 5–15 passage
+selection exactly; explicit evaluation cutoffs remain fixed and comparable.
 
 🟢 **Official-model-doc-verified:** `gemini-2.5-flash-lite` is a stable endpoint with structured
 output support and is described by Google as optimized for high-frequency, lightweight work.
