@@ -1,8 +1,13 @@
-
 # 📚 Sarthi AI
 
-Query documents and YouTube transcripts in Hindi or English with an adaptive
-extraction and vector-search pipeline, then use Gemini to generate grounded answers.
+**Ask your books. Trace every answer.**
+
+![Sarthi AI — Ask your books. Trace every answer.](frontend/public/og.png)
+
+Sarthi AI is a bilingual study assistant for PDFs, text files, Markdown, and
+YouTube transcripts. It retrieves evidence before answering, links citations
+back to their exact page or timestamp, and can turn the same retrieved evidence
+into a generated study visual.
 
 Uses **Google Gemini** for query planning, embeddings, reranking, and answers.
 PDF pages with clean text layers are read directly; scanned or garbled pages use
@@ -12,6 +17,32 @@ the configured OCR backend: **Google Cloud Vision** (default), **Tesseract**, or
 ChromaDB runs locally. OCR and Gemini cost and availability depend on the selected
 backends, models, billing status, and project-specific quotas; do not assume every
 configuration is free.
+
+## ✨ What You Can Demonstrate
+
+- **Evidence-grounded chat** in English, Hindi, or mixed language, with source
+  citations that open the original page, passage, or YouTube timestamp.
+- **Adaptive ingestion** for PDF, TXT, Markdown, individual YouTube videos, and
+  playlists, with OCR only where a PDF's text layer is missing or unreliable.
+- **Multimodal questions** that combine a written prompt with PNG, JPEG, or WebP
+  input (up to 10 MB).
+- **Grounded study visuals**: Image mode returns the normal answer and sends the
+  original question plus the same retrieved passages—not the model-written
+  answer—to the image model.
+- **Deliberate web fallback**: document retrieval remains the default; eligible
+  answers can be replaced with a Google Search-grounded response on request.
+- **Persistent, editable conversations** with regeneration from the edited turn
+  and automatic truncation of the obsolete conversation branch.
+
+### Three-minute demo
+
+1. Upload a PDF or index a YouTube URL from the library panel.
+2. Ask a factual question and open a citation to verify the supporting passage.
+3. Ask a follow-up to demonstrate conversation memory.
+4. Enable **Image** and ask for a diagram; compare the text answer and generated
+   visual to the retrieved citations.
+5. Edit an earlier prompt or use the offered web-search action to show controlled
+   branching rather than hidden tool use.
 
 ## 🚀 Quick Start
 
@@ -79,7 +110,7 @@ cp .env.example .env
 
 Edit `.env`:
 
-```
+```dotenv
 LLM_BACKEND=developer
 GEMINI_API_KEY=your_actual_key_here
 ```
@@ -209,9 +240,14 @@ it is the authoritative interface when this summary and the code ever disagree.
 | `GET` | `/passages/{chunk_id}` | Fetch the complete indexed passage for an exact source-scoped citation |
 | `GET` | `/passages/resolve-legacy` | Resolve an older citation that does not contain a chunk ID |
 | `POST` | `/ask` | Ask a grounded question, persist the exchange, and return its answer and sources |
+| `POST` | `/ask/image` | Ask with a PNG, JPEG, or WebP attachment (maximum 10 MB) |
 | `GET` | `/conversations` | List saved conversations |
 | `GET` | `/conversations/{conversation_id}` | Load one conversation and its exchanges |
+| `PUT` | `/conversations/{conversation_id}/exchanges/{exchange_id}` | Edit a prompt, regenerate its answer, and truncate later turns |
+| `POST` | `/conversations/{conversation_id}/exchanges/{exchange_id}/search-web` | Replace the latest eligible answer with a web-grounded answer |
+| `POST` | `/conversations/{conversation_id}/exchanges/{exchange_id}/generate-image` | Generate a visual for an eligible saved exchange |
 | `DELETE` | `/conversations/{conversation_id}` | Delete one saved conversation (`204 No Content`) |
+| `GET` | `/generated-images/{image_id}` | Return a generated image referenced by a conversation |
 | `POST` | `/index` | Index or deduplicate a PDF, TXT, or Markdown file already in `data/` |
 | `POST` | `/index/folder` | Recursively index an allowlisted server-local folder |
 | `POST` | `/upload` | Upload and index a PDF, TXT, or Markdown file (`201 Created`) |
@@ -248,6 +284,27 @@ curl -X POST http://127.0.0.1:8000/ask \
 
 Responses carry the answer plus the chunks used as grounding context (page,
 source, distance, and preview).
+
+### How Image mode stays grounded
+
+For document questions, retrieval runs once. The selected, source-labelled
+passages feed two outputs: the normal text answer and an internal image prompt.
+The image prompt has this shape:
+
+```text
+Create one clear educational visual that answers the student's request.
+Use only the retrieved evidence below as the factual grounding.
+...
+Student request: <original question>
+
+Retrieved evidence:
+<source-labelled passages selected by the retriever and reranker>
+```
+
+The internal prompt is stored only when needed for later image generation and is
+not exposed in the `/ask` response. When Web mode and Image mode are combined,
+the generated visual is grounded in the web-grounded answer because document
+retrieval is not used in that path.
 
 ## 🖥️ React Web Interface
 
@@ -313,7 +370,7 @@ Start the React interface in another terminal:
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
@@ -366,7 +423,8 @@ PDF page ──routing ─┤
                                                                         ↓
 Your Question → Gemini query rewrites → batched vector search → RRF fusion
                                                                         ↓
-                         Gemini reranking → Top 5 → Gemini + Context → Answer!
+                  Gemini reranking → selected evidence → grounded answer
+                                                        └→ study visual (optional)
 ```
 
 YouTube follows a parallel ingestion path: `yt-dlp` reads video/playlist
@@ -496,6 +554,21 @@ Text-extraction investigations live in **[OCR_NOTES.md](OCR_NOTES.md)**.
 > committed, so a fresh clone reproduces numbers by re-running the harness — which
 > requires an indexed corpus and a working API key.
 
+## ✅ Verification Before a Demo
+
+The unit tests mock external model calls, so they validate application behavior
+without spending Gemini or OCR quota:
+
+```bash
+.venv/bin/python -m unittest discover
+cd frontend
+npm run lint
+npm run build
+```
+
+Run the live application separately before presenting because unit tests cannot
+verify your current credentials, cloud quota, indexed corpus, or network access.
+
 ## 📁 Project Structure
 
 ```
@@ -510,16 +583,17 @@ RAG/
 ├── indexer.py          # Text → chunks → embeddings → ChromaDB
 ├── youtube_ingester.py # YouTube metadata + transcript → timestamped chunks
 ├── retriever.py        # Semantic search in ChromaDB
-├── rag_engine.py       # Retrieve + Generate answers
+├── retrieval_pipeline.py # Query rewrites → fusion → reranking
+├── rag_engine.py       # Grounded text, web, and image generation
+├── conversation_store.py # Persistent conversation and generated-image metadata
 ├── evaluate.py         # Retrieval evaluation harness (hit rate, MRR, source precision)
 ├── requirements.txt    # Python dependencies (direct only)
 ├── .env                # Your API key (private, not in git)
 ├── .env.example        # Template for .env
 ├── FINDINGS.md         # Measured results + provenance tags (verified / cloud / hypothesis)
 ├── OCR_NOTES.md        # Text-extraction issues log: routing, legacy fonts, corrupt layers
-├── CLAUDE.md           # Working conventions for AI-assisted sessions on this repo
-├── .claude/
-│   └── settings.json   # Repo-local hooks (uncommitted-file + README-staleness reminders)
+├── AGENTS.md           # Working conventions for AI-assisted sessions on this repo
+├── frontend/           # Vinext/React interface and contributor README
 ├── evaluation/
 │   ├── questions_v2.json      # Eval dataset (easy / hard / unanswerable tiers)
 │   ├── verify_questions.py    # Audits ground truth against what is actually indexed
@@ -545,6 +619,7 @@ in `.env` as shown in `.env.example`:
 | `QUERY_RETRIEVAL_TOP_K` | 5 | Candidates retrieved per query before fusion |
 | `RERANK_CANDIDATE_LIMIT` | 15 | Maximum RRF candidates sent to Gemini reranking |
 | `RERANK_MODEL` | `gemini-3.5-flash-lite` | Lightweight structured-output model used only for reranking |
+| `IMAGE_MODEL` | `gemini-3.1-flash-image` | Model used for optional generated study visuals |
 | `MIN_CONTEXT_CHUNKS` | 5 | Minimum passages selected for a normal app question |
 | `MAX_CONTEXT_CHUNKS` | 15 | Maximum passages selected for a normal app question |
 | `NEAR_DUPLICATE_OVERLAP` | 0.85 | Three-word-shingle containment threshold for near-copy removal |
