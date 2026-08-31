@@ -45,9 +45,9 @@ button { color: inherit; }
 .auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--paper); }
 .auth-card { width: min(440px, 100%); padding: 42px; text-align: center; border: 1px solid var(--line); border-radius: 24px; background: white; box-shadow: 0 20px 60px rgba(23,52,46,.1); }
 .auth-card h1 { font-family: Georgia, serif; font-size: 34px; font-weight: 500; }
-.auth-card button { margin-top: 18px; padding: 13px 22px; border: 0; border-radius: 12px; color: white; background: var(--forest); font: inherit; font-weight: 700; cursor: pointer; }
+.auth-card button { margin-top: 18px; padding: 13px 22px; border: 0; border-radius: 12px; color: white; background: var(--green); font: inherit; font-weight: 700; cursor: pointer; }
 .auth-error { color: #a33a32; }
-.auth-signout { position: fixed; z-index: 100; right: 18px; bottom: 18px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--forest); cursor: pointer; }
+.auth-signout { position: fixed; z-index: 100; right: 18px; bottom: 18px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--green); cursor: pointer; }
 .history-resizer { position: relative; flex: 0 0 9px; height: 9px; margin: 5px 4px -5px; outline: 0; cursor: row-resize; touch-action: none; }
 .history-resizer::after { content: ''; position: absolute; top: 4px; right: 0; left: 0; height: 1px; background: var(--line); transition: background .14s ease, box-shadow .14s ease; }
 .history-resizer:hover::after, .history-resizer:focus-visible::after, .row-resizing .history-resizer::after { height: 2px; background: var(--orange); box-shadow: 0 2px 8px rgba(220,106,59,.2); }
