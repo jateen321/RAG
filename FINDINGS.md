@@ -12,6 +12,16 @@ Last updated: 2026-08-31.
 
 ---
 
+## 11. Google Cloud deployment boundary
+
+- 🟢 **Repo-verified (2026-08-31):** The current runtime stores approximately
+  1.4 GB in local ChromaDB/data directories and uses SQLite for conversations.
+  A Compute Engine VM with persistent disk preserves this design; Cloud Run's
+  writable filesystem is disposable, so Cloud Run requires a datastore/storage
+  migration before it can safely host this workload.
+
+---
+
 ## 10. Shared-corpus ownership boundary
 
 - 🟢 **Repo-verified (2026-08-31):** The live Chroma collection contained 21,499

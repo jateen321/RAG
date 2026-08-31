@@ -330,6 +330,8 @@ flag for its plain-HTTP backend process; production keeps the secure default.
 A production deployment can expose both parts through one public port or
 domain. Common approaches are to serve the built frontend from FastAPI or use
 a reverse proxy that routes `/` to the frontend and `/api/*` to FastAPI.
+For the current local-state architecture, the reproducible Google Cloud VM
+deployment is documented in [`deploy/README.md`](deploy/README.md).
 
 Guests can query and open sources from the corpus identified by
 `SHARED_CORPUS_OWNER_ID`; their answers are not persisted and they cannot use
