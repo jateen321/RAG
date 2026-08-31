@@ -165,16 +165,20 @@ const suggestions = [
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, init);
+    response = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include' });
   } catch {
     throw new Error('The RAG server is not reachable. Start the FastAPI server and try again.');
   }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = payload !== null && typeof payload === 'object' && 'detail' in payload && typeof payload.detail === 'string'
+    let message = payload !== null && typeof payload === 'object' && 'detail' in payload && typeof payload.detail === 'string'
       ? payload.detail
       : `Request failed (${response.status}).`;
+    const retryAfter = Number(response.headers.get('Retry-After'));
+    if (response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
+      message = `${message} Try again in ${Math.ceil(retryAfter)} seconds.`;
+    }
     throw new Error(message);
   }
   return payload as T;

@@ -249,7 +249,9 @@ def _video_metadata(info: dict, playlist: dict | None) -> dict:
     return metadata
 
 
-def _index_video(info: dict, playlist: dict | None = None) -> VideoResult:
+def _index_video(
+    info: dict, playlist: dict | None = None, owner_id: str | None = None,
+) -> VideoResult:
     from youtube_transcript_api import YouTubeTranscriptApi
 
     video_id = str(info.get("id") or "")
@@ -276,11 +278,12 @@ def _index_video(info: dict, playlist: dict | None = None) -> VideoResult:
         "youtube",
         document_key=video_id,
         source_metadata=metadata,
+        owner_id=owner_id,
     )
     return VideoResult(video_id, title, "indexed", count)
 
 
-def ingest_youtube(url: str) -> dict:
+def ingest_youtube(url: str, owner_id: str | None = None) -> dict:
     """Index a YouTube video or playlist and return a structured report."""
     from yt_dlp import YoutubeDL
 
@@ -309,7 +312,9 @@ def ingest_youtube(url: str) -> dict:
             results.append(VideoResult("unknown", "Unavailable video", "skipped", reason="Unavailable or private"))
             continue
         try:
-            results.append(_index_video(entry, info if is_playlist else None))
+            results.append(
+                _index_video(entry, info if is_playlist else None, owner_id=owner_id)
+            )
         except Exception as exc:
             results.append(VideoResult(
                 str(entry.get("id") or "unknown"),

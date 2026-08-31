@@ -211,6 +211,7 @@ def index_folder(
     *,
     extract: Callable[[Path], list[dict]] = extract_document,
     force: bool = False,
+    owner_id: str | None = None,
 ) -> dict:
     """Index every supported file in a folder and isolate per-file failures.
 
@@ -238,7 +239,9 @@ def index_folder(
         source_name = f"{root.name}/{relative_path}"
 
         try:
-            if not force and is_document_indexed(source_name, file_path=document_path):
+            if not force and is_document_indexed(
+                source_name, file_path=document_path, owner_id=owner_id,
+            ):
                 results.append({
                     "source": source_name,
                     "status": "skipped",
@@ -266,6 +269,7 @@ def index_folder(
                     "relative_path": relative_path,
                     "file_extension": document_path.suffix.lower(),
                 },
+                owner_id=owner_id,
             )
             chunks_indexed += chunk_count
             results.append({

@@ -365,6 +365,7 @@ def ask_with_sources(
     image_data: bytes | None = None,
     image_mime_type: str | None = None,
     prepare_image_prompt: bool = False,
+    owner_id: str | None = None,
 ) -> dict:
     """
     Answer a question and return the answer, its sources, and phase timings.
@@ -410,6 +411,8 @@ def ask_with_sources(
     retrieval_query = _contextualize_question(question, history)
     try:
         kwargs = {"top_k": top_k} if top_k is not None else {}
+        if owner_id is not None:
+            kwargs["owner_id"] = owner_id
         retrieval = retrieve_context(retrieval_query, **kwargs)
         chunks = retrieval["chunks"]
     except ClientError as e:

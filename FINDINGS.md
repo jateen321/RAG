@@ -1201,3 +1201,61 @@ RAG engine still holds the selected chunks, so the answer and image calls share 
 and the image model receives the original user request plus source-labelled retrieved passages.
 The generated text answer remains in the response but is not used as the document image's factual
 input. Web + Image mode retains its answer-based prompt because that path has no retriever context.
+
+## 26. One API request is not one provider request (2026-08-31)
+
+🟢 **Repo-verified design:** a conversational document question can fan out into a
+contextualization call, query-planning call, batched query embedding, reranking call, and final
+generation call. One ingestion request can fan out further into concurrent OCR calls and many
+embedding batches. Public protection therefore combines per-user endpoint buckets with global
+operation concurrency; endpoint requests-per-minute alone cannot represent or cap upstream quota
+consumption. Redis-backed atomic state is required when multiple API workers or replicas share the
+same paid provider credentials.
+
+## 27. Authentication without storage filters is not tenant isolation (2026-08-31)
+
+🟢 **Repo-verified design:** before authentication, conversation IDs, source paths, generated-image
+IDs, document fingerprints, and vector queries all addressed global stores. Verifying a user only
+at the HTTP boundary would therefore still permit horizontal data exposure or retrieval leakage.
+Private tenancy now carries the verified Firebase UID through SQLite predicates, opaque filesystem
+roots, tenant-specific Chroma document IDs and metadata, catalog aggregation, citation lookup, and
+the vector query's `where` filter. Security tests exercise denial across all four storage surfaces.
+
+## 28. A passing suite is not a verified boundary (2026-08-31)
+
+🟢 **Repo-verified:** every pre-existing API test overrides `get_current_user` with an
+`is_admin=True` stub, so 143 green tests described the happy path of a stubbed identity and said
+nothing about denial. Three gaps survived that suite. The frontend had never been compiled:
+`tsc --noEmit` failed on `auth-gate.tsx` because `@cloudflare/workers-types` retypes
+`Response.json()` as `Promise<unknown>`, so `payload.detail` was an error rather than the usual
+silent `any`. Nothing ever wrote the `admin` custom claim that `require_admin` reads — Firebase
+claims are settable only through the Admin SDK — leaving `POST /index/folder` unreachable until
+`grant_admin.py` was added; note that `LEGACY_ADMIN_UID` assigns legacy rows and does *not* confer
+the role. And `_require_trusted_origin` guarded only the two `/auth/*` routes, which is harmless
+under the default `SameSite=Lax` but not under the `SESSION_COOKIE_SAMESITE=none` deployment the
+README itself documents; the origin check now runs as middleware over every state-changing method that arrives with
+an `Origin` header. A request without one still passes, so this stops browser-driven CSRF
+and not scripted clients, which is the whole threat it is meant to cover. Verified
+empirically: an allowed origin preflights and POSTs normally, a forged origin gets a 403.
+
+## 29. Tenant filters that fail open on `None` (2026-08-31)
+
+🟢 **Repo-verified design, deliberate:** `conversation_store` predicates read
+`(? IS NULL OR c.owner_id = ?)` and `retriever.retrieve_many` omits the Chroma `where` clause
+entirely when `owner_id is None`. Passing no owner therefore returns *every* tenant's rows rather
+than none. Every API call site passes the verified `user.uid`, and cross-tenant denial is tested
+across conversations, generated images, document paths, and vector queries — so there is no leak
+today. The default exists because CLI and maintenance tools legitimately need unscoped access. It
+is recorded here because it inverts the safe default: a forgotten argument degrades silently into
+a full-corpus read instead of raising `TypeError`. Making `owner_id` required on the API-facing
+functions, with an explicit unscoped entry point for the CLI, is the follow-up.
+
+## 30. The rate limiter has not run against Redis (2026-08-31)
+
+⚪ **Not live-verified in this session:** every rate-limit test uses `enabled=False` or a stub
+context manager, and `fakeredis` is not installed, so no Lua script has executed against a real or
+emulated Redis. Reading them, the `KEYS`/`ARGV` index arithmetic matches each caller's argument
+layout and the `{identity_tag}` / `{global}` hash tags keep multi-key scripts in one cluster slot,
+but reviewed-and-plausible is not verified. Installing `fakeredis` and exercising bucket
+exhaustion, refill, lease expiry, and heartbeat renewal is the outstanding work before the
+concurrency claims can be stated as fact.

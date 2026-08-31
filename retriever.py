@@ -93,7 +93,9 @@ def _format_results(results: dict, query_index: int) -> list[dict]:
     return retrieved
 
 
-def retrieve_many(queries: list[str], top_k: int = None) -> list[list[dict]]:
+def retrieve_many(
+    queries: list[str], top_k: int = None, owner_id: str | None = None,
+) -> list[list[dict]]:
     """Retrieve one ranked list per query using one batched embedding call."""
     if not queries:
         return []
@@ -111,7 +113,10 @@ def retrieve_many(queries: list[str], top_k: int = None) -> list[list[dict]]:
         console.print("   Run: [bold]python app.py index <pdf_file>[/bold] first.")
         return [[] for _ in queries]
 
-    count = collection.count()
+    if owner_id is None:
+        count = collection.count()
+    else:
+        count = len(collection.get(where={"owner_id": owner_id}, include=[])["ids"])
     if count == 0:
         console.print("[red]❌ Database is empty. Index a PDF first.[/red]")
         return [[] for _ in queries]
@@ -119,12 +124,15 @@ def retrieve_many(queries: list[str], top_k: int = None) -> list[list[dict]]:
     results = collection.query(
         query_embeddings=query_embeddings,
         n_results=min(top_k, count),
+        **({"where": {"owner_id": owner_id}} if owner_id is not None else {}),
         include=["documents", "metadatas", "distances"],
     )
     return [_format_results(results, i) for i in range(len(queries))]
 
 
-def retrieve(query: str, top_k: int = None) -> list[dict]:
+def retrieve(
+    query: str, top_k: int = None, owner_id: str | None = None,
+) -> list[dict]:
     """
     Retrieve the most relevant chunks for a given query.
 
@@ -138,5 +146,5 @@ def retrieve(query: str, top_k: int = None) -> list[dict]:
         'content_hash'
         Sorted by relevance (most relevant first).
     """
-    rows = retrieve_many([query], top_k=top_k)
+    rows = retrieve_many([query], top_k=top_k, owner_id=owner_id)
     return rows[0] if rows else []

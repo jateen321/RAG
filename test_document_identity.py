@@ -12,9 +12,12 @@ from fastapi.testclient import TestClient
 import api
 import document_ingester
 import indexer
+from auth import AuthenticatedUser, get_current_user
 
 
 class DocumentIdentityTests(unittest.TestCase):
+    OWNER_ID = "document-test-user"
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -31,6 +34,10 @@ class DocumentIdentityTests(unittest.TestCase):
         ))
         self.enterContext(patch.object(indexer, "_pace_delay", 0))
         self.enterContext(patch.object(api, "DATA_DIR", str(self.root)))
+        api.app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+            uid=self.OWNER_ID, email="test@example.com", is_admin=True
+        )
+        self.addCleanup(api.app.dependency_overrides.clear)
         self.client = TestClient(api.app)
 
     @staticmethod
@@ -55,7 +62,9 @@ class DocumentIdentityTests(unittest.TestCase):
                             return self.client.post("/upload", files={"file": (name, body, mime)})
 
                         def ingest_folder():
-                            return document_ingester.index_folder(folder, extract=lambda _: pages)
+                            return document_ingester.index_folder(
+                                folder, extract=lambda _: pages, owner_id=self.OWNER_ID
+                            )
 
                         if folder_first:
                             self.assertEqual(ingest_folder()["files_indexed"], 1)
@@ -75,7 +84,7 @@ class DocumentIdentityTests(unittest.TestCase):
             folder = self.root / folder_name
             folder.mkdir()
             (folder / "notes.txt").write_text(text)
-            report = document_ingester.index_folder(folder)
+            report = document_ingester.index_folder(folder, owner_id=self.OWNER_ID)
             self.assertEqual(report["files_indexed"], 1)
         self.assertEqual(self.collection.count(), 2)
         documents = {md["document_id"] for md in self.collection.get(include=["metadatas"])["metadatas"]}
@@ -84,7 +93,7 @@ class DocumentIdentityTests(unittest.TestCase):
     def test_identical_files_in_one_folder_are_skipped_during_same_run(self):
         for name in ("first.txt", "renamed.txt"):
             (self.root / name).write_text("The same text under two different filenames. " * 5)
-        report = document_ingester.index_folder(self.root)
+        report = document_ingester.index_folder(self.root, owner_id=self.OWNER_ID)
         self.assertEqual(report["files_indexed"], 1)
         self.assertEqual(report["files_skipped"], 1)
         self.assertEqual(self.embed.call_count, 1)
@@ -98,7 +107,9 @@ class DocumentIdentityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["source"], "book/notes.txt")
         count = self.collection.count()
-        report = document_ingester.index_folder(folder, force=True)
+        report = document_ingester.index_folder(
+            folder, force=True, owner_id=self.OWNER_ID
+        )
         self.assertEqual(report["files_skipped"], 1)
         response = self.client.post("/index", json={"filename": "book/notes.txt"})
         self.assertTrue(response.json()["deduplicated"])

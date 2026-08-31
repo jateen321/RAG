@@ -235,6 +235,33 @@ GENERATED_IMAGE_DIR = os.getenv(
     os.path.join(DATA_DIR, "generated_images"),
 )
 
+# Firebase Authentication. The browser exchanges a Google/Firebase ID token
+# for an HttpOnly session cookie; the backend uses the verified Firebase UID as
+# the tenant key in SQLite and ChromaDB.
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "").strip()
+SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "sarthi_session").strip()
+SESSION_COOKIE_MAX_AGE_S = min(
+    14 * 24 * 60 * 60,
+    max(300, int(os.getenv("SESSION_COOKIE_MAX_AGE_S", str(5 * 24 * 60 * 60)))),
+)
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "1").strip().lower() not in {
+    "0", "false", "no",
+}
+SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "lax").strip().lower()
+if SESSION_COOKIE_SAMESITE not in {"lax", "strict", "none"}:
+    raise ValueError("SESSION_COOKIE_SAMESITE must be lax, strict, or none.")
+if SESSION_COOKIE_SAMESITE == "none" and not SESSION_COOKIE_SECURE:
+    raise ValueError("SESSION_COOKIE_SECURE must be enabled when SameSite is none.")
+AUTH_RECENT_SIGN_IN_MAX_AGE_S = max(
+    60, int(os.getenv("AUTH_RECENT_SIGN_IN_MAX_AGE_S", "300"))
+)
+AUTH_CHECK_REVOKED = os.getenv("AUTH_CHECK_REVOKED", "0").strip().lower() not in {
+    "0", "false", "no",
+}
+# Existing SQLite/Chroma rows predate tenancy. Set this to the Firebase UID of
+# the administrator who should receive those legacy records.
+LEGACY_ADMIN_UID = os.getenv("LEGACY_ADMIN_UID", "").strip()
+
 # Server-local folders that POST /index/folder may read. The CLI does not need
 # an allowlist because it already runs with the invoking user's permissions.
 # Use the operating system path separator (`:` on macOS/Linux, `;` on Windows)

@@ -6,11 +6,23 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api
+from auth import AuthenticatedUser, get_current_user
+
+
+TEST_USER = AuthenticatedUser(
+    uid="firebase-test-user",
+    email="student@example.com",
+    is_admin=True,
+)
 
 
 class DocumentUploadValidationTests(unittest.TestCase):
     def setUp(self):
+        api.app.dependency_overrides[get_current_user] = lambda: TEST_USER
         self.client = TestClient(api.app)
+
+    def tearDown(self):
+        api.app.dependency_overrides.clear()
 
     def test_rejects_unsupported_upload(self):
         with tempfile.TemporaryDirectory() as data_dir, patch.object(api, "DATA_DIR", data_dir):
@@ -76,7 +88,9 @@ class DocumentUploadValidationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), passage)
-        get_chunk.assert_called_once_with("doc_p0002_c003", "book.pdf")
+        get_chunk.assert_called_once_with(
+            "doc_p0002_c003", "book.pdf", TEST_USER.uid
+        )
 
     def test_passage_route_hides_missing_or_mismatched_chunks(self):
         with patch("indexer.get_chunk", return_value=None):
@@ -111,7 +125,7 @@ class DocumentUploadValidationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), passage)
         resolve.assert_called_once_with(
-            "book.pdf", 2, "The complete cited paragraph."
+            "book.pdf", 2, "The complete cited paragraph.", TEST_USER.uid
         )
 
     def test_rejects_non_utf8_text(self):
@@ -142,7 +156,9 @@ class DocumentUploadValidationTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 201)
                 self.assertEqual(response.json()["source"], filename)
                 index_document.assert_called_once_with(
-                    pages, filename, source_type, file_path=Path(data_dir).resolve() / filename
+                    pages, filename, source_type,
+                    file_path=Path(data_dir).resolve() / filename,
+                    owner_id=TEST_USER.uid,
                 )
 
     def test_existing_unindexed_pdf_is_indexed_without_overwrite(self):
@@ -164,7 +180,8 @@ class DocumentUploadValidationTests(unittest.TestCase):
 
             self.assertEqual(existing.read_bytes(), b"original content")
             index_document.assert_called_once_with(
-                pages, "lesson.pdf", "pdf", file_path=existing.resolve()
+                pages, "lesson.pdf", "pdf", file_path=existing.resolve(),
+                owner_id=TEST_USER.uid,
             )
 
         self.assertEqual(response.status_code, 201)
@@ -211,6 +228,7 @@ class DocumentUploadValidationTests(unittest.TestCase):
             index_document.assert_called_once_with(
                 pages, "psychology/lesson.pdf", "pdf",
                 file_path=Path(data_dir).resolve() / "psychology" / "lesson.pdf",
+                owner_id=TEST_USER.uid,
             )
 
     def test_upload_rejects_relative_path_traversal(self):
@@ -258,11 +276,14 @@ class DocumentUploadValidationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), report)
-        index_folder.assert_called_once_with(Path(allowed).resolve(), True)
+        index_folder.assert_called_once_with(
+            Path(allowed).resolve(), True, owner_id=TEST_USER.uid
+        )
 
 
 class ConversationHistoryTests(unittest.TestCase):
     def setUp(self):
+        api.app.dependency_overrides[get_current_user] = lambda: TEST_USER
         self.client = TestClient(api.app)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.database_path = Path(self.temp_dir.name) / "conversations.sqlite3"
@@ -272,6 +293,7 @@ class ConversationHistoryTests(unittest.TestCase):
         self.database_patch.start()
 
     def tearDown(self):
+        api.app.dependency_overrides.clear()
         self.database_patch.stop()
         self.temp_dir.cleanup()
 
@@ -329,6 +351,7 @@ class ConversationHistoryTests(unittest.TestCase):
             chat_history=[],
             image_data=image_bytes,
             image_mime_type="image/png",
+            owner_id=TEST_USER.uid,
         )
         conversation_id = response.json()["conversation_id"]
         exchange = self.client.get(
@@ -376,6 +399,7 @@ class ConversationHistoryTests(unittest.TestCase):
             "Explain photosynthesis",
             chat_history=[],
             prepare_image_prompt=True,
+            owner_id=TEST_USER.uid,
         )
         generate.assert_called_once_with(grounded_prompt)
         payload = response.json()

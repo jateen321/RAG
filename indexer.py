@@ -416,6 +416,29 @@ def _get_collection():
     return collection
 
 
+def assign_legacy_documents(owner_id: str) -> int:
+    """Assign pre-tenancy Chroma rows to the configured administrator once."""
+    if not owner_id:
+        return 0
+    collection = _get_collection()
+    stored = collection.get(include=["metadatas"])
+    positions = [
+        index
+        for index, metadata in enumerate(stored["metadatas"] or [])
+        if not (metadata or {}).get("owner_id")
+    ]
+    if not positions:
+        return 0
+    collection.update(
+        ids=[stored["ids"][index] for index in positions],
+        metadatas=[
+            {**(stored["metadatas"][index] or {}), "owner_id": owner_id}
+            for index in positions
+        ],
+    )
+    return len(positions)
+
+
 def index_chunks(
     chunks: list[dict],
     source_name: str,
@@ -423,6 +446,7 @@ def index_chunks(
     *,
     document_key: str | None = None,
     source_metadata: dict | None = None,
+    owner_id: str | None = None,
 ) -> int:
     """Embed and store already-created chunks from any source adapter.
 
@@ -440,8 +464,14 @@ def index_chunks(
 
     collection = _get_collection()
     before = collection.count()
-    doc_id = _document_id(document_key or source_name, source_type)
-    common_metadata = _chroma_metadata(source_metadata or {})
+    document_identity = document_key or source_name
+    if owner_id:
+        document_identity = f"{owner_id}:{document_identity}"
+    doc_id = _document_id(document_identity, source_type)
+    common_metadata = _chroma_metadata({
+        **(source_metadata or {}),
+        **({"owner_id": owner_id} if owner_id else {}),
+    })
 
     ids = [
         (
@@ -574,6 +604,7 @@ def index_document(
     document_key: str | None = None,
     source_metadata: dict | None = None,
     file_path=None,
+    owner_id: str | None = None,
 ) -> int:
     """
     Index extracted text into ChromaDB.
@@ -630,6 +661,8 @@ def index_document(
         stored = collection.get(include=["metadatas"])
         complete = _complete_documents(stored["metadatas"] or [])
         for doc_id, rows in complete.items():
+            if owner_id is not None and rows[0].get("owner_id") != owner_id:
+                continue
             if rows[0].get("source_type") != source_type:
                 continue
             if len(rows) != len(all_chunks):
@@ -658,7 +691,8 @@ def index_document(
 
         # Preserve the first source's location when resuming/re-extracting an
         # identical file through a different route, so existing links stay valid.
-        doc_id = _document_id(identity, source_type)
+        tenant_identity = f"{owner_id}:{identity}" if owner_id else identity
+        doc_id = _document_id(tenant_identity, source_type)
         previous = [md for md in stored["metadatas"] or []
                     if md and md.get("document_id") == doc_id]
         if previous:
@@ -671,23 +705,27 @@ def index_document(
                     metadata.pop(field, None)
         return index_chunks(
             all_chunks, source_name, source_type,
-            document_key=identity, source_metadata=metadata,
+            document_key=identity, source_metadata=metadata, owner_id=owner_id,
         )
 
 
-def _find_document_id(source_name: str) -> str | None:
+def _find_document_id(source_name: str, owner_id: str | None = None) -> str | None:
     """Resolve a displayed source name to its stored document ID."""
     metadatas = _get_collection().get(include=["metadatas"])["metadatas"] or []
     matches = {
         md.get("document_id")
         for md in metadatas
-        if md and md.get("source_name", "").casefold() == source_name.casefold()
+        if md
+        and md.get("source_name", "").casefold() == source_name.casefold()
+        and (owner_id is None or md.get("owner_id") == owner_id)
     }
     matches.discard(None)
     return next(iter(matches)) if len(matches) == 1 else None
 
 
-def is_document_indexed(source_name: str, *, file_path=None) -> bool:
+def is_document_indexed(
+    source_name: str, *, file_path=None, owner_id: str | None = None,
+) -> bool:
     """Check complete documents by file content when a local path is supplied.
 
     Legacy records without a byte fingerprint are checked after extraction in
@@ -700,6 +738,8 @@ def is_document_indexed(source_name: str, *, file_path=None) -> bool:
         metadatas = collection.get(
             where={"file_sha256": fingerprint}, include=["metadatas"]
         )["metadatas"] or []
+        if owner_id is not None:
+            metadatas = [md for md in metadatas if md and md.get("owner_id") == owner_id]
         complete = _complete_documents(metadatas)
         extension = os.path.splitext(str(file_path))[1].lower()
         source_type = {".pdf": "pdf", ".txt": "text", ".md": "markdown"}.get(extension)
@@ -709,6 +749,8 @@ def is_document_indexed(source_name: str, *, file_path=None) -> bool:
             for rows in complete.values()
         )
     metadatas = collection.get(include=["metadatas"])["metadatas"] or []
+    if owner_id is not None:
+        metadatas = [md for md in metadatas if md and md.get("owner_id") == owner_id]
     complete = _complete_documents(metadatas)
     target = os.path.basename(source_name).casefold()
     return any(
@@ -717,7 +759,7 @@ def is_document_indexed(source_name: str, *, file_path=None) -> bool:
     )
 
 
-def remove_document(source_name: str) -> int:
+def remove_document(source_name: str, owner_id: str | None = None) -> int:
     """Delete every chunk that came from one source document.
 
     Chunks carry a "document_id" metadata field, so Chroma can delete them with
@@ -736,7 +778,7 @@ def remove_document(source_name: str) -> int:
         Number of chunks deleted (0 if that source isn't indexed).
     """
     collection = _get_collection()
-    doc_id = _find_document_id(source_name)
+    doc_id = _find_document_id(source_name, owner_id)
     if not doc_id:
         return 0
 
@@ -749,7 +791,9 @@ def remove_document(source_name: str) -> int:
     return len(matching)
 
 
-def get_chunk(chunk_id: str, source_name: str) -> dict | None:
+def get_chunk(
+    chunk_id: str, source_name: str, owner_id: str | None = None,
+) -> dict | None:
     """Return one indexed passage after verifying its displayed source name.
 
     Looking up the stable Chroma id is constant-size work. Fetching every chunk
@@ -763,6 +807,8 @@ def get_chunk(chunk_id: str, source_name: str) -> dict | None:
         return None
 
     md = (got["metadatas"] or [{}])[0] or {}
+    if owner_id is not None and md.get("owner_id") != owner_id:
+        return None
     if md.get("source_name", "").casefold() != source_name.casefold():
         return None
 
@@ -784,6 +830,7 @@ def get_chunk_by_citation(
     source_name: str,
     page_number: int,
     preview: str,
+    owner_id: str | None = None,
 ) -> dict | None:
     """Resolve a legacy citation only when its preview identifies one exact chunk.
 
@@ -792,7 +839,7 @@ def get_chunk_by_citation(
     the lookup to that document and page, then require an exact preview match so
     an evidence dialog never displays a guessed passage.
     """
-    doc_id = _find_document_id(source_name)
+    doc_id = _find_document_id(source_name, owner_id)
     if not doc_id:
         return None
 
@@ -828,7 +875,9 @@ def get_chunk_by_citation(
     return matches[0] if len(matches) == 1 else None
 
 
-def get_document_chunks(source_name: str) -> list[dict]:
+def get_document_chunks(
+    source_name: str, owner_id: str | None = None,
+) -> list[dict]:
     """Every stored chunk for one document, in reading order.
 
     Matches on document_id so casing doesn't matter, and sorts by
@@ -844,7 +893,7 @@ def get_document_chunks(source_name: str) -> list[dict]:
         'content_hash', 'chunk_id'}; empty if that document isn't indexed.
     """
     collection = _get_collection()
-    doc_id = _find_document_id(source_name)
+    doc_id = _find_document_id(source_name, owner_id)
     if not doc_id:
         return []
     got = collection.get(
@@ -870,7 +919,7 @@ def get_document_chunks(source_name: str) -> list[dict]:
     return rows
 
 
-def get_stats() -> dict:
+def get_stats(owner_id: str | None = None) -> dict:
     """Get statistics about the indexed documents.
 
     Every chunk carries {"page", "source"} metadata, so we can aggregate it into
@@ -887,11 +936,13 @@ def get_stats() -> dict:
     """
     try:
         collection = _get_collection()
-        count = collection.count()
-        if not count:
+        if not collection.count():
             return {"total_chunks": 0, "db_path": CHROMA_DB_PATH, "documents": []}
 
         metadatas = collection.get(include=["metadatas"])["metadatas"] or []
+        if owner_id is not None:
+            metadatas = [md for md in metadatas if md and md.get("owner_id") == owner_id]
+        count = len(metadatas)
 
         # source -> set of pages it contributed (a page yields several chunks)
         pages_by_source: dict[str, set] = {}

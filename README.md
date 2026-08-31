@@ -329,6 +329,34 @@ A production deployment can expose both parts through one public port or
 domain. Common approaches are to serve the built frontend from FastAPI or use
 a reverse proxy that routes `/` to the frontend and `/api/*` to FastAPI.
 
+For production authentication, enable Google sign-in in Firebase Authentication
+and configure the backend `FIREBASE_PROJECT_ID` plus the frontend
+`NEXT_PUBLIC_FIREBASE_*` values. The browser exchanges a recent Firebase ID
+token for a Secure, HttpOnly session cookie; conversations, source files,
+generated images, Chroma document IDs, catalogs, and vector queries are scoped
+to that verified Firebase UID. Set `LEGACY_ADMIN_UID` before the first production
+start so pre-tenancy SQLite and Chroma rows are assigned to the administrator.
+
+`LEGACY_ADMIN_UID` only decides who inherits those legacy rows; it does not grant
+the administrator role. `POST /index/folder` requires an `admin` custom claim,
+and Firebase custom claims can only be written by a trusted server through the
+Admin SDK. Grant it once, after the account has signed in at least so it exists:
+
+```bash
+.venv/bin/python grant_admin.py you@example.com --grant
+```
+
+Run without a flag to inspect the current claim. The account must sign out and
+in again before a session carries it. Revoking also revokes refresh tokens, which
+the API only enforces when `AUTH_CHECK_REVOKED=1`.
+
+Deploy the frontend and API on the same site (for example `app.example.com` and
+`api.example.com`) so `SameSite=Lax` session cookies work for API requests and
+direct PDF/image links. Truly cross-site domains require
+`SESSION_COOKIE_SAMESITE=none`, HTTPS, `SESSION_COOKIE_SECURE=1`, credentialed
+CORS, and browser third-party-cookie support; a same-site reverse proxy is more
+reliable.
+
 ### Recommended: run both development servers together
 
 Stop any backend or frontend processes that you previously started by pressing
@@ -632,6 +660,33 @@ in `.env` as shown in `.env.example`:
 | `LAYER_CHECK_MIN_SIMILARITY` | 0.4 | Median OCR-vs-layer similarity below this → distrust the layer and OCR the whole document |
 | `EMBEDDING_MODEL` | `gemini-embedding-001` | Embedding model |
 | `LLM_MODEL` | `gemini-3.5-flash-lite` | Generation and query-planning model |
+| `RAG_RATE_LIMIT_ENABLED` | `0` | Enable Redis-backed admission control; set to `1` for public deployment |
+| `REDIS_URL` | unset | Managed Redis connection URL, required when admission control is enabled |
+| `RAG_RATE_LIMIT_ASK_PER_MINUTE` / `ASK_BURST` | `10` / `3` | Sustained and burst allowance per authenticated user |
+| `RAG_RATE_LIMIT_WEB_PER_MINUTE` / `WEB_BURST` | `5` / `2` | Web-search allowance per authenticated user |
+| `RAG_RATE_LIMIT_IMAGE_PER_MINUTE` / `IMAGE_BURST` | `2` / `1` | Image-generation allowance per authenticated user |
+| `RAG_RATE_LIMIT_INGEST_PER_HOUR` / `INGEST_BURST` | `5` / `5` | Ingestion starts per authenticated user; server-folder indexing also requires an administrator |
+| `RAG_CONCURRENCY_INTERACTIVE` | `4` | Shared active document-answer limit across all replicas |
+| `RAG_CONCURRENCY_WEB` | `2` | Shared active web-search limit across all replicas |
+| `RAG_CONCURRENCY_IMAGE` | `1` | Shared active image-generation limit across all replicas |
+| `RAG_CONCURRENCY_INGEST` | `1` | Shared active ingestion limit across all replicas |
+
+### Public API admission control
+
+Rate limits use the verified Firebase user ID, hashed before it becomes part of
+a Redis key. Token-bucket updates and multi-bucket charges are atomic Lua
+operations, so Web + Image requests cannot bypass a more expensive bucket.
+Concurrency slots are global renewable Redis leases: they coordinate multiple
+Uvicorn workers and deployment replicas and expire after a crashed worker.
+
+When enabled, admission **fails closed** if Redis cannot be reached: costly work
+returns HTTP 503 instead of reaching paid providers without protection. An
+exhausted bucket or busy concurrency pool returns HTTP 429 with an integer
+`Retry-After` header. Work that was admitted before a temporary Redis outage is
+allowed to finish; its lease eventually expires even if renewal and cleanup
+cannot reach Redis. Use a TLS `rediss://` URL, keep Redis credentials in the
+deployment secret manager, and run a Redis connectivity smoke test before
+serving public traffic.
 
 > **Embedding model lifecycle:** This application currently uses
 > `gemini-embedding-001`, which remains available for text-only workloads.

@@ -16,6 +16,8 @@ pillow>=11.0            # image handling for OCR (import: PIL)
 
 # ── Web API ──────────────────────────────────────────────────────────
 fastapi>=0.115          # /ask, /index, /health endpoints (pydantic comes with it)
+firebase-admin>=7.0     # verify Google/Firebase identity and issue browser sessions
+redis>=5.2              # shared rate limits and concurrency across API replicas
 uvicorn>=0.30           # ASGI server used to run the FastAPI app
 python-multipart>=0.0.20 # multipart parser for browser PDF uploads
 

@@ -1,5 +1,6 @@
 import ChatWorkspace from './chat-workspace';
+import AuthGate from './auth-gate';
 
 export default function Home() {
-  return <ChatWorkspace />;
+  return <AuthGate><ChatWorkspace /></AuthGate>;
 }

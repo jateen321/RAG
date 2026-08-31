@@ -98,11 +98,12 @@ def _unique_queries(original: str, rewrites: list[str], maximum: int) -> list[st
     return queries
 
 
-def _document_catalog() -> list[dict]:
+def _document_catalog(owner_id: str | None = None) -> list[dict]:
     """Return compact source metadata already aggregated by the indexer."""
     from indexer import get_stats
 
-    documents = get_stats().get("documents", [])
+    stats = get_stats(owner_id=owner_id) if owner_id is not None else get_stats()
+    documents = stats.get("documents", [])
     return [
         {
             "source": document.get("source"),
@@ -295,16 +296,21 @@ def rerank_candidates(
         return candidates[:minimum]
 
 
-def retrieve_context(question: str, top_k: int = None) -> dict:
+def retrieve_context(
+    question: str, top_k: int = None, owner_id: str | None = None,
+) -> dict:
     """Run planning, batched retrieval, unique RRF, and Gemini reranking."""
     adaptive = top_k is None
     final_top_k = MAX_CONTEXT_CHUNKS if adaptive else top_k
     minimum_chunks = MIN_CONTEXT_CHUNKS if adaptive else final_top_k
     started = time.perf_counter()
-    queries = generate_queries(question, _document_catalog())
+    queries = generate_queries(question, _document_catalog(owner_id))
     planned_at = time.perf_counter()
 
-    result_lists = retrieve_many(queries, top_k=QUERY_RETRIEVAL_TOP_K)
+    retrieve_kwargs = {"top_k": QUERY_RETRIEVAL_TOP_K}
+    if owner_id is not None:
+        retrieve_kwargs["owner_id"] = owner_id
+    result_lists = retrieve_many(queries, **retrieve_kwargs)
     retrieved_at = time.perf_counter()
     raw_candidate_count = sum(len(results) for results in result_lists)
     fused = reciprocal_rank_fusion(result_lists)
