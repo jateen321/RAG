@@ -1,5 +1,5 @@
 """
-Configuration for the Sarthi AI application.
+Configuration for the Gyaan Sarthi application.
 Loads environment variables and defines constants.
 """
 

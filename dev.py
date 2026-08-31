@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the Sarthi AI backend and frontend as one reloadable dev application.
+"""Run the Gyaan Sarthi backend and frontend as one reloadable dev application.
 
 Python and frontend source changes are handled by Uvicorn's reloader and
 Vinext/Vite HMR. This supervisor handles the changes those native watchers do
@@ -247,7 +247,7 @@ def run(poll_interval: float = 1.0) -> int:
         backend.start()
         frontend.start()
         print(
-            "\n✅ Sarthi AI development servers are running\n"
+            "\n✅ Gyaan Sarthi development servers are running\n"
             f"   Frontend: http://localhost:{FRONTEND_PORT}\n"
             f"   Backend:  http://{HOST}:{BACKEND_PORT}\n"
             "   Press Ctrl+C to stop both.",
@@ -292,7 +292,7 @@ def run(poll_interval: float = 1.0) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run the Sarthi AI backend and frontend with automatic reloads."
+        description="Run the Gyaan Sarthi backend and frontend with automatic reloads."
     )
     parser.add_argument(
         "--poll-interval",

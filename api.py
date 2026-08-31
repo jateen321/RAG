@@ -1,4 +1,4 @@
-"""FastAPI interface for the Sarthi AI RAG pipeline."""
+"""FastAPI interface for the Gyaan Sarthi RAG pipeline."""
 
 import os
 from functools import wraps
@@ -64,7 +64,7 @@ from rate_limit import (
 
 
 app = FastAPI(
-    title="Sarthi AI API",
+    title="Gyaan Sarthi API",
     description="Index PDF, TXT, Markdown, and YouTube sources, then ask grounded questions.",
     version="1.3.0",
 )
@@ -310,7 +310,7 @@ def _resolve_data_document(filename: str, owner_id: str | None = None) -> Path:
 @app.get("/")
 def root() -> dict:
     return {
-        "name": "Sarthi AI API",
+        "name": "Gyaan Sarthi API",
         "docs": "/docs",
         "health": "/health",
     }

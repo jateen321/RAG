@@ -1,6 +1,6 @@
-# Sarthi AI Frontend
+# Gyaan Sarthi Frontend
 
-The frontend is a Vinext/React interface for the Sarthi AI FastAPI service. It
+The frontend is a Vinext/React interface for the Gyaan Sarthi FastAPI service. It
 supports document and YouTube ingestion, source-linked chat, conversation
 history, prompt editing, image attachments, explicit web search, and generated
 study visuals.

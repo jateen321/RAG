@@ -57,7 +57,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     <main className="auth-screen">
       <section className="auth-card">
         <span className="brand-mark">स</span>
-        <p className="eyebrow">SARTHI AI</p>
+        <p className="eyebrow">GYAAN SARTHI</p>
         <h1>Your private study workspace</h1>
         <p>Sign in to access only your own documents, conversations, and generated visuals.</p>
         <button type="button" onClick={() => void signIn()} disabled={busy}>

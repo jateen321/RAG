@@ -817,7 +817,7 @@ export default function ChatWorkspace() {
         <div className="mobile-panel-head">
           <div className="brand">
             <span className="brand-mark">स</span>
-            <div><strong>Sarthi AI</strong><span>Grounded study companion</span></div>
+            <div><strong>Gyaan Sarthi</strong><span>Grounded study companion</span></div>
           </div>
           <button className="close-panel" type="button" onClick={() => setMobileLibraryOpen(false)} aria-label="Close library">×</button>
         </div>
@@ -984,7 +984,7 @@ export default function ChatWorkspace() {
                 <div className="answer-block">
                   <div className="assistant-badge">स</div>
                   <div className="answer-content">
-                    <div className="answer-heading"><strong>Sarthi AI</strong>{message.totalSeconds != null && <small>{message.totalSeconds.toFixed(1)}s · {message.sources?.length ?? 0} sources</small>}</div>
+                    <div className="answer-heading"><strong>Gyaan Sarthi</strong>{message.totalSeconds != null && <small>{message.totalSeconds.toFixed(1)}s · {message.sources?.length ?? 0} sources</small>}</div>
                     {message.pending && <LoadingAnswer web={message.answerBasis === 'web'} />}
                     {message.error && <div className="answer-error"><strong>I couldn’t answer that.</strong><p>{message.error}</p><button type="button" onClick={() => void ask(message.question, undefined, { useWeb: Boolean(message.requestedWeb), generateImage: Boolean(message.requestedImage) })}>Try again</button></div>}
                     {message.answer && <AnswerMarkdown text={message.answer} sources={message.sources} onCitationClick={(source) => openCitation(source as Source)} />}
@@ -1165,7 +1165,7 @@ export default function ChatWorkspace() {
             <span className="modal-icon">{pendingUpload.folderName ? 'DIR' : 'DOC'}</span>
             <p className="eyebrow">ADD TO YOUR LIBRARY</p>
             <h2 id="upload-title">Index this {pendingUpload.folderName ? 'folder' : 'document'}?</h2>
-            <p className="modal-copy">Sarthi AI will extract the text, create searchable passages, and preserve the selected folder path in your local library.</p>
+            <p className="modal-copy">Gyaan Sarthi will extract the text, create searchable passages, and preserve the selected folder path in your local library.</p>
             <div className="selected-file"><BookIcon /><span><strong>{pendingUpload.folderName || pendingUpload.files[0].name}</strong><small>{pendingUpload.folderName ? `${pendingUpload.files.length} supported top-level document${pendingUpload.files.length === 1 ? '' : 's'}` : `${(pendingUpload.files[0].size / 1024 / 1024).toFixed(1)} MB`}</small></span></div>
             {pendingUpload.folderName && (pendingUpload.skippedNested > 0 || pendingUpload.skippedUnsupported > 0 || pendingUpload.skippedOversize > 0) && (
               <p className="selection-note">Skipped: {pendingUpload.skippedNested} from nested folders, {pendingUpload.skippedUnsupported} unsupported, {pendingUpload.skippedOversize} over 500 MB.</p>

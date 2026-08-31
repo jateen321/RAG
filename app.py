@@ -1,5 +1,5 @@
 """
-📚 Sarthi AI
+📚 Gyaan Sarthi
 ============
 Query documents and YouTube transcripts in Hindi or English using AI.
 Uses Google Gemini for retrieval and answers, with adaptive extraction that keeps
@@ -44,7 +44,7 @@ console = Console()
 def print_banner():
     """Print a nice welcome banner."""
     banner = """
-[bold cyan]📚 Sarthi AI[/bold cyan]
+[bold cyan]📚 Gyaan Sarthi[/bold cyan]
 [dim]Query documents and YouTube transcripts in Hindi or English[/dim]
 [dim]Gemini-powered retrieval · Adaptive text-layer + OCR routing[/dim]
     """

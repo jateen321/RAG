@@ -1,10 +1,10 @@
-# 📚 Sarthi AI
+# 📚 Gyaan Sarthi
 
 **Ask your books. Trace every answer.**
 
-![Sarthi AI — Ask your books. Trace every answer.](frontend/public/og.png)
+![Gyaan Sarthi — Ask your books. Trace every answer.](frontend/public/og.png)
 
-Sarthi AI is a bilingual study assistant for PDFs, text files, Markdown, and
+Gyaan Sarthi is a bilingual study assistant for PDFs, text files, Markdown, and
 YouTube transcripts. It retrieves evidence before answering, links citations
 back to their exact page or timestamp, and can turn the same retrieved evidence
 into a generated study visual.

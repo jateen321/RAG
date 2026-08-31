@@ -12,6 +12,16 @@ Last updated: 2026-08-30.
 
 ---
 
+## 8. Production identity boundary
+
+- 🟢 **Repo-verified (2026-08-31):** The API verifies Firebase ID tokens against
+  `FIREBASE_PROJECT_ID`, and the browser independently initializes Firebase from
+  `NEXT_PUBLIC_FIREBASE_*`. These values must name the same project. Changing the
+  Firebase/GCP project establishes a new UID namespace, so existing private-library
+  ownership cannot be carried across through configuration alone.
+
+---
+
 ## 7. Citation rendering contract
 
 - 🟢 **Repo-verified (2026-08-30):** Citation rendering depends on an exact
