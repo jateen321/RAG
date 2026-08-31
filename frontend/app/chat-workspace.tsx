@@ -3,6 +3,7 @@
 import { ChangeEvent, ClipboardEvent, FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import { AnswerMarkdown } from './answer-markdown';
+import { useAuth } from './auth-gate';
 
 const API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || 'http://localhost:8000';
 const DEFAULT_EVIDENCE_WIDTH = 320;
@@ -97,8 +98,8 @@ type AskResponse = {
   answer: string;
   sources: Source[];
   timings?: { total_s?: number };
-  conversation_id: string;
-  exchange_id: string;
+  conversation_id?: string | null;
+  exchange_id?: string;
   answer_basis?: 'documents' | 'web';
   generated_image_id?: string;
 };
@@ -222,6 +223,9 @@ function LoadingAnswer({ web = false }: { web?: boolean }) {
 }
 
 export default function ChatWorkspace() {
+  const { identity, checking: checkingAuth } = useAuth();
+  const isAuthenticated = Boolean(identity);
+  const isAdmin = identity?.is_admin === true;
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState('');
   const [question, setQuestion] = useState('');
@@ -310,7 +314,23 @@ export default function ChatWorkspace() {
   }, [loadConversation]);
 
   useEffect(() => { void refreshHealth(); }, [refreshHealth]);
-  useEffect(() => { void refreshConversationHistory(true); }, [refreshConversationHistory]);
+  useEffect(() => {
+    if (checkingAuth) return;
+    if (identity) {
+      void refreshConversationHistory(true);
+    } else {
+      setConversationHistory([]);
+      setActiveConversationId(null);
+      setUseWebMode(false);
+      setGenerateImageMode(false);
+      setPromptImage((current) => {
+        if (current) URL.revokeObjectURL(current.previewUrl);
+        return null;
+      });
+      setPendingUpload(null);
+      setYoutubeOpen(false);
+    }
+  }, [checkingAuth, identity, refreshConversationHistory]);
   useEffect(() => { threadEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [conversations]);
   useEffect(() => { editInput.current?.focus(); }, [editingMessageId]);
   useEffect(() => {
@@ -417,7 +437,7 @@ export default function ChatWorkspace() {
         body.append('image', nextImage);
         body.append('use_web', String(modes.useWeb));
         body.append('generate_image', String(modes.generateImage));
-        if (activeConversationId) body.append('conversation_id', activeConversationId);
+        if (isAuthenticated && activeConversationId) body.append('conversation_id', activeConversationId);
         path = '/ask/image';
         request = { method: 'POST', body };
       } else {
@@ -426,16 +446,16 @@ export default function ChatWorkspace() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             question: cleanQuestion,
-            conversation_id: activeConversationId || undefined,
-            use_web: modes.useWeb,
-            generate_image: modes.generateImage,
+            conversation_id: isAuthenticated ? activeConversationId || undefined : undefined,
+            use_web: isAuthenticated && modes.useWeb,
+            generate_image: isAuthenticated && modes.generateImage,
           }),
         };
       }
       const data = await requestJson<AskResponse>(path, request);
       setConversations((current) => current.map((message) => message.id === id ? {
         ...message,
-        id: data.exchange_id,
+        id: data.exchange_id || id,
         pending: false,
         answer: data.answer,
         sources: data.sources,
@@ -443,9 +463,9 @@ export default function ChatWorkspace() {
         answerBasis: data.answer_basis,
         generatedImageUrl: data.generated_image_id ? generatedImageUrl(data.generated_image_id) : undefined,
       } : message));
-      setActiveConversationId(data.conversation_id);
+      if (data.conversation_id) setActiveConversationId(data.conversation_id);
       setActiveSources(data.sources || []);
-      await refreshConversationHistory();
+      if (isAuthenticated) await refreshConversationHistory();
     } catch (error) {
       setConversations((current) => current.map((message) => message.id === id ? {
         ...message,
@@ -826,7 +846,7 @@ export default function ChatWorkspace() {
           <span aria-hidden="true">＋</span> New conversation
         </button>
 
-        <div className="history-heading">Recent conversations</div>
+        <div className="history-heading">{isAuthenticated ? 'Recent conversations' : 'Guest session'}</div>
         <div className="conversation-history" aria-label="Saved conversations" style={{ height: historyHeight, flexBasis: historyHeight }}>
           {conversationHistory.map((conversation) => (
             <div className={`history-item ${activeConversationId === conversation.id ? 'active' : ''}`} key={conversation.id}>
@@ -837,7 +857,13 @@ export default function ChatWorkspace() {
               <button className="history-delete" type="button" onClick={() => void removeConversation(conversation.id)} aria-label={`Delete ${conversation.title}`}>×</button>
             </div>
           ))}
-          {!conversationHistory.length && <p className="empty-history">Your conversations will appear here.</p>}
+          {!conversationHistory.length && (
+            <p className="empty-history">
+              {isAuthenticated
+                ? 'Your conversations will appear here.'
+                : 'Questions stay in this tab. Sign in to save conversation history.'}
+            </p>
+          )}
         </div>
 
         <div
@@ -859,7 +885,7 @@ export default function ChatWorkspace() {
         />
 
         <div className="library-heading">
-          <span>Your library</span>
+          <span>Shared library</span>
           <span className="library-count">{health?.documents.length ?? '—'}</span>
         </div>
 
@@ -886,7 +912,7 @@ export default function ChatWorkspace() {
               </div>
             );
           })}
-          {health && health.documents.length === 0 && <p className="empty-library">Your library is empty. Add a document or YouTube source to begin.</p>}
+          {health && health.documents.length === 0 && <p className="empty-library">The shared library is empty. An administrator can add a source.</p>}
         </div>
 
         <div className={`index-status ${healthError ? 'offline' : ''}`}>
@@ -908,17 +934,19 @@ export default function ChatWorkspace() {
             </button>
             <div><span className="eyebrow">STUDY WORKSPACE</span><h1>Ask your books</h1></div>
           </div>
-          <div className="header-actions" role="group" aria-label="Add sources">
-            <button type="button" onClick={() => fileInput.current?.click()} aria-label="Add a document" title="Add a document">
-              <span aria-hidden="true">↑</span><span className="header-action-label">Add a document</span>
-            </button>
-            <button type="button" onClick={() => folderInput.current?.click()} aria-label="Add a folder" title="Add a folder">
-              <span aria-hidden="true">▤</span><span className="header-action-label">Add a folder</span>
-            </button>
-            <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
-              <span aria-hidden="true">▶</span><span className="header-action-label">Add YouTube</span>
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="header-actions" role="group" aria-label="Manage shared sources">
+              <button type="button" onClick={() => fileInput.current?.click()} aria-label="Add a document" title="Add a document">
+                <span aria-hidden="true">↑</span><span className="header-action-label">Add a document</span>
+              </button>
+              <button type="button" onClick={() => folderInput.current?.click()} aria-label="Add a folder" title="Add a folder">
+                <span aria-hidden="true">▤</span><span className="header-action-label">Add a folder</span>
+              </button>
+              <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
+                <span aria-hidden="true">▶</span><span className="header-action-label">Add YouTube</span>
+              </button>
+            </div>
+          )}
           <input ref={fileInput} className="visually-hidden" type="file" accept="application/pdf,text/plain,text/markdown,.pdf,.txt,.md" onChange={chooseFile} tabIndex={-1} aria-hidden="true" />
           <input
             ref={(node) => {
@@ -941,9 +969,9 @@ export default function ChatWorkspace() {
         {!hasConversation ? (
           <div className="welcome-state">
             <div className="welcome-seal">अ</div>
-            <p className="eyebrow">YOUR INDEXED KNOWLEDGE</p>
+            <p className="eyebrow">SHARED INDEXED KNOWLEDGE</p>
             <h2>Read less. Understand more.</h2>
-            <p className="welcome-copy">Ask in English or Hindi. Every answer is grounded in your documents and linked back to its source.</p>
+            <p className="welcome-copy">Ask in English or Hindi. Every answer is grounded in the shared library and linked back to its source.</p>
             <div className="suggestion-list">
               {suggestions.map((suggestion) => (
                 <button key={suggestion} type="button" onClick={() => void ask(suggestion)} disabled={isAsking}>
@@ -1033,13 +1061,17 @@ export default function ChatWorkspace() {
                 <button type="button" onClick={clearPromptImage} aria-label="Remove attached image" title="Remove image">×</button>
               </div>
             )}
-            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} onPaste={pastePromptImage} onKeyDown={handleQuestionKey} aria-label="Ask a question" placeholder="Ask a question about your books…" rows={1} maxLength={2000} />
+            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} onPaste={isAuthenticated ? pastePromptImage : undefined} onKeyDown={handleQuestionKey} aria-label="Ask a question" placeholder="Ask a question about the shared library…" rows={1} maxLength={2000} />
             <div className="composer-footer">
               <div className="composer-tools">
-                <button type="button" onClick={() => promptImageInput.current?.click()} aria-label="Attach image" title="Attach image">⌕</button>
-                <button className={`mode-toggle ${useWebMode ? 'active' : ''}`} type="button" aria-pressed={useWebMode} onClick={() => setUseWebMode((active) => !active)} title="Search the web for this prompt"><span aria-hidden="true">↗</span> Web</button>
-                <button className={`mode-toggle ${generateImageMode ? 'active' : ''}`} type="button" aria-pressed={generateImageMode} onClick={() => setGenerateImageMode((active) => !active)} title="Generate an image with this answer"><span aria-hidden="true">✦</span> Image</button>
-                <span>Choose modes · Enter to send</span>
+                {isAuthenticated ? (
+                  <>
+                    <button type="button" onClick={() => promptImageInput.current?.click()} aria-label="Attach image" title="Attach image">⌕</button>
+                    <button className={`mode-toggle ${useWebMode ? 'active' : ''}`} type="button" aria-pressed={useWebMode} onClick={() => setUseWebMode((active) => !active)} title="Search the web for this prompt"><span aria-hidden="true">↗</span> Web</button>
+                    <button className={`mode-toggle ${generateImageMode ? 'active' : ''}`} type="button" aria-pressed={generateImageMode} onClick={() => setGenerateImageMode((active) => !active)} title="Generate an image with this answer"><span aria-hidden="true">✦</span> Image</button>
+                    <span>Choose modes · Enter to send</span>
+                  </>
+                ) : <span>Guest answers are not saved · Enter to send</span>}
               </div>
               <button className="send-question" type="submit" aria-label="Send question" disabled={!question.trim() || isAsking}>{isAsking ? '…' : '↑'}</button>
             </div>

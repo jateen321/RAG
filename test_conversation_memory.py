@@ -14,7 +14,7 @@ import api
 import conversation_memory as memory
 import conversation_store as storage
 import rag_engine
-from auth import AuthenticatedUser, get_current_user
+from auth import AuthenticatedUser, get_current_user, get_optional_user
 
 
 def messages(question="What is Bhagya?", answer="Earlier answer"):
@@ -164,6 +164,9 @@ class StoredHistoryTests(unittest.TestCase):
         self.database = Path(self.temp.name) / "conversations.sqlite3"
         self.enterContext(patch.object(api, "CONVERSATION_DB_PATH", self.database))
         api.app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+            uid=storage.LOCAL_OWNER_ID, email="local@example.com", is_admin=True
+        )
+        api.app.dependency_overrides[get_optional_user] = lambda: AuthenticatedUser(
             uid=storage.LOCAL_OWNER_ID, email="local@example.com", is_admin=True
         )
         self.addCleanup(api.app.dependency_overrides.clear)

@@ -1,11 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { googleFirebaseIdToken } from './firebase-auth';
 
 const API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || 'http://localhost:8000';
 
-type Identity = { uid: string; email?: string; is_admin: boolean };
+export type Identity = { uid: string; email?: string; is_admin: boolean };
+
+type AuthState = {
+  identity: Identity | null;
+  checking: boolean;
+};
+
+const AuthContext = createContext<AuthState>({ identity: null, checking: true });
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [identity, setIdentity] = useState<Identity | null>(null);
@@ -52,21 +63,27 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setIdentity(null);
   }
 
-  if (checking) return <main className="auth-screen"><p>Opening your study workspace…</p></main>;
-  if (!identity) return (
-    <main className="auth-screen">
-      <section className="auth-card">
-        <span className="brand-mark">स</span>
-        <p className="eyebrow">GYAAN SARTHI</p>
-        <h1>Your private study workspace</h1>
-        <p>Sign in to access only your own documents, conversations, and generated visuals.</p>
-        <button type="button" onClick={() => void signIn()} disabled={busy}>
-          {busy ? 'Signing in…' : 'Continue with Google'}
-        </button>
-        {error && <p className="auth-error" role="alert">{error}</p>}
-      </section>
-    </main>
-  );
+  const authState = useMemo(() => ({ identity, checking }), [identity, checking]);
 
-  return <><button className="auth-signout" type="button" onClick={() => void signOut()} title={identity.email}>Sign out</button>{children}</>;
+  return (
+    <AuthContext.Provider value={authState}>
+      <div className="auth-session" aria-live="polite">
+        {identity ? (
+          <>
+            <span title={identity.email}>{identity.is_admin ? 'Administrator' : 'Signed in'}</span>
+            <button type="button" onClick={() => void signOut()}>Sign out</button>
+          </>
+        ) : (
+          <>
+            <span>{checking ? 'Checking session…' : 'Guest access'}</span>
+            <button type="button" onClick={() => void signIn()} disabled={checking || busy}>
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
+          </>
+        )}
+        {error && <span className="auth-error" role="alert">{error}</span>}
+      </div>
+      {children}
+    </AuthContext.Provider>
+  );
 }

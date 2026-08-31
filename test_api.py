@@ -6,7 +6,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api
-from auth import AuthenticatedUser, get_current_user
+from auth import AuthenticatedUser, get_current_user, get_optional_user
 
 
 TEST_USER = AuthenticatedUser(
@@ -19,6 +19,7 @@ TEST_USER = AuthenticatedUser(
 class DocumentUploadValidationTests(unittest.TestCase):
     def setUp(self):
         api.app.dependency_overrides[get_current_user] = lambda: TEST_USER
+        api.app.dependency_overrides[get_optional_user] = lambda: TEST_USER
         self.client = TestClient(api.app)
 
     def tearDown(self):
@@ -89,7 +90,7 @@ class DocumentUploadValidationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), passage)
         get_chunk.assert_called_once_with(
-            "doc_p0002_c003", "book.pdf", TEST_USER.uid
+            "doc_p0002_c003", "book.pdf", api.SHARED_CORPUS_OWNER_ID
         )
 
     def test_passage_route_hides_missing_or_mismatched_chunks(self):
@@ -125,7 +126,8 @@ class DocumentUploadValidationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), passage)
         resolve.assert_called_once_with(
-            "book.pdf", 2, "The complete cited paragraph.", TEST_USER.uid
+            "book.pdf", 2, "The complete cited paragraph.",
+            api.SHARED_CORPUS_OWNER_ID,
         )
 
     def test_rejects_non_utf8_text(self):
@@ -152,23 +154,29 @@ class DocumentUploadValidationTests(unittest.TestCase):
                         "/upload",
                         files={"file": (filename, b"Study notes", content_type)},
                     )
+                    shared_file = (
+                        api._tenant_data_root(api.SHARED_CORPUS_OWNER_ID) / filename
+                    )
 
                 self.assertEqual(response.status_code, 201)
                 self.assertEqual(response.json()["source"], filename)
                 index_document.assert_called_once_with(
                     pages, filename, source_type,
-                    file_path=Path(data_dir).resolve() / filename,
-                    owner_id=TEST_USER.uid,
+                    file_path=shared_file,
+                    owner_id=api.SHARED_CORPUS_OWNER_ID,
                 )
 
     def test_existing_unindexed_pdf_is_indexed_without_overwrite(self):
         pages = [{"page": 1, "text": "Original content", "method": "text"}]
-        with tempfile.TemporaryDirectory() as data_dir:
-            existing = Path(data_dir) / "lesson.pdf"
+        with (
+            tempfile.TemporaryDirectory() as data_dir,
+            patch.object(api, "DATA_DIR", data_dir),
+        ):
+            existing = api._tenant_data_root(api.SHARED_CORPUS_OWNER_ID) / "lesson.pdf"
+            existing.parent.mkdir(parents=True)
             existing.write_bytes(b"original content")
 
             with (
-                patch.object(api, "DATA_DIR", data_dir),
                 patch.object(api, "_extract_document", return_value=pages),
                 patch("indexer.is_document_indexed", return_value=False),
                 patch("indexer.index_document", return_value=2) as index_document,
@@ -181,7 +189,7 @@ class DocumentUploadValidationTests(unittest.TestCase):
             self.assertEqual(existing.read_bytes(), b"original content")
             index_document.assert_called_once_with(
                 pages, "lesson.pdf", "pdf", file_path=existing.resolve(),
-                owner_id=TEST_USER.uid,
+                owner_id=api.SHARED_CORPUS_OWNER_ID,
             )
 
         self.assertEqual(response.status_code, 201)
@@ -218,17 +226,20 @@ class DocumentUploadValidationTests(unittest.TestCase):
                     data={"relative_path": "psychology/lesson.pdf"},
                     files={"file": ("lesson.pdf", b"content", "application/pdf")},
                 )
+                shared_file = (
+                    api._tenant_data_root(api.SHARED_CORPUS_OWNER_ID)
+                    / "psychology" / "lesson.pdf"
+                )
 
             self.assertEqual(response.status_code, 201)
             self.assertEqual(response.json()["source"], "psychology/lesson.pdf")
             self.assertEqual(
-                (Path(data_dir) / "psychology" / "lesson.pdf").read_bytes(),
-                b"content",
+                shared_file.read_bytes(), b"content",
             )
             index_document.assert_called_once_with(
                 pages, "psychology/lesson.pdf", "pdf",
-                file_path=Path(data_dir).resolve() / "psychology" / "lesson.pdf",
-                owner_id=TEST_USER.uid,
+                file_path=shared_file,
+                owner_id=api.SHARED_CORPUS_OWNER_ID,
             )
 
     def test_upload_rejects_relative_path_traversal(self):
@@ -277,13 +288,14 @@ class DocumentUploadValidationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), report)
         index_folder.assert_called_once_with(
-            Path(allowed).resolve(), True, owner_id=TEST_USER.uid
+            Path(allowed).resolve(), True, owner_id=api.SHARED_CORPUS_OWNER_ID
         )
 
 
 class ConversationHistoryTests(unittest.TestCase):
     def setUp(self):
         api.app.dependency_overrides[get_current_user] = lambda: TEST_USER
+        api.app.dependency_overrides[get_optional_user] = lambda: TEST_USER
         self.client = TestClient(api.app)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.database_path = Path(self.temp_dir.name) / "conversations.sqlite3"
@@ -351,7 +363,7 @@ class ConversationHistoryTests(unittest.TestCase):
             chat_history=[],
             image_data=image_bytes,
             image_mime_type="image/png",
-            owner_id=TEST_USER.uid,
+            owner_id=api.SHARED_CORPUS_OWNER_ID,
         )
         conversation_id = response.json()["conversation_id"]
         exchange = self.client.get(
@@ -399,7 +411,7 @@ class ConversationHistoryTests(unittest.TestCase):
             "Explain photosynthesis",
             chat_history=[],
             prepare_image_prompt=True,
-            owner_id=TEST_USER.uid,
+            owner_id=api.SHARED_CORPUS_OWNER_ID,
         )
         generate.assert_called_once_with(grounded_prompt)
         payload = response.json()

@@ -235,10 +235,15 @@ GENERATED_IMAGE_DIR = os.getenv(
     os.path.join(DATA_DIR, "generated_images"),
 )
 
-# Firebase Authentication. The browser exchanges a Google/Firebase ID token
-# for an HttpOnly session cookie; the backend uses the verified Firebase UID as
-# the tenant key in SQLite and ChromaDB.
+# Firebase Authentication. The browser exchanges a Firebase ID token for an
+# HttpOnly session cookie. Conversations remain keyed by verified Firebase UID,
+# while every user and guest retrieves from this dedicated shared corpus.
 FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "").strip()
+SHARED_CORPUS_OWNER_ID = os.getenv(
+    "SHARED_CORPUS_OWNER_ID", "__shared_corpus__"
+).strip()
+if not SHARED_CORPUS_OWNER_ID:
+    raise ValueError("SHARED_CORPUS_OWNER_ID cannot be empty.")
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "sarthi_session").strip()
 SESSION_COOKIE_MAX_AGE_S = min(
     14 * 24 * 60 * 60,
@@ -258,8 +263,8 @@ AUTH_RECENT_SIGN_IN_MAX_AGE_S = max(
 AUTH_CHECK_REVOKED = os.getenv("AUTH_CHECK_REVOKED", "0").strip().lower() not in {
     "0", "false", "no",
 }
-# Existing SQLite/Chroma rows predate tenancy. Set this to the Firebase UID of
-# the administrator who should receive those legacy records.
+# Retained for conversation-row migration only. Pre-tenancy Chroma rows now
+# belong to SHARED_CORPUS_OWNER_ID so guests can query the existing corpus.
 LEGACY_ADMIN_UID = os.getenv("LEGACY_ADMIN_UID", "").strip()
 
 # Server-local folders that POST /index/folder may read. The CLI does not need

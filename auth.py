@@ -108,6 +108,19 @@ def get_current_user(request: Request) -> AuthenticatedUser:
     return verify_session_cookie(cookie)
 
 
+def get_optional_user(request: Request) -> AuthenticatedUser | None:
+    """Return a verified user, or None only when no session was supplied.
+
+    An invalid or expired cookie still raises 401. Silently treating a broken
+    authenticated session as a guest could hide authorization failures and
+    discard a user's expected conversation persistence.
+    """
+    cookie = request.cookies.get(SESSION_COOKIE_NAME, "")
+    if not cookie:
+        return None
+    return verify_session_cookie(cookie)
+
+
 def require_admin(
     user: AuthenticatedUser = Depends(get_current_user),
 ) -> AuthenticatedUser:

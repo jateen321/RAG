@@ -1,5 +1,6 @@
 """FastAPI interface for the Gyaan Sarthi RAG pipeline."""
 
+import hashlib
 import os
 from functools import wraps
 from inspect import signature
@@ -23,6 +24,7 @@ from config import (
     GENERATED_IMAGE_DIR,
     INDEX_FOLDER_ROOTS,
     LEGACY_ADMIN_UID,
+    SHARED_CORPUS_OWNER_ID,
     SESSION_COOKIE_MAX_AGE_S,
     SESSION_COOKIE_NAME,
     SESSION_COOKIE_SAMESITE,
@@ -32,6 +34,7 @@ from auth import (
     AuthenticatedUser,
     create_session_cookie,
     get_current_user,
+    get_optional_user,
     require_admin,
     verify_session_cookie,
 )
@@ -144,6 +147,18 @@ def _rate_limited(
                 select(arguments.arguments) if select else (rates, concurrency)
             )
             user = arguments.arguments["user"]
+            if user is None:
+                http_request = arguments.arguments.get("http_request")
+                client_host = (
+                    http_request.client.host
+                    if isinstance(http_request, Request) and http_request.client
+                    else "unknown"
+                )
+                identity = "guest:" + hashlib.sha256(
+                    client_host.encode("utf-8")
+                ).hexdigest()
+            else:
+                identity = user.uid
             try:
                 limiter = get_rate_limiter()
             except RuntimeError as exc:
@@ -153,7 +168,7 @@ def _rate_limited(
                 ) from exc
             try:
                 async with limiter.admit(
-                    user.uid,
+                    identity,
                     rates=selected_rates,
                     concurrency=selected_concurrency,
                 ):
@@ -175,8 +190,10 @@ def _rate_limited(
 
 
 def _ask_request_limits(arguments: dict) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    request = arguments["request"]
-    return _answer_limits(request.use_web, request.generate_image)
+    payload = arguments["payload"]
+    if arguments["user"] is None:
+        return _answer_limits(False, False)
+    return _answer_limits(payload.use_web, payload.generate_image)
 
 
 def _image_ask_limits(arguments: dict) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -185,12 +202,10 @@ def _image_ask_limits(arguments: dict) -> tuple[tuple[str, ...], tuple[str, ...]
 
 @app.on_event("startup")
 async def migrate_legacy_tenant_data() -> None:
-    """Assign pre-authentication vector rows to the configured admin UID."""
-    if not LEGACY_ADMIN_UID:
-        return
+    """Make pre-authentication vector rows part of the shared corpus."""
     from indexer import assign_legacy_documents
 
-    await run_in_threadpool(assign_legacy_documents, LEGACY_ADMIN_UID)
+    await run_in_threadpool(assign_legacy_documents, SHARED_CORPUS_OWNER_ID)
 
 
 class AskRequest(BaseModel):
@@ -294,7 +309,10 @@ def _resolve_data_document(filename: str, owner_id: str | None = None) -> Path:
         raise ValueError("The document must be located inside the data directory.")
     if candidate.suffix.lower() not in SUPPORTED_DOCUMENT_EXTENSIONS:
         raise ValueError("Only PDF, TXT, and Markdown files can be indexed.")
-    if not candidate.is_file() and owner_id == LEGACY_ADMIN_UID:
+    if not candidate.is_file() and owner_id in {
+        LEGACY_ADMIN_UID,
+        SHARED_CORPUS_OWNER_ID,
+    }:
         legacy_root = Path(DATA_DIR).resolve()
         legacy_candidate = (legacy_root / relative_path).resolve()
         if (
@@ -369,20 +387,19 @@ async def session_identity(
 
 
 @app.get("/health")
-def health(user: AuthenticatedUser = Depends(get_current_user)) -> dict:
+def health() -> dict:
     from indexer import get_stats
 
-    return {"status": "ok", **get_stats(owner_id=user.uid)}
+    return {"status": "ok", **get_stats(owner_id=SHARED_CORPUS_OWNER_ID)}
 
 
 @app.get("/documents/{source_path:path}", response_class=FileResponse)
 def open_document(
     source_path: str,
-    user: AuthenticatedUser = Depends(get_current_user),
 ) -> FileResponse:
-    """Open an indexed local document while keeping access inside ``data/``."""
+    """Open a shared source while keeping access inside the shared data root."""
     try:
-        document_path = _resolve_data_document(source_path, user.uid)
+        document_path = _resolve_data_document(source_path, SHARED_CORPUS_OWNER_ID)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail="Document not found.") from exc
 
@@ -399,13 +416,12 @@ async def resolve_legacy_passage(
     source: str = Query(min_length=1, max_length=4096),
     page: int = Query(ge=0),
     preview: str = Query(min_length=1, max_length=500),
-    user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
     """Resolve citations saved before source responses included chunk IDs."""
     from indexer import get_chunk_by_citation
 
     passage = await run_in_threadpool(
-        get_chunk_by_citation, source, page, preview, user.uid
+        get_chunk_by_citation, source, page, preview, SHARED_CORPUS_OWNER_ID
     )
     if passage is None:
         raise HTTPException(status_code=404, detail="Exact cited passage not found.")
@@ -416,12 +432,13 @@ async def resolve_legacy_passage(
 async def passage_detail(
     chunk_id: str,
     source: str = Query(min_length=1, max_length=4096),
-    user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
     """Return one cited passage, scoped to its source to prevent id confusion."""
     from indexer import get_chunk
 
-    passage = await run_in_threadpool(get_chunk, chunk_id, source, user.uid)
+    passage = await run_in_threadpool(
+        get_chunk, chunk_id, source, SHARED_CORPUS_OWNER_ID
+    )
     if passage is None:
         raise HTTPException(status_code=404, detail="Passage not found.")
     return passage
@@ -430,15 +447,23 @@ async def passage_detail(
 @app.post("/ask")
 @_rate_limited(select=_ask_request_limits)
 async def ask_question(
-    request: AskRequest,
-    user: AuthenticatedUser = Depends(get_current_user),
+    payload: AskRequest,
+    http_request: Request,
+    user: AuthenticatedUser | None = Depends(get_optional_user),
 ) -> dict:
+    if user is None and (
+        payload.conversation_id or payload.use_web or payload.generate_image
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sign in to save conversations, search the web, or generate images.",
+        )
     return await _answer_and_record(
-        request.question,
-        request.conversation_id,
-        use_web=request.use_web,
-        generate_image_requested=request.generate_image,
-        owner_id=user.uid,
+        payload.question,
+        payload.conversation_id,
+        use_web=payload.use_web,
+        generate_image_requested=payload.generate_image,
+        conversation_owner_id=user.uid if user else None,
     )
 
 
@@ -478,7 +503,7 @@ async def ask_question_with_image(
         image_mime_type=image.content_type,
         use_web=use_web,
         generate_image_requested=generate_image,
-        owner_id=user.uid,
+        conversation_owner_id=user.uid,
     )
 
 
@@ -490,7 +515,7 @@ async def _answer_and_record(
     image_mime_type: str | None = None,
     use_web: bool = False,
     generate_image_requested: bool = False,
-    owner_id: str,
+    conversation_owner_id: str | None,
 ) -> dict:
     from rag_engine import (
         ask_with_sources,
@@ -499,8 +524,16 @@ async def _answer_and_record(
         search_web,
     )
 
+    if conversation_id and not conversation_owner_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sign in to continue a saved conversation.",
+        )
     if conversation_id and not await run_in_threadpool(
-        conversation_exists, CONVERSATION_DB_PATH, conversation_id, owner_id
+        conversation_exists,
+        CONVERSATION_DB_PATH,
+        conversation_id,
+        conversation_owner_id,
     ):
         raise HTTPException(status_code=404, detail="Conversation not found.")
 
@@ -519,7 +552,7 @@ async def _answer_and_record(
             history = await run_in_threadpool(
                 get_recent_history, CONVERSATION_DB_PATH,
                 conversation_id, MAX_HISTORY_EXCHANGES,
-                owner_id,
+                conversation_owner_id,
             )
         if use_web:
             result = await run_in_threadpool(
@@ -532,7 +565,7 @@ async def _answer_and_record(
             document_kwargs = {
                 "prepare_image_prompt": True,
             } if generate_image_requested else {}
-            document_kwargs["owner_id"] = owner_id
+            document_kwargs["owner_id"] = SHARED_CORPUS_OWNER_ID
             result = await run_in_threadpool(
                 ask_with_sources,
                 question,
@@ -549,21 +582,22 @@ async def _answer_and_record(
                 raise RuntimeError("No grounded image prompt was prepared.")
             image_result = await run_in_threadpool(generate_image, image_prompt)
         exchange_id = str(uuid4())
-        conversation_id = await run_in_threadpool(
-            record_exchange,
-            CONVERSATION_DB_PATH,
-            conversation_id,
-            question,
-            result["answer"],
-            result.get("sources", []),
-            result.get("timings", {}).get("total_s"),
-            exchange_id,
-            result.get("answer_basis", "documents"),
-            result.get("web_search_available", False),
-            generate_image_requested,
-            image_prompt,
-            owner_id,
-        )
+        if conversation_owner_id:
+            conversation_id = await run_in_threadpool(
+                record_exchange,
+                CONVERSATION_DB_PATH,
+                conversation_id,
+                question,
+                result["answer"],
+                result.get("sources", []),
+                result.get("timings", {}).get("total_s"),
+                exchange_id,
+                result.get("answer_basis", "documents"),
+                result.get("web_search_available", False),
+                generate_image_requested,
+                image_prompt,
+                conversation_owner_id,
+            )
         response = {
             **result,
             "conversation_id": conversation_id,
@@ -583,7 +617,7 @@ async def _answer_and_record(
                 exchange_id,
                 image_id,
                 image_result["image_mime_type"],
-                owner_id,
+                conversation_owner_id,
             )
             if not attached:
                 destination.unlink(missing_ok=True)
@@ -648,7 +682,10 @@ async def edit_exchange(
         raise HTTPException(status_code=404, detail="Exchange not found.")
     try:
         result = await run_in_threadpool(
-            ask_with_sources, question, chat_history=history, owner_id=user.uid,
+            ask_with_sources,
+            question,
+            chat_history=history,
+            owner_id=SHARED_CORPUS_OWNER_ID,
         )
         replaced = await run_in_threadpool(
             replace_exchange_and_truncate,
@@ -848,13 +885,15 @@ async def remove_conversation(
 @_rate_limited(rates=("ingest",), concurrency=("ingest",))
 async def index_file(
     request: IndexRequest,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> dict:
     from indexer import index_document, is_document_indexed
 
     try:
-        document_path = _resolve_data_document(request.filename, user.uid)
-        tenant_root = _tenant_data_root(user.uid)
+        document_path = _resolve_data_document(
+            request.filename, SHARED_CORPUS_OWNER_ID
+        )
+        tenant_root = _tenant_data_root(SHARED_CORPUS_OWNER_ID)
         source_name = (
             document_path.relative_to(tenant_root).as_posix()
             if tenant_root in document_path.parents
@@ -864,7 +903,7 @@ async def index_file(
             is_document_indexed,
             source_name,
             file_path=document_path,
-            owner_id=user.uid,
+            owner_id=SHARED_CORPUS_OWNER_ID,
         ):
             return {"source": source_name, "pages_with_text": 0,
                     "chunks_indexed": 0, "deduplicated": True}
@@ -875,7 +914,7 @@ async def index_file(
             source_name,
             SOURCE_TYPES[document_path.suffix.lower()],
             file_path=document_path,
-            owner_id=user.uid,
+            owner_id=SHARED_CORPUS_OWNER_ID,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -895,7 +934,7 @@ async def index_file(
 async def upload_document(
     file: UploadFile = File(...),
     relative_path: str | None = Form(default=None),
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> dict:
     """Save and index one document, reusing an unindexed local copy if present."""
     original_name = Path(file.filename or "").name
@@ -913,7 +952,7 @@ async def upload_document(
             detail=f"The uploaded file type does not match its {extension} extension.",
         )
 
-    data_root = _tenant_data_root(user.uid)
+    data_root = _tenant_data_root(SHARED_CORPUS_OWNER_ID)
     data_root.mkdir(parents=True, exist_ok=True)
 
     path_parts = [original_name]
@@ -955,7 +994,7 @@ async def upload_document(
             is_document_indexed,
             source_name,
             file_path=destination,
-            owner_id=user.uid,
+            owner_id=SHARED_CORPUS_OWNER_ID,
         ):
             raise HTTPException(
                 status_code=409,
@@ -971,7 +1010,7 @@ async def upload_document(
         chunks = await run_in_threadpool(
             index_document, pages, source_name, SOURCE_TYPES[extension],
             file_path=destination,
-            owner_id=user.uid,
+            owner_id=SHARED_CORPUS_OWNER_ID,
         )
     except ValueError as exc:
         if created_by_request:
@@ -1005,12 +1044,14 @@ async def upload_document(
 @_rate_limited(rates=("ingest",), concurrency=("ingest",))
 async def index_youtube(
     request: YouTubeIndexRequest,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> dict:
     from youtube_ingester import ingest_youtube
 
     try:
-        return await run_in_threadpool(ingest_youtube, request.url, user.uid)
+        return await run_in_threadpool(
+            ingest_youtube, request.url, SHARED_CORPUS_OWNER_ID
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -1029,7 +1070,10 @@ async def index_local_folder(
             request.folder_path, INDEX_FOLDER_ROOTS
         )
         return await run_in_threadpool(
-            index_folder, folder_path, request.recursive, owner_id=user.uid
+            index_folder,
+            folder_path,
+            request.recursive,
+            owner_id=SHARED_CORPUS_OWNER_ID,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

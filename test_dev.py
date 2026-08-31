@@ -91,6 +91,7 @@ class CommandTests(unittest.TestCase):
         self.assertIn("--reload", command)
         self.assertIn("--reload-dir", command)
         self.assertIn("8000", command)
+        self.assertIn("::1", command)
 
     def test_frontend_uses_fixed_development_port(self):
         command = dev._frontend_command()

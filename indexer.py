@@ -30,6 +30,7 @@ console = Console()
 # answer generation.
 _client = get_embedding_client()
 _document_index_lock = threading.RLock()
+OWNER_MIGRATION_BATCH_SIZE = 5000
 
 
 def file_sha256(path) -> str:
@@ -417,7 +418,7 @@ def _get_collection():
 
 
 def assign_legacy_documents(owner_id: str) -> int:
-    """Assign pre-tenancy Chroma rows to the configured administrator once."""
+    """Assign unowned pre-tenancy Chroma rows to one explicit corpus owner."""
     if not owner_id:
         return 0
     collection = _get_collection()
@@ -429,13 +430,15 @@ def assign_legacy_documents(owner_id: str) -> int:
     ]
     if not positions:
         return 0
-    collection.update(
-        ids=[stored["ids"][index] for index in positions],
-        metadatas=[
-            {**(stored["metadatas"][index] or {}), "owner_id": owner_id}
-            for index in positions
-        ],
-    )
+    for start in range(0, len(positions), OWNER_MIGRATION_BATCH_SIZE):
+        batch = positions[start:start + OWNER_MIGRATION_BATCH_SIZE]
+        collection.update(
+            ids=[stored["ids"][index] for index in batch],
+            metadatas=[
+                {**(stored["metadatas"][index] or {}), "owner_id": owner_id}
+                for index in batch
+            ],
+        )
     return len(positions)
 
 

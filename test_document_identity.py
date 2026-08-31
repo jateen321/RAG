@@ -16,7 +16,7 @@ from auth import AuthenticatedUser, get_current_user
 
 
 class DocumentIdentityTests(unittest.TestCase):
-    OWNER_ID = "document-test-user"
+    OWNER_ID = api.SHARED_CORPUS_OWNER_ID
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

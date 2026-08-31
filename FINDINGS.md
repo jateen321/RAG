@@ -12,6 +12,18 @@ Last updated: 2026-08-31.
 
 ---
 
+## 10. Shared-corpus ownership boundary
+
+- 🟢 **Repo-verified (2026-08-31):** The live Chroma collection contained 21,499
+  chunks with no `owner_id`, so authenticated UID-filtered retrieval could not see
+  the pre-authentication corpus. All 21,499 rows are now labeled
+  `__shared_corpus__`; guests and signed-in users retrieve only that owner, while
+  conversation persistence remains Firebase-UID scoped. Chroma rejected the first
+  21,499-row metadata update because its maximum batch was 5,461, so ownership
+  migration is now bounded to 5,000 rows per update.
+
+---
+
 ## 9. Development session persistence
 
 - 🟢 **Repo-verified (2026-08-31):** Local Google login appeared successful because

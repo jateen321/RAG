@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -9,6 +10,16 @@ import api
 import auth
 import conversation_store as storage
 import retriever
+
+
+class AllowAllLimiter:
+    def __init__(self):
+        self.identities = []
+
+    @asynccontextmanager
+    async def admit(self, identity, *, rates=(), concurrency=()):
+        self.identities.append(identity)
+        yield
 
 
 class FirebaseAuthenticationTests(unittest.TestCase):
@@ -97,6 +108,70 @@ class FirebaseAuthenticationTests(unittest.TestCase):
         # generated-image links keep working without an Origin header.
         self.assertEqual(response.status_code, 401)
 
+    def test_invalid_session_cookie_does_not_downgrade_to_guest(self):
+        request = Mock(cookies={auth.SESSION_COOKIE_NAME: "expired-cookie"})
+        with patch.object(
+            auth,
+            "verify_session_cookie",
+            side_effect=api.HTTPException(status_code=401, detail="expired"),
+        ):
+            with self.assertRaises(api.HTTPException) as raised:
+                auth.get_optional_user(request)
+
+        self.assertEqual(raised.exception.status_code, 401)
+
+    def test_guest_question_uses_shared_corpus_without_persistence(self):
+        answer = {
+            "answer": "Shared answer",
+            "sources": [],
+            "timings": {"total_s": 0.1},
+        }
+        limiter = AllowAllLimiter()
+        with (
+            patch.object(api, "get_rate_limiter", return_value=limiter),
+            patch("rag_engine.ask_with_sources", return_value=answer) as ask,
+            patch.object(api, "record_exchange") as record,
+        ):
+            response = TestClient(api.app).post(
+                "/ask", json={"question": "What is in the shared corpus?"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["conversation_id"])
+        ask.assert_called_once_with(
+            "What is in the shared corpus?",
+            chat_history=[],
+            owner_id=api.SHARED_CORPUS_OWNER_ID,
+        )
+        record.assert_not_called()
+        self.assertTrue(limiter.identities[0].startswith("guest:"))
+
+    def test_guest_cannot_request_authenticated_modes(self):
+        limiter = AllowAllLimiter()
+        with (
+            patch.object(api, "get_rate_limiter", return_value=limiter),
+            patch("rag_engine.search_web") as search,
+        ):
+            response = TestClient(api.app).post(
+                "/ask",
+                json={"question": "Search this", "use_web": True},
+            )
+
+        self.assertEqual(response.status_code, 401)
+        search.assert_not_called()
+
+    def test_non_admin_cannot_upload_to_shared_corpus(self):
+        api.app.dependency_overrides[auth.get_current_user] = lambda: (
+            auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
+        )
+        response = TestClient(api.app).post(
+            "/upload",
+            files={"file": ("notes.txt", b"private", "text/plain")},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["detail"], "Administrator access is required.")
+
 
 class ConversationTenancyTests(unittest.TestCase):
     def setUp(self):
@@ -159,6 +234,45 @@ class ConversationTenancyTests(unittest.TestCase):
 
 
 class DocumentTenancyTests(unittest.TestCase):
+    def test_legacy_migration_assigns_only_unowned_vectors_to_shared_corpus(self):
+        collection = Mock()
+        collection.get.return_value = {
+            "ids": ["legacy", "private"],
+            "metadatas": [{"source_name": "shared.pdf"}, {"owner_id": "user-a"}],
+        }
+        with patch("indexer._get_collection", return_value=collection):
+            from indexer import assign_legacy_documents
+
+            updated = assign_legacy_documents(api.SHARED_CORPUS_OWNER_ID)
+
+        self.assertEqual(updated, 1)
+        collection.update.assert_called_once_with(
+            ids=["legacy"],
+            metadatas=[{
+                "source_name": "shared.pdf",
+                "owner_id": api.SHARED_CORPUS_OWNER_ID,
+            }],
+        )
+
+    def test_legacy_migration_batches_large_collections(self):
+        collection = Mock()
+        collection.get.return_value = {
+            "ids": ["one", "two", "three"],
+            "metadatas": [{}, {}, {}],
+        }
+        with (
+            patch("indexer._get_collection", return_value=collection),
+            patch("indexer.OWNER_MIGRATION_BATCH_SIZE", 2),
+        ):
+            from indexer import assign_legacy_documents
+
+            updated = assign_legacy_documents(api.SHARED_CORPUS_OWNER_ID)
+
+        self.assertEqual(updated, 3)
+        self.assertEqual(collection.update.call_count, 2)
+        self.assertEqual(collection.update.call_args_list[0].kwargs["ids"], ["one", "two"])
+        self.assertEqual(collection.update.call_args_list[1].kwargs["ids"], ["three"])
+
     def test_one_users_document_path_does_not_resolve_for_another_user(self):
         with (
             tempfile.TemporaryDirectory() as data_dir,

@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 import api
-from auth import AuthenticatedUser, get_current_user
+from auth import AuthenticatedUser, get_current_user, get_optional_user
 from rate_limit import (
     DistributedRateLimiter,
     RateLimitExceeded,
@@ -138,6 +138,9 @@ class DistributedRateLimiterTests(unittest.IsolatedAsyncioTestCase):
 class ApiRateLimitResponseTests(unittest.TestCase):
     def setUp(self):
         api.app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+            uid="firebase-user"
+        )
+        api.app.dependency_overrides[get_optional_user] = lambda: AuthenticatedUser(
             uid="firebase-user"
         )
         self.client = TestClient(api.app)

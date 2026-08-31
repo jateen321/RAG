@@ -24,7 +24,10 @@ from dataclasses import dataclass
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 FRONTEND_ROOT = PROJECT_ROOT / "frontend"
-HOST = "127.0.0.1"
+# On this macOS environment ``localhost`` resolves to the IPv6 loopback first.
+# Bind both services there so the documented localhost URLs are reachable and
+# remain one cookie site.
+HOST = "::1"
 BACKEND_PORT = 8000
 FRONTEND_PORT = 3000
 LOCAL_API_URL = f"http://localhost:{BACKEND_PORT}"
@@ -113,7 +116,8 @@ def classify_changes(previous: WatchState, current: WatchState) -> RestartPlan:
 
 def _port_available(host: str, port: int) -> bool:
     """Return True when a local TCP port can be bound."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+    family = socket.AF_INET6 if ":" in host else socket.AF_INET
+    with socket.socket(family, socket.SOCK_STREAM) as probe:
         probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             probe.bind((host, port))

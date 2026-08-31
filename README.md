@@ -235,12 +235,12 @@ it is the authoritative interface when this summary and the code ever disagree.
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/` | Service info |
-| `GET` | `/health` | Status + index statistics |
-| `GET` | `/documents/{source_path}` | Open a supported local document stored inside `data/` |
-| `GET` | `/passages/{chunk_id}` | Fetch the complete indexed passage for an exact source-scoped citation |
-| `GET` | `/passages/resolve-legacy` | Resolve an older citation that does not contain a chunk ID |
-| `POST` | `/ask` | Ask a grounded question, persist the exchange, and return its answer and sources |
-| `POST` | `/ask/image` | Ask with a PNG, JPEG, or WebP attachment (maximum 10 MB) |
+| `GET` | `/health` | Public shared-corpus status + index statistics |
+| `GET` | `/documents/{source_path}` | Publicly open a supported shared source |
+| `GET` | `/passages/{chunk_id}` | Publicly fetch the complete shared passage for an exact citation |
+| `GET` | `/passages/resolve-legacy` | Publicly resolve an older shared citation without a chunk ID |
+| `POST` | `/ask` | Ask the shared corpus; guests are ephemeral, signed-in exchanges are saved |
+| `POST` | `/ask/image` | Authenticated question with a PNG, JPEG, or WebP attachment (maximum 10 MB) |
 | `GET` | `/conversations` | List saved conversations |
 | `GET` | `/conversations/{conversation_id}` | Load one conversation and its exchanges |
 | `PUT` | `/conversations/{conversation_id}/exchanges/{exchange_id}` | Edit a prompt, regenerate its answer, and truncate later turns |
@@ -248,10 +248,10 @@ it is the authoritative interface when this summary and the code ever disagree.
 | `POST` | `/conversations/{conversation_id}/exchanges/{exchange_id}/generate-image` | Generate a visual for an eligible saved exchange |
 | `DELETE` | `/conversations/{conversation_id}` | Delete one saved conversation (`204 No Content`) |
 | `GET` | `/generated-images/{image_id}` | Return a generated image referenced by a conversation |
-| `POST` | `/index` | Index or deduplicate a PDF, TXT, or Markdown file already in `data/` |
-| `POST` | `/index/folder` | Recursively index an allowlisted server-local folder |
-| `POST` | `/upload` | Upload and index a PDF, TXT, or Markdown file (`201 Created`) |
-| `POST` | `/index/youtube` | Index a YouTube video or playlist URL |
+| `POST` | `/index` | Administrator: index or deduplicate a shared local document |
+| `POST` | `/index/folder` | Administrator: recursively index an allowlisted shared folder |
+| `POST` | `/upload` | Administrator: upload and index a shared document (`201 Created`) |
+| `POST` | `/index/youtube` | Administrator: index a shared YouTube video or playlist |
 
 ```bash
 curl -X POST http://127.0.0.1:8000/index/youtube \
@@ -331,18 +331,23 @@ A production deployment can expose both parts through one public port or
 domain. Common approaches are to serve the built frontend from FastAPI or use
 a reverse proxy that routes `/` to the frontend and `/api/*` to FastAPI.
 
+Guests can query and open sources from the corpus identified by
+`SHARED_CORPUS_OWNER_ID`; their answers are not persisted and they cannot use
+web search, prompt images, generated images, or ingestion routes. Signed-in
+users query the same shared corpus while conversations and generated images
+remain private to their verified Firebase UID.
+
 For production authentication, enable Google sign-in in Firebase Authentication
 and configure the backend `FIREBASE_PROJECT_ID` plus the frontend
 `NEXT_PUBLIC_FIREBASE_*` values. The browser exchanges a recent Firebase ID
-token for a Secure, HttpOnly session cookie; conversations, source files,
-generated images, Chroma document IDs, catalogs, and vector queries are scoped
-to that verified Firebase UID. Set `LEGACY_ADMIN_UID` before the first production
-start so pre-tenancy SQLite and Chroma rows are assigned to the administrator.
+token for a Secure, HttpOnly session cookie. Set `LEGACY_ADMIN_UID` before the
+first production start only when pre-tenancy SQLite conversations must be
+assigned to one existing Firebase user. Unowned Chroma rows are automatically
+assigned to the shared corpus at API startup.
 
-`LEGACY_ADMIN_UID` only decides who inherits those legacy rows; it does not grant
-the administrator role. `POST /index/folder` requires an `admin` custom claim,
-and Firebase custom claims can only be written by a trusted server through the
-Admin SDK. Grant it once, after the account has signed in at least so it exists:
+`LEGACY_ADMIN_UID` does not grant the administrator role. Every ingestion route
+requires an `admin` custom claim, and Firebase custom claims can only be written
+by a trusted server through the Admin SDK. Grant it once after the account exists:
 
 ```bash
 .venv/bin/python grant_admin.py you@example.com --grant
@@ -666,7 +671,8 @@ in `.env` as shown in `.env.example`:
 | `LLM_MODEL` | `gemini-3.5-flash-lite` | Generation and query-planning model |
 | `RAG_RATE_LIMIT_ENABLED` | `0` | Enable Redis-backed admission control; set to `1` for public deployment |
 | `REDIS_URL` | unset | Managed Redis connection URL, required when admission control is enabled |
-| `RAG_RATE_LIMIT_ASK_PER_MINUTE` / `ASK_BURST` | `10` / `3` | Sustained and burst allowance per authenticated user |
+| `SHARED_CORPUS_OWNER_ID` | `__shared_corpus__` | Internal metadata owner used for the guest-readable corpus |
+| `RAG_RATE_LIMIT_ASK_PER_MINUTE` / `ASK_BURST` | `10` / `3` | Sustained and burst allowance per user or hashed guest IP |
 | `RAG_RATE_LIMIT_WEB_PER_MINUTE` / `WEB_BURST` | `5` / `2` | Web-search allowance per authenticated user |
 | `RAG_RATE_LIMIT_IMAGE_PER_MINUTE` / `IMAGE_BURST` | `2` / `1` | Image-generation allowance per authenticated user |
 | `RAG_RATE_LIMIT_INGEST_PER_HOUR` / `INGEST_BURST` | `5` / `5` | Ingestion starts per authenticated user; server-folder indexing also requires an administrator |
