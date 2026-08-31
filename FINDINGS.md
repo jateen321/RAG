@@ -8,7 +8,18 @@ Consolidated findings for the Hindi/English RAG app. Each result is tagged with 
   ported into this repo. *Action: port the script/results back to make it reproducible here.*
 - ⚪ **Hypothesis** — believed/expected, not yet measured.
 
-Last updated: 2026-08-30.
+Last updated: 2026-08-31.
+
+---
+
+## 9. Development session persistence
+
+- 🟢 **Repo-verified (2026-08-31):** Local Google login appeared successful because
+  `AuthGate` immediately stored the `/auth/session` response in React state, even when
+  the browser could not reuse the session cookie after refresh. The development setup
+  combined a `Secure` cookie over HTTP with `localhost` frontend and `127.0.0.1` API
+  hostnames. The unified launcher now uses a non-Secure cookie only in development and
+  one `localhost` site for both ports; production retains Secure-by-default cookies.
 
 ---
 

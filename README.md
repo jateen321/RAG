@@ -321,9 +321,11 @@ During development, the frontend and backend run as separate servers:
   RAG pipeline, Gemini requests, ChromaDB, uploads, and API endpoints.
 
 Keeping the servers separate makes it possible to develop and restart either
-part independently. The browser opens the frontend on
-`http://localhost:3000`, and the frontend sends API requests to
-`http://127.0.0.1:8000`.
+part independently. The browser opens the frontend on `http://localhost:3000`,
+and the frontend sends API requests to `http://localhost:8000`. Keeping the
+hostname identical allows the `SameSite=Lax` session cookie to survive page
+refreshes. The unified development launcher also disables the cookie's `Secure`
+flag for its plain-HTTP backend process; production keeps the secure default.
 
 A production deployment can expose both parts through one public port or
 domain. Common approaches are to serve the built frontend from FastAPI or use
@@ -403,7 +405,9 @@ npm run dev -- --host 127.0.0.1
 ```
 
 Open **http://localhost:3000**. The frontend connects to
-`http://127.0.0.1:8000` by default. Copy `frontend/.env.example` to
+`http://localhost:8000` by default. When starting Uvicorn manually over HTTP,
+set `SESSION_COOKIE_SECURE=0` in the root `.env`; never use that setting for an
+HTTPS production deployment. Copy `frontend/.env.example` to
 `frontend/.env.local` to configure a different API or site URL.
 
 ### Restarting after code or branch changes

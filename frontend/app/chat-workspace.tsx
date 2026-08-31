@@ -4,7 +4,7 @@ import { ChangeEvent, ClipboardEvent, FormEvent, KeyboardEvent, useCallback, use
 
 import { AnswerMarkdown } from './answer-markdown';
 
-const API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || 'http://127.0.0.1:8000';
+const API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || 'http://localhost:8000';
 const DEFAULT_EVIDENCE_WIDTH = 320;
 const MIN_EVIDENCE_WIDTH = 260;
 const MAX_EVIDENCE_WIDTH = 520;

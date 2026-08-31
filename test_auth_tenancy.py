@@ -45,6 +45,32 @@ class FirebaseAuthenticationTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_http_development_cookie_authenticates_after_page_refresh(self):
+        user = auth.AuthenticatedUser(
+            uid="student-123", email="student@example.com"
+        )
+        client = TestClient(api.app, base_url="http://localhost")
+
+        with (
+            patch.object(api, "SESSION_COOKIE_SECURE", False),
+            patch.object(api, "create_session_cookie", return_value="signed-cookie"),
+            patch.object(api, "verify_session_cookie", return_value=user),
+        ):
+            login = client.post(
+                "/auth/session",
+                headers={"Origin": "http://localhost:3000"},
+                json={"id_token": "x" * 30},
+            )
+
+        with patch.object(auth, "verify_session_cookie", return_value=user) as verify:
+            refreshed = client.get("/auth/me")
+
+        self.assertEqual(login.status_code, 200)
+        self.assertNotIn("; Secure", login.headers["set-cookie"])
+        self.assertEqual(refreshed.status_code, 200)
+        self.assertEqual(refreshed.json()["uid"], "student-123")
+        verify.assert_called_once_with("signed-cookie")
+
     def test_untrusted_origin_cannot_reach_state_changing_routes(self):
         # A valid session is deliberately supplied: the forged origin, not a
         # missing cookie, must be what rejects the request.

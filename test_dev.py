@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import dev
 
@@ -95,6 +96,31 @@ class CommandTests(unittest.TestCase):
         command = dev._frontend_command()
         self.assertEqual(command[:3], ["npm", "run", "dev"])
         self.assertIn("3000", command)
+
+    def test_service_environment_applies_overrides_without_losing_parent_values(self):
+        service = dev.ManagedService(
+            "test",
+            ["test-command"],
+            Path("."),
+            environment_overrides={"SESSION_COOKIE_SECURE": "0"},
+        )
+
+        with (
+            patch.dict(dev.os.environ, {"PARENT_SETTING": "kept"}, clear=True),
+            patch.object(dev.subprocess, "Popen") as popen,
+        ):
+            service.start()
+
+        environment = popen.call_args.kwargs["env"]
+        self.assertEqual(environment["SESSION_COOKIE_SECURE"], "0")
+        self.assertEqual(environment["PARENT_SETTING"], "kept")
+
+    def test_development_auth_uses_one_site_and_allows_http_cookie(self):
+        self.assertEqual(dev.BACKEND_ENVIRONMENT["SESSION_COOKIE_SECURE"], "0")
+        self.assertEqual(
+            dev.FRONTEND_ENVIRONMENT["NEXT_PUBLIC_RAG_API_URL"],
+            "http://localhost:8000",
+        )
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ npm --prefix frontend ci
 ```
 
 Then open <http://localhost:3000>. The FastAPI documentation is available at
-<http://127.0.0.1:8000/docs>.
+<http://localhost:8000/docs>.
 
 To run only the frontend:
 
@@ -26,8 +26,9 @@ npm --prefix frontend run dev -- --host 127.0.0.1
 ```
 
 `NEXT_PUBLIC_RAG_API_URL` selects the backend URL. It defaults to
-`http://127.0.0.1:8000` when unset. `NEXT_PUBLIC_SITE_URL` is used for page
-metadata and defaults to `http://localhost:3000`.
+`http://localhost:8000` when unset. Using `localhost` for both frontend and API
+keeps the development session cookie same-site. `NEXT_PUBLIC_SITE_URL` is used
+for page metadata and defaults to `http://localhost:3000`.
 
 ## Verification
 

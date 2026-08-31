@@ -27,6 +27,12 @@ FRONTEND_ROOT = PROJECT_ROOT / "frontend"
 HOST = "127.0.0.1"
 BACKEND_PORT = 8000
 FRONTEND_PORT = 3000
+LOCAL_API_URL = f"http://localhost:{BACKEND_PORT}"
+
+# Development is intentionally plain HTTP. Keep this override inside the local
+# supervisor so production continues to default to Secure session cookies.
+BACKEND_ENVIRONMENT = {"SESSION_COOKIE_SECURE": "0"}
+FRONTEND_ENVIRONMENT = {"NEXT_PUBLIC_RAG_API_URL": LOCAL_API_URL}
 
 
 def _fingerprint(path: Path) -> str | None:
@@ -150,11 +156,14 @@ class ManagedService:
     name: str
     command: list[str]
     cwd: Path
+    environment_overrides: dict[str, str] | None = None
     process: subprocess.Popen | None = None
 
     def start(self) -> None:
         print(f"\n▶ Starting {self.name}: {' '.join(self.command)}", flush=True)
         kwargs = {"cwd": str(self.cwd)}
+        if self.environment_overrides:
+            kwargs["env"] = {**os.environ, **self.environment_overrides}
         if os.name == "nt":
             kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
         else:
@@ -235,8 +244,18 @@ def run(poll_interval: float = 1.0) -> int:
             print(f"  - {error}", file=sys.stderr)
         return 2
 
-    backend = ManagedService("FastAPI backend", _backend_command(), PROJECT_ROOT)
-    frontend = ManagedService("React frontend", _frontend_command(), FRONTEND_ROOT)
+    backend = ManagedService(
+        "FastAPI backend",
+        _backend_command(),
+        PROJECT_ROOT,
+        environment_overrides=BACKEND_ENVIRONMENT,
+    )
+    frontend = ManagedService(
+        "React frontend",
+        _frontend_command(),
+        FRONTEND_ROOT,
+        environment_overrides=FRONTEND_ENVIRONMENT,
+    )
     services = (backend, frontend)
     watch_state = capture_watch_state()
 
@@ -249,7 +268,7 @@ def run(poll_interval: float = 1.0) -> int:
         print(
             "\n✅ Gyaan Sarthi development servers are running\n"
             f"   Frontend: http://localhost:{FRONTEND_PORT}\n"
-            f"   Backend:  http://{HOST}:{BACKEND_PORT}\n"
+            f"   Backend:  {LOCAL_API_URL}\n"
             "   Press Ctrl+C to stop both.",
             flush=True,
         )
