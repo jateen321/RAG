@@ -1360,3 +1360,9 @@ layout and the `{identity_tag}` / `{global}` hash tags keep multi-key scripts in
 but reviewed-and-plausible is not verified. Installing `fakeredis` and exercising bucket
 exhaustion, refill, lease expiry, and heartbeat renewal is the outstanding work before the
 concurrency claims can be stated as fact.
+
+## 31. VM public IP is now static (2026-09-01)
+
+🟢 **Cloud-verified:** the VM `gyaan-sarthi` in `asia-south1-a` uses regional address
+`gyaan-sarthi-static-ip` (`8.234.120.96`), whose status is `IN_USE`. Reserving the existing
+ephemeral address preserves the current DuckDNS endpoints while preventing stop/start IP changes.
