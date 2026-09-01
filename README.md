@@ -333,13 +333,21 @@ a reverse proxy that routes `/` to the frontend and `/api/*` to FastAPI.
 For the current local-state architecture, the reproducible Google Cloud VM
 deployment is documented in [`deploy/README.md`](deploy/README.md).
 
-Guests can query the corpus identified by `SHARED_CORPUS_OWNER_ID`; their answers
-are not persisted and they cannot use web search, prompt images, generated
-images, or ingestion routes. Administrators query and manage that same shared
-corpus. Other signed-in users start with an empty corpus keyed by their verified
-Firebase UID, can upload their own documents, and receive source citations from
-only that private corpus. Their conversations and generated images remain private
-to the same UID.
+### Library roles and access
+
+The public study library is separate from each user's personal library. A Firebase
+`admin` custom claim, not an email address hard-coded in the frontend, determines
+administrator access.
+
+| User | Corpus visible to answers | What they can do |
+|---|---|---|
+| Guest | Shared library | Ask questions without saving history. Citations, source cards, uploads, web search, and image features are unavailable. |
+| Signed-in user | Their own initially empty library, keyed by Firebase UID | Upload PDF, TXT, or Markdown documents; view citations; and keep conversations and generated images private. One user's documents are not searchable by another user. |
+| Administrator | Shared library | Use the shared sources available to guests; upload shared documents; and index server-local files, folders, and YouTube content for every guest. |
+
+Administrators query and manage the same shared corpus used by guests. Each
+non-administrator's corpus, source links, conversations, and generated images are
+isolated by their verified Firebase UID.
 
 For production authentication, enable Google sign-in in Firebase Authentication
 and configure the backend `FIREBASE_PROJECT_ID` plus the frontend
@@ -367,6 +375,45 @@ direct PDF/image links. Truly cross-site domains require
 `SESSION_COOKIE_SAMESITE=none`, HTTPS, `SESSION_COOKIE_SECURE=1`, credentialed
 CORS, and browser third-party-cookie support; a same-site reverse proxy is more
 reliable.
+
+### Production deployment and continuous delivery
+
+The current production deployment uses one persistent Google Compute Engine VM
+in `asia-south1-a`. Caddy terminates HTTPS and routes the two same-site DuckDNS
+subdomains to the appropriate containers:
+
+- App: [gyaan-sarthi.duckdns.org](https://gyaan-sarthi.duckdns.org)
+- API and health check: [gyaan-sarthi-api.duckdns.org/health](https://gyaan-sarthi-api.duckdns.org/health)
+
+Docker Compose runs the FastAPI backend, frontend, Redis, and Caddy. ChromaDB,
+uploaded documents, SQLite conversations, and generated images stay on the VM's
+persistent disk. This design is appropriate for the current single-VM deployment;
+those stateful services must move to managed storage before scaling across
+instances or using Cloud Run.
+
+Every pull request runs backend tests plus frontend lint, build, and production
+dependency audit. A push to `main` then performs continuous deployment:
+
+1. GitHub Actions authenticates to Google Cloud with Workload Identity Federation
+   (no downloaded service-account key).
+2. It builds and publishes immutable backend and frontend images, tagged with the
+   Git commit SHA, to Artifact Registry.
+3. It transfers the checked-in release script through IAP SSH, starts the image
+   pair with Docker Compose, waits for container health checks, and records the
+   healthy release for rollback protection.
+
+Configure these GitHub repository variables before enabling deployment:
+`GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SERVICE_ACCOUNT`,
+`APP_DOMAIN`, `API_DOMAIN`, and the required `NEXT_PUBLIC_FIREBASE_*` values.
+Keep `GEMINI_API_KEY` and all runtime secrets only in the VM's ignored
+`.env.production` or Secret Manager. The VM service account needs read-only
+Artifact Registry access, and its root Docker configuration must include the
+regional Artifact Registry credential helper.
+
+For VM bootstrap, firewall, DNS, backup, and recovery instructions, see
+[`deploy/README.md`](deploy/README.md). The deployment workflow is in
+[`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml), and the release
+health/rollback script is [`deploy/release.sh`](deploy/release.sh).
 
 ### Recommended: run both development servers together
 
