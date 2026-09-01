@@ -70,7 +70,10 @@ fi
 if ! run_compose "$candidate" up -d --no-build --wait --wait-timeout 120; then
   rollback 1
 fi
-if ! curl --fail --silent --show-error http://127.0.0.1:8000/health >/dev/null; then
+# The backend port is intentionally private to the Compose network; check it
+# from inside the backend container instead of assuming a host port mapping.
+if ! run_compose "$candidate" exec -T backend python -c \
+  'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health")' >/dev/null; then
   rollback 1
 fi
 

@@ -1386,3 +1386,9 @@ while administrator ingestion remains the shared source used by guests.
 VM's dotenv file, executing unquoted values as commands, and then Compose fell back to local image
 defaults. The release script now passes the runtime and immutable-release files directly to Compose,
 with the release file last so Artifact Registry image tags take precedence.
+
+## 35. Release health check assumed a published backend port (2026-09-01)
+
+🟢 **Cloud-verified:** the backend container is healthy on its private Compose network, while
+host port `8000` is intentionally unpublished. The release script now runs its final `/health`
+check inside the backend container, allowing the successful release marker to be recorded.
