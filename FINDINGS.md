@@ -78,7 +78,7 @@ Last updated: 2026-08-31.
 ## 12. VM OS Login and IAP hardening
 
 - 🟢 **Deployment-verified (2026-09-01):** `gyaan-sarthi` now uses VM-level OS
-  Login with 2FA. SSH is allowed from IAP only (priority 900), while a VM-tagged
+  Login without 2FA. SSH is allowed from IAP only (priority 900), while a VM-tagged
   deny rule blocks public SSH and RDP (priority 1000); HTTPS remains healthy.
   The GitHub deployer has project Viewer, IAP Tunnel User, OS Admin Login, and
   Service Account User only on the VM's attached Compute service account.
@@ -91,6 +91,15 @@ Last updated: 2026-08-31.
   `b22cs026@gmail.com`. OS Login offers a ready security-key OTP and proposed
   `AUTHZEN` (Google phone prompt); the reported failures end after selecting the
   alternate challenge while it remains pending, before a response is recorded.
+
+---
+
+## 14. OS Login 2FA removal
+
+- 🟢 **Deployment-verified (2026-09-01):** The instance-level
+  `enable-oslogin-2fa` metadata key was removed at the user's request. OS Login,
+  IAP-only SSH, and the public SSH/RDP deny remain active; non-2FA IAP SSH was
+  verified successfully.
 
 ---
 
