@@ -104,7 +104,8 @@ jobs:
           echo "FRONTEND_IMAGE=$frontend_image" >> "$GITHUB_ENV"
       - name: Install current release script on VM
         run: |
-          gcloud compute scp deploy/release.sh "$VM_NAME:/tmp/gyaan-sarthi-release.sh" \
+          release_tmp="/tmp/gyaan-sarthi-release-${GITHUB_SHA}.sh"
+          gcloud compute scp deploy/release.sh "$VM_NAME:$release_tmp" \
             --project "${{ vars.GCP_PROJECT_ID }}" \
             --zone "$VM_ZONE" \
             --tunnel-through-iap \
@@ -114,7 +115,7 @@ jobs:
             --zone "$VM_ZONE" \
             --tunnel-through-iap \
             --quiet \
-            --command "sudo install -m 0755 /tmp/gyaan-sarthi-release.sh /opt/gyaan-sarthi/deploy/release.sh"
+            --command "sudo install -m 0755 '$release_tmp' /opt/gyaan-sarthi/deploy/release.sh && rm -f '$release_tmp'"
       - name: Deploy through IAP and verify rollback protection
         run: |
           gcloud compute ssh "$VM_NAME" \

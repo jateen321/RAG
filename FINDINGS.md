@@ -1392,3 +1392,9 @@ with the release file last so Artifact Registry image tags take precedence.
 🟢 **Cloud-verified:** the backend container is healthy on its private Compose network, while
 host port `8000` is intentionally unpublished. The release script now runs its final `/health`
 check inside the backend container, allowing the successful release marker to be recorded.
+
+## 36. CI script transfer collided with a root-owned temporary file (2026-09-01)
+
+🟢 **CI-verified:** the first workflow attempt to refresh the VM release script failed because
+`/tmp/gyaan-sarthi-release.sh` was already owned by root from manual recovery. CI now uses a
+commit-specific temporary filename and removes it after installation.
