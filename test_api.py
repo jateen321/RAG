@@ -63,6 +63,27 @@ class DocumentUploadValidationTests(unittest.TestCase):
         self.assertEqual(response.text, "Mahabharata passage")
         self.assertTrue(response.headers["content-type"].startswith("text/plain"))
 
+    def test_guests_cannot_read_shared_sources_or_passages(self):
+        api.app.dependency_overrides.clear()
+        guest = TestClient(api.app)
+
+        document = guest.get("/documents/Mahabharata/maha09.txt")
+        passage = guest.get(
+            "/passages/doc_p0002_c003", params={"source": "book.pdf"}
+        )
+
+        self.assertEqual(document.status_code, 401)
+        self.assertEqual(passage.status_code, 401)
+
+    def test_guest_health_is_liveness_only(self):
+        api.app.dependency_overrides.clear()
+        with patch("indexer.get_stats") as stats:
+            response = TestClient(api.app).get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+        stats.assert_not_called()
+
     def test_document_route_accepts_legacy_data_prefix(self):
         with tempfile.TemporaryDirectory() as data_dir:
             document = Path(data_dir) / "essence-of-hinduism.pdf"

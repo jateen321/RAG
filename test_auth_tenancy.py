@@ -138,6 +138,7 @@ class FirebaseAuthenticationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.json()["conversation_id"])
+        self.assertNotIn("sources", response.json())
         ask.assert_called_once_with(
             "What is in the shared corpus?",
             chat_history=[],

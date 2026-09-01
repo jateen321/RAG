@@ -19,6 +19,9 @@ Last updated: 2026-08-31.
   Let's Encrypt certificates for both DuckDNS hostnames, and the public API
   returned `total_chunks: 21499` after the ChromaDB/data transfer.
 
+- 🟢 **Cloud session (2026-09-01):** Before the privacy hardening, anonymous
+  `/health` exposed the shared document inventory and internal ChromaDB path.
+
 ---
 
 ## 11. Google Cloud deployment boundary

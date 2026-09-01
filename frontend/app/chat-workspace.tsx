@@ -58,8 +58,8 @@ type DocumentInfo = {
 
 type HealthResponse = {
   status: string;
-  total_chunks: number;
-  documents: DocumentInfo[];
+  total_chunks?: number;
+  documents?: DocumentInfo[];
 };
 
 type Source = {
@@ -96,7 +96,7 @@ type PassageViewer = {
 
 type AskResponse = {
   answer: string;
-  sources: Source[];
+  sources?: Source[];
   timings?: { total_s?: number };
   conversation_id?: string | null;
   exchange_id?: string;
@@ -197,17 +197,19 @@ function locationLabel(source: Source) {
   return source.page ? `Page ${source.page}` : 'PDF passage';
 }
 
-function sourceHref(source: Source) {
+function sourceHref(source: Source, allowDocumentDownload: boolean) {
   if (source.timestamp_url) return source.timestamp_url;
   if (source.source_url) return source.source_url;
+  if (!allowDocumentDownload) return null;
   if (!['pdf', 'text', 'markdown'].includes(source.source_type || '')) return null;
   const encodedPath = source.source.split('/').map(encodeURIComponent).join('/');
   const pageAnchor = source.source_type === 'pdf' && source.page ? `#page=${source.page}` : '';
   return `${API_URL}/documents/${encodedPath}${pageAnchor}`;
 }
 
-function documentHref(document: DocumentInfo) {
+function documentHref(document: DocumentInfo, allowDocumentDownload: boolean) {
   if (document.source_type === 'youtube') return document.source_url || null;
+  if (!allowDocumentDownload) return null;
   if (!['pdf', 'text', 'markdown'].includes(document.source_type || '')) return null;
   const encodedPath = document.source.split('/').map(encodeURIComponent).join('/');
   return `${API_URL}/documents/${encodedPath}`;
@@ -458,13 +460,13 @@ export default function ChatWorkspace() {
         id: data.exchange_id || id,
         pending: false,
         answer: data.answer,
-        sources: data.sources,
+        sources: data.sources ?? [],
         totalSeconds: data.timings?.total_s,
         answerBasis: data.answer_basis,
         generatedImageUrl: data.generated_image_id ? generatedImageUrl(data.generated_image_id) : undefined,
       } : message));
       if (data.conversation_id) setActiveConversationId(data.conversation_id);
-      setActiveSources(data.sources || []);
+      setActiveSources(data.sources ?? []);
       if (isAuthenticated) await refreshConversationHistory();
     } catch (error) {
       setConversations((current) => current.map((message) => message.id === id ? {
@@ -514,12 +516,12 @@ export default function ChatWorkspace() {
         ...item,
         pending: false,
         answer: data.answer,
-        sources: data.sources,
+        sources: data.sources ?? [],
         totalSeconds: data.timings?.total_s,
         answerBasis: data.answer_basis,
         generatedImageUrl: data.generated_image_id ? generatedImageUrl(data.generated_image_id) : undefined,
       } : item));
-      setActiveSources(data.sources || []);
+      setActiveSources(data.sources ?? []);
       await refreshConversationHistory();
     } catch (error) {
       setConversations(previousMessages);
@@ -806,7 +808,7 @@ export default function ChatWorkspace() {
   }
 
   function openCitation(source: Source) {
-    const href = sourceHref(source);
+    const href = sourceHref(source, isAdmin);
     if (source.source_type === 'web' && href) {
       window.open(href, '_blank', 'noopener,noreferrer');
       return;
@@ -886,14 +888,14 @@ export default function ChatWorkspace() {
 
         <div className="library-heading">
           <span>Shared library</span>
-          <span className="library-count">{health?.documents.length ?? '—'}</span>
+          <span className="library-count">{isAuthenticated ? health?.documents?.length ?? '—' : '—'}</span>
         </div>
 
         <div className="document-list">
           {!health && !healthError && <div className="library-loading"><span /><span /><span /></div>}
           {healthError && <button className="inline-error" type="button" onClick={() => void refreshHealth()}>{healthError} <strong>Retry</strong></button>}
-          {health?.documents.map((document) => {
-            const href = documentHref(document);
+          {isAuthenticated && health?.documents?.map((document) => {
+            const href = documentHref(document, isAdmin);
             const content = <>
               <BookIcon youtube={document.source_type === 'youtube'} />
               <span>
@@ -912,14 +914,15 @@ export default function ChatWorkspace() {
               </div>
             );
           })}
-          {health && health.documents.length === 0 && <p className="empty-library">The shared library is empty. An administrator can add a source.</p>}
+          {isAuthenticated && health?.documents?.length === 0 && <p className="empty-library">The shared library is empty. An administrator can add a source.</p>}
+          {!isAuthenticated && health && <p className="empty-library">Sign in to inspect sources and save your conversations.</p>}
         </div>
 
         <div className={`index-status ${healthError ? 'offline' : ''}`}>
           <span className="status-dot" />
           <span>
             <strong>{healthError ? 'Server unavailable' : health ? 'Knowledge base ready' : 'Connecting…'}</strong>
-            <small>{health ? `${health.total_chunks} passages indexed` : 'Checking your library'}</small>
+            <small>{health?.total_chunks != null ? `${health.total_chunks} passages indexed` : health ? 'Ask a question to search the shared library.' : 'Checking your library'}</small>
           </span>
         </div>
       </aside>
@@ -1031,7 +1034,7 @@ export default function ChatWorkspace() {
                         </button>
                         <div className="inline-sources">
                           {message.sources.map((source, index) => {
-                            const href = sourceHref(source);
+                            const href = sourceHref(source, isAdmin);
                             const content = <><strong>{index + 1}. {locationLabel(source)}</strong><span>{source.source}</span></>;
                             return source.preview
                               ? <button type="button" onClick={() => void viewPassage(source)} aria-label={`View cited passage from ${source.source}`} key={`${source.source}-${index}`}>{content}</button>
@@ -1117,7 +1120,7 @@ export default function ChatWorkspace() {
             <h2>Sources for this answer.</h2>
             <div className="source-list">
               {activeSources.map((source, index) => {
-                const href = sourceHref(source);
+                const href = sourceHref(source, isAdmin);
                 const content = (
                   <>
                     <div className="source-card-head"><span>{String(index + 1).padStart(2, '0')}</span><strong>{locationLabel(source)}</strong></div>
@@ -1157,10 +1160,10 @@ export default function ChatWorkspace() {
             <button className="modal-close" type="button" onClick={() => setPassageViewer(null)} aria-label="Close passage">×</button>
             <p className="eyebrow">RETRIEVED EVIDENCE</p>
             <h2 id="passage-title">{locationLabel(passageViewer.source)}</h2>
-            {sourceHref(passageViewer.source) ? (
+            {sourceHref(passageViewer.source, isAdmin) ? (
               <a
                 className="passage-source passage-source-link"
-                href={sourceHref(passageViewer.source) || undefined}
+                href={sourceHref(passageViewer.source, isAdmin) || undefined}
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`Open ${passageViewer.source.video_title || passageViewer.source.source} at ${locationLabel(passageViewer.source)}`}
@@ -1180,8 +1183,8 @@ export default function ChatWorkspace() {
 
             <div className="modal-actions">
               <button type="button" className="secondary" onClick={() => setPassageViewer(null)}>Close</button>
-              {sourceHref(passageViewer.source) && (
-                <a className="primary" href={sourceHref(passageViewer.source) || undefined} target="_blank" rel="noreferrer">
+              {sourceHref(passageViewer.source, isAdmin) && (
+                <a className="primary" href={sourceHref(passageViewer.source, isAdmin) || undefined} target="_blank" rel="noreferrer">
                   Open original at {locationLabel(passageViewer.source)}
                 </a>
               )}

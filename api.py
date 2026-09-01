@@ -387,7 +387,13 @@ async def session_identity(
 
 
 @app.get("/health")
-def health() -> dict:
+def health(
+    user: AuthenticatedUser | None = Depends(get_optional_user),
+) -> dict:
+    """Expose only liveness to guests; source metadata requires a session."""
+    if user is None:
+        return {"status": "ok"}
+
     from indexer import get_stats
 
     return {"status": "ok", **get_stats(owner_id=SHARED_CORPUS_OWNER_ID)}
@@ -396,6 +402,7 @@ def health() -> dict:
 @app.get("/documents/{source_path:path}", response_class=FileResponse)
 def open_document(
     source_path: str,
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> FileResponse:
     """Open a shared source while keeping access inside the shared data root."""
     try:
@@ -416,6 +423,7 @@ async def resolve_legacy_passage(
     source: str = Query(min_length=1, max_length=4096),
     page: int = Query(ge=0),
     preview: str = Query(min_length=1, max_length=500),
+    user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
     """Resolve citations saved before source responses included chunk IDs."""
     from indexer import get_chunk_by_citation
@@ -432,6 +440,7 @@ async def resolve_legacy_passage(
 async def passage_detail(
     chunk_id: str,
     source: str = Query(min_length=1, max_length=4096),
+    user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
     """Return one cited passage, scoped to its source to prevent id confusion."""
     from indexer import get_chunk
@@ -464,6 +473,7 @@ async def ask_question(
         use_web=payload.use_web,
         generate_image_requested=payload.generate_image,
         conversation_owner_id=user.uid if user else None,
+        include_sources=user is not None,
     )
 
 
@@ -504,6 +514,7 @@ async def ask_question_with_image(
         use_web=use_web,
         generate_image_requested=generate_image,
         conversation_owner_id=user.uid,
+        include_sources=True,
     )
 
 
@@ -516,6 +527,7 @@ async def _answer_and_record(
     use_web: bool = False,
     generate_image_requested: bool = False,
     conversation_owner_id: str | None,
+    include_sources: bool,
 ) -> dict:
     from rag_engine import (
         ask_with_sources,
@@ -605,6 +617,10 @@ async def _answer_and_record(
             "web_search_available": False,
             "image_generation_available": False,
         }
+        if not include_sources:
+            # The model still uses the shared corpus to ground the answer, but
+            # anonymous callers must not receive source names or passage text.
+            response.pop("sources", None)
         if image_result is not None:
             image_id = str(uuid4())
             destination = await run_in_threadpool(
