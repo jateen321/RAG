@@ -75,6 +75,16 @@ Last updated: 2026-08-31.
 
 ---
 
+## 12. VM OS Login and IAP hardening
+
+- 🟢 **Deployment-verified (2026-09-01):** `gyaan-sarthi` now uses VM-level OS
+  Login with 2FA. SSH is allowed from IAP only (priority 900), while a VM-tagged
+  deny rule blocks public SSH and RDP (priority 1000); HTTPS remains healthy.
+  The GitHub deployer has project Viewer, IAP Tunnel User, OS Admin Login, and
+  Service Account User only on the VM's attached Compute service account.
+
+---
+
 ## 8. Production identity boundary
 
 - 🟢 **Repo-verified (2026-08-31):** The API verifies Firebase ID tokens against
