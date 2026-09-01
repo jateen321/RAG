@@ -1,6 +1,7 @@
 """FastAPI interface for the Gyaan Sarthi RAG pipeline."""
 
 import hashlib
+import re
 import os
 from functools import wraps
 from inspect import signature
@@ -88,6 +89,12 @@ ALLOWED_CONTENT_TYPES = {
 }
 
 _STATE_CHANGING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+_INLINE_CITATION = re.compile(r"\s*⟦[^⟦⟧\n]+⟧")
+
+
+def _redact_guest_citations(answer: str) -> str:
+    """Remove model citation markers before returning an anonymous answer."""
+    return _INLINE_CITATION.sub("", answer).strip()
 
 
 @app.middleware("http")
@@ -620,6 +627,7 @@ async def _answer_and_record(
         if not include_sources:
             # The model still uses the shared corpus to ground the answer, but
             # anonymous callers must not receive source names or passage text.
+            response["answer"] = _redact_guest_citations(response["answer"])
             response.pop("sources", None)
         if image_result is not None:
             image_id = str(uuid4())

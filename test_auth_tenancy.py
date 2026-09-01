@@ -122,7 +122,7 @@ class FirebaseAuthenticationTests(unittest.TestCase):
 
     def test_guest_question_uses_shared_corpus_without_persistence(self):
         answer = {
-            "answer": "Shared answer",
+            "answer": "Shared answer ⟦Jateen_Resume.pdf, Page 1⟧",
             "sources": [],
             "timings": {"total_s": 0.1},
         }
@@ -138,6 +138,7 @@ class FirebaseAuthenticationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.json()["conversation_id"])
+        self.assertEqual(response.json()["answer"], "Shared answer")
         self.assertNotIn("sources", response.json())
         ask.assert_called_once_with(
             "What is in the shared corpus?",
