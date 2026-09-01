@@ -103,7 +103,7 @@ jobs:
           docker run --rm \
             --env APP_DOMAIN=example.com \
             --env API_DOMAIN=api.example.com \
-            "$caddy_image" validate --config /etc/caddy/Caddyfile --adapter caddyfile
+            "$caddy_image" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
           docker push "$backend_image"
           docker push "$frontend_image"
           docker push "$caddy_image"
