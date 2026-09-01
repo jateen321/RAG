@@ -102,9 +102,24 @@ jobs:
           docker push "$frontend_image"
           echo "BACKEND_IMAGE=$backend_image" >> "$GITHUB_ENV"
           echo "FRONTEND_IMAGE=$frontend_image" >> "$GITHUB_ENV"
+      - name: Install current release script on VM
+        run: |
+          gcloud compute scp deploy/release.sh "$VM_NAME:/tmp/gyaan-sarthi-release.sh" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --zone "$VM_ZONE" \
+            --tunnel-through-iap \
+            --quiet
+          gcloud compute ssh "$VM_NAME" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --zone "$VM_ZONE" \
+            --tunnel-through-iap \
+            --quiet \
+            --command "sudo install -m 0755 /tmp/gyaan-sarthi-release.sh /opt/gyaan-sarthi/deploy/release.sh"
       - name: Deploy through IAP and verify rollback protection
         run: |
           gcloud compute ssh "$VM_NAME" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
             --zone "$VM_ZONE" \
             --tunnel-through-iap \
+            --quiet \
             --command "sudo /opt/gyaan-sarthi/deploy/release.sh '$BACKEND_IMAGE' '$FRONTEND_IMAGE' '${GITHUB_SHA}'"
