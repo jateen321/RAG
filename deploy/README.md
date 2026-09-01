@@ -50,7 +50,7 @@ Firebase public configuration and backend secret, then start the stack:
 ```bash
 cd /opt/gyaan-sarthi
 cp .env.production.example .env.production
-docker compose -f docker-compose.production.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
 curl -fsS "https://${API_DOMAIN}/health"
 ```
 

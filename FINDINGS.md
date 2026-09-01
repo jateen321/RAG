@@ -12,6 +12,15 @@ Last updated: 2026-08-31.
 
 ---
 
+## 12. Google Cloud VM deployment
+
+- 🟢 **Cloud session (2026-09-01):** `gyaan-sarthi` is running on an
+  `e2-medium` VM in `asia-south1-a` at `8.234.120.96`. Caddy obtained valid
+  Let's Encrypt certificates for both DuckDNS hostnames, and the public API
+  returned `total_chunks: 21499` after the ChromaDB/data transfer.
+
+---
+
 ## 11. Google Cloud deployment boundary
 
 - 🟢 **Repo-verified (2026-08-31):** The current runtime stores approximately
