@@ -399,9 +399,9 @@ dependency audit. A push to `main` then performs continuous deployment:
    (no downloaded service-account key).
 2. It builds and publishes immutable backend, frontend, and Caddy images, tagged
    with the Git commit SHA, to Artifact Registry.
-3. It transfers the checked-in release script through IAP SSH, starts the image
-   set with Docker Compose, verifies `/api/health` through Caddy, and records the
-   healthy release for rollback protection.
+3. It transfers the checked-in Compose configuration and release script through
+   IAP SSH, starts the image set, verifies `/api/health` through Caddy, and
+   records the healthy release for rollback protection.
 
 Configure these GitHub repository variables before enabling deployment:
 `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SERVICE_ACCOUNT`,

@@ -110,10 +110,16 @@ jobs:
           echo "BACKEND_IMAGE=$backend_image" >> "$GITHUB_ENV"
           echo "FRONTEND_IMAGE=$frontend_image" >> "$GITHUB_ENV"
           echo "CADDY_IMAGE=$caddy_image" >> "$GITHUB_ENV"
-      - name: Install current release script on VM
+      - name: Install current release configuration on VM
         run: |
           release_tmp="/tmp/gyaan-sarthi-release-${GITHUB_SHA}.sh"
+          compose_tmp="/tmp/gyaan-sarthi-compose-${GITHUB_SHA}.yml"
           gcloud compute scp deploy/release.sh "$VM_NAME:$release_tmp" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --zone "$VM_ZONE" \
+            --tunnel-through-iap \
+            --quiet
+          gcloud compute scp docker-compose.production.yml "$VM_NAME:$compose_tmp" \
             --project "${{ vars.GCP_PROJECT_ID }}" \
             --zone "$VM_ZONE" \
             --tunnel-through-iap \
@@ -123,7 +129,7 @@ jobs:
             --zone "$VM_ZONE" \
             --tunnel-through-iap \
             --quiet \
-            --command "sudo install -m 0755 '$release_tmp' /opt/gyaan-sarthi/deploy/release.sh && rm -f '$release_tmp'"
+            --command "sudo install -m 0755 '$release_tmp' /opt/gyaan-sarthi/deploy/release.sh && sudo install -m 0644 '$compose_tmp' /opt/gyaan-sarthi/docker-compose.production.yml && rm -f '$release_tmp' '$compose_tmp'"
       - name: Deploy through IAP and verify rollback protection
         run: |
           gcloud compute ssh "$VM_NAME" \
