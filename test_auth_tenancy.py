@@ -232,6 +232,39 @@ class FirebaseAuthenticationTests(unittest.TestCase):
             owner_id="ordinary-user",
         )
 
+    def test_youtube_import_uses_the_authenticated_users_corpus(self):
+        user = auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
+        api.app.dependency_overrides[auth.get_current_user] = lambda: user
+        report = {"videos_indexed": 1, "chunks_indexed": 3}
+
+        with patch("youtube_ingester.ingest_youtube", return_value=report) as ingest:
+            response = TestClient(api.app).post(
+                "/index/youtube",
+                json={"url": "https://www.youtube.com/watch?v=video123"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), report)
+        ingest.assert_called_once_with(
+            "https://www.youtube.com/watch?v=video123", "ordinary-user"
+        )
+
+    def test_admin_youtube_import_uses_the_shared_corpus(self):
+        user = auth.AuthenticatedUser(uid="admin-user", is_admin=True)
+        api.app.dependency_overrides[auth.get_current_user] = lambda: user
+
+        with patch("youtube_ingester.ingest_youtube", return_value={}) as ingest:
+            response = TestClient(api.app).post(
+                "/index/youtube",
+                json={"url": "https://www.youtube.com/watch?v=video123"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        ingest.assert_called_once_with(
+            "https://www.youtube.com/watch?v=video123",
+            api.SHARED_CORPUS_OWNER_ID,
+        )
+
     def test_non_admin_health_reports_private_library(self):
         user = auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
         api.app.dependency_overrides[auth.get_optional_user] = lambda: user

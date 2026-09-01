@@ -251,7 +251,7 @@ it is the authoritative interface when this summary and the code ever disagree.
 | `POST` | `/index` | Administrator: index or deduplicate a shared local document |
 | `POST` | `/index/folder` | Administrator: recursively index an allowlisted shared folder |
 | `POST` | `/upload` | Authenticated users upload to their own corpus; administrators upload to the shared corpus (`201 Created`) |
-| `POST` | `/index/youtube` | Administrator: index a shared YouTube video or playlist |
+| `POST` | `/index/youtube` | Authenticated users index a YouTube video or playlist in their own corpus; administrators index it in the shared corpus |
 
 ```bash
 curl -X POST http://127.0.0.1:8000/index/youtube \
@@ -342,7 +342,7 @@ administrator access.
 | User | Corpus visible to answers | What they can do |
 |---|---|---|
 | Guest | Shared library | Ask questions without saving history. Citations, source cards, uploads, web search, and image features are unavailable. |
-| Signed-in user | Their own initially empty library, keyed by Firebase UID | Upload PDF, TXT, or Markdown documents; view citations; and keep conversations and generated images private. One user's documents are not searchable by another user. |
+| Signed-in user | Their own initially empty library, keyed by Firebase UID | Upload PDF, TXT, or Markdown documents; index YouTube videos or playlists; view citations; and keep conversations and generated images private. One user's sources are not searchable by another user. |
 | Administrator | Shared library | Use the shared sources available to guests; upload shared documents; and index server-local files, folders, and YouTube content for every guest. |
 
 Administrators query and manage the same shared corpus used by guests. Each

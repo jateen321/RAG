@@ -947,9 +947,9 @@ export default function ChatWorkspace() {
               <button type="button" onClick={() => folderInput.current?.click()} aria-label={isAdmin ? 'Add a shared folder' : 'Upload a folder'} title={isAdmin ? 'Add a shared folder' : 'Upload a folder'}>
                 <span aria-hidden="true">▤</span><span className="header-action-label">{isAdmin ? 'Add a folder' : 'Upload a folder'}</span>
               </button>
-              {isAdmin && <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
+              <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
                 <span aria-hidden="true">▶</span><span className="header-action-label">Add YouTube</span>
-              </button>}
+              </button>
             </div>
           )}
           <input ref={fileInput} className="visually-hidden" type="file" accept="application/pdf,text/plain,text/markdown,.pdf,.txt,.md" onChange={chooseFile} tabIndex={-1} aria-hidden="true" />

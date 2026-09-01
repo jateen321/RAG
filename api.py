@@ -1083,13 +1083,13 @@ async def upload_document(
 @_rate_limited(rates=("ingest",), concurrency=("ingest",))
 async def index_youtube(
     request: YouTubeIndexRequest,
-    user: AuthenticatedUser = Depends(require_admin),
+    user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
     from youtube_ingester import ingest_youtube
 
     try:
         return await run_in_threadpool(
-            ingest_youtube, request.url, SHARED_CORPUS_OWNER_ID
+            ingest_youtube, request.url, _corpus_owner_id(user)
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
