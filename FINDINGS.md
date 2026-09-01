@@ -1379,3 +1379,10 @@ fixture now uses `exist_ok=True`, preserving the test's intended upload behavior
 `SHARED_CORPUS_OWNER_ID`; every other verified Firebase UID resolves to its own opaque data and
 Chroma owner. Authenticated users can therefore upload and cite only their private documents,
 while administrator ingestion remains the shared source used by guests.
+
+## 34. Release script incorrectly sourced dotenv configuration (2026-09-01)
+
+🟢 **Cloud-verified:** the first executable release attempt failed because Bash sourced the
+VM's dotenv file, executing unquoted values as commands, and then Compose fell back to local image
+defaults. The release script now passes the runtime and immutable-release files directly to Compose,
+with the release file last so Artifact Registry image tags take precedence.

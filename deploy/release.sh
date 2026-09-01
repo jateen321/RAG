@@ -40,15 +40,12 @@ write_release() {
 }
 
 run_compose() {
-  set -a
-  # `.env.production` contains runtime configuration only; image references
-  # come from the immutable release file generated above.
-  # shellcheck disable=SC1091
-  source "$APP_DIR/.env.production"
-  # shellcheck disable=SC1090
-  source "$1"
-  set +a
+  # Pass dotenv files directly to Compose. They are configuration data, not
+  # shell scripts; sourcing them would execute malformed/unquoted values.
+  # The release file is last so its immutable image references override any
+  # defaults from `.env.production`.
   docker compose --env-file "$APP_DIR/.env.production" \
+    --env-file "$1" \
     -f "$APP_DIR/docker-compose.production.yml" "${@:2}"
 }
 
