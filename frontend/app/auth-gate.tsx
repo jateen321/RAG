@@ -70,7 +70,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <div className="auth-session" aria-live="polite">
         {identity ? (
           <>
-            <span title={identity.email}>{identity.is_admin ? 'Administrator' : 'Signed in'}</span>
+            <span className="auth-identity">
+              {identity.is_admin && <span className="auth-role">Administrator</span>}
+              <span>Signed in as:</span>
+              <span className="auth-email" title={identity.email}>
+                {identity.email || 'your account'}
+              </span>
+            </span>
             <button type="button" onClick={() => void signOut()}>Sign out</button>
           </>
         ) : (

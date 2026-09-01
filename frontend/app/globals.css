@@ -43,7 +43,11 @@ button { color: inherit; }
 .history-heading { margin: 17px 4px 7px; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .conversation-history { display: grid; flex: 0 0 230px; align-content: start; grid-auto-rows: max-content; gap: 4px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .auth-session { position: fixed; z-index: 100; right: 18px; bottom: 18px; display: flex; align-items: center; gap: 9px; max-width: min(420px, calc(100vw - 36px)); padding: 8px 10px 8px 13px; border: 1px solid var(--line); border-radius: 12px; color: var(--green); background: rgba(255,255,255,.96); box-shadow: 0 10px 30px rgba(23,52,46,.12); font-size: 11px; }
-.auth-session > span:first-child { font-weight: 700; white-space: nowrap; }
+.auth-identity { display: flex; flex: 1 1 auto; align-items: center; gap: 4px; min-width: 0; font-weight: 700; }
+.auth-role { flex: 0 0 auto; }
+.auth-role::after { content: '·'; margin-left: 4px; }
+.auth-identity > span:not(.auth-email) { flex: 0 0 auto; white-space: nowrap; }
+.auth-email { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .auth-session button { padding: 7px 11px; border: 0; border-radius: 8px; color: #fff; background: var(--green); font: inherit; font-weight: 700; cursor: pointer; }
 .auth-session button:disabled { cursor: wait; opacity: .6; }
 .auth-session .auth-error { max-width: 220px; color: #a33a32; line-height: 1.3; }
