@@ -85,6 +85,15 @@ Last updated: 2026-08-31.
 
 ---
 
+## 13. OS Login 2FA challenge completion
+
+- 🟢 **Deployment-verified (2026-09-01):** IAM and IAP policy checks succeed for
+  `b22cs026@gmail.com`. OS Login offers a ready security-key OTP and proposed
+  `AUTHZEN` (Google phone prompt); the reported failures end after selecting the
+  alternate challenge while it remains pending, before a response is recorded.
+
+---
+
 ## 8. Production identity boundary
 
 - 🟢 **Repo-verified (2026-08-31):** The API verifies Firebase ID tokens against
