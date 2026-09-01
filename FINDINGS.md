@@ -1366,3 +1366,9 @@ concurrency claims can be stated as fact.
 🟢 **Cloud-verified:** the VM `gyaan-sarthi` in `asia-south1-a` uses regional address
 `gyaan-sarthi-static-ip` (`8.234.120.96`), whose status is `IN_USE`. Reserving the existing
 ephemeral address preserves the current DuckDNS endpoints while preventing stop/start IP changes.
+
+## 32. Upload regression fixture assumed a missing directory (2026-09-01)
+
+🟢 **CI-verified:** `test_existing_unindexed_pdf_is_indexed_without_overwrite` failed before
+its assertions because `_tenant_data_root()` already created the temporary parent directory. The
+fixture now uses `exist_ok=True`, preserving the test's intended upload behavior coverage.

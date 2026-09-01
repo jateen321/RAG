@@ -194,7 +194,7 @@ class DocumentUploadValidationTests(unittest.TestCase):
             patch.object(api, "DATA_DIR", data_dir),
         ):
             existing = api._tenant_data_root(api.SHARED_CORPUS_OWNER_ID) / "lesson.pdf"
-            existing.parent.mkdir(parents=True)
+            existing.parent.mkdir(parents=True, exist_ok=True)
             existing.write_bytes(b"original content")
 
             with (
