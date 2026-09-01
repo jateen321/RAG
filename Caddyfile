@@ -1,9 +1,23 @@
+(security_headers) {
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		Content-Security-Policy "base-uri 'self'; frame-ancestors 'none'; object-src 'none'"
+	}
+}
+
 {$APP_DOMAIN} {
-    encode gzip
-    reverse_proxy frontend:3000
+	import security_headers
+	encode gzip
+	reverse_proxy frontend:3000
 }
 
 {$API_DOMAIN} {
-    encode gzip
-    reverse_proxy backend:8000
+	import security_headers
+	encode gzip
+	reverse_proxy backend:8000
 }
