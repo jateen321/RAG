@@ -48,6 +48,25 @@ class FirebaseAuthenticationTests(unittest.TestCase):
             "signed-cookie", check_revoked=auth.AUTH_CHECK_REVOKED
         )
 
+    def test_session_token_failure_is_logged_without_exposing_it_to_client(self):
+        firebase = Mock()
+        firebase.verify_id_token.side_effect = ValueError("Firebase rejected token")
+
+        with (
+            patch.object(auth, "_firebase_auth", return_value=firebase),
+            self.assertLogs("auth", level="WARNING") as captured,
+            self.assertRaises(api.HTTPException) as raised,
+        ):
+            auth.create_session_cookie("private-id-token", 3600)
+
+        self.assertEqual(raised.exception.status_code, 401)
+        self.assertEqual(
+            raised.exception.detail, "Google sign-in could not be verified."
+        )
+        self.assertIn("ValueError", captured.output[0])
+        self.assertIn("Firebase rejected token", captured.output[0])
+        self.assertNotIn("private-id-token", captured.output[0])
+
     def test_untrusted_origin_cannot_create_session(self):
         response = TestClient(api.app).post(
             "/auth/session",

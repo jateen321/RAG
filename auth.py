@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
+import logging
 import time
 
 from fastapi import Depends, HTTPException, Request, status
@@ -14,6 +15,9 @@ from config import (
     FIREBASE_PROJECT_ID,
     SESSION_COOKIE_NAME,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -67,6 +71,11 @@ def create_session_cookie(id_token: str, expires_in_seconds: int) -> str:
     except HTTPException:
         raise
     except Exception as exc:
+        # Keep token-verification detail on the server only. The client gets a
+        # deliberately generic message so authentication internals are not exposed.
+        logger.warning(
+            "Firebase session exchange failed (%s): %s", type(exc).__name__, exc
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Google sign-in could not be verified.",

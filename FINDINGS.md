@@ -57,6 +57,24 @@ Last updated: 2026-08-31.
 
 ---
 
+## 10. Firebase Email/Password sign-in gap
+
+- 🟢 **Repo- and deployment-verified (2026-09-01):** Firebase Email/Password may be
+  enabled in the Firebase console, but the deployed interface only invokes
+  `GoogleAuthProvider`, and the API rejects every Firebase provider except `google.com`.
+  Email/Password users therefore cannot create an application session.
+
+---
+
+## 11. VM Firebase Admin credential scope
+
+- 🟢 **Deployment-verified (2026-09-01):** The production VM's attached Compute
+  service account lacked the `cloud-platform` OAuth scope while completed Google
+  sign-ins received 401 at `/auth/session`. The scope was corrected and both public
+  frontend and API health checks recovered; a real sign-in retry remains required.
+
+---
+
 ## 8. Production identity boundary
 
 - 🟢 **Repo-verified (2026-08-31):** The API verifies Firebase ID tokens against
