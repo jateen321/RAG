@@ -97,6 +97,17 @@ def _redact_guest_citations(answer: str) -> str:
     return _INLINE_CITATION.sub("", answer).strip()
 
 
+def _corpus_owner_id(user: AuthenticatedUser | None) -> str:
+    """Select the corpus visible to a request.
+
+    Guests and administrators use the shared library. Every other verified
+    user receives a private corpus keyed by their Firebase UID.
+    """
+    if user is None or user.is_admin:
+        return SHARED_CORPUS_OWNER_ID
+    return user.uid
+
+
 @app.middleware("http")
 async def enforce_trusted_origin(request: Request, call_next):
     """Reject cross-site writes so a session cookie alone cannot authorize them.
@@ -403,17 +414,17 @@ def health(
 
     from indexer import get_stats
 
-    return {"status": "ok", **get_stats(owner_id=SHARED_CORPUS_OWNER_ID)}
+    return {"status": "ok", **get_stats(owner_id=_corpus_owner_id(user))}
 
 
 @app.get("/documents/{source_path:path}", response_class=FileResponse)
 def open_document(
     source_path: str,
-    user: AuthenticatedUser = Depends(require_admin),
+    user: AuthenticatedUser = Depends(get_current_user),
 ) -> FileResponse:
-    """Open a shared source while keeping access inside the shared data root."""
+    """Open a user's own source or an administrator-managed shared source."""
     try:
-        document_path = _resolve_data_document(source_path, SHARED_CORPUS_OWNER_ID)
+        document_path = _resolve_data_document(source_path, _corpus_owner_id(user))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail="Document not found.") from exc
 
@@ -436,7 +447,7 @@ async def resolve_legacy_passage(
     from indexer import get_chunk_by_citation
 
     passage = await run_in_threadpool(
-        get_chunk_by_citation, source, page, preview, SHARED_CORPUS_OWNER_ID
+        get_chunk_by_citation, source, page, preview, _corpus_owner_id(user)
     )
     if passage is None:
         raise HTTPException(status_code=404, detail="Exact cited passage not found.")
@@ -453,7 +464,7 @@ async def passage_detail(
     from indexer import get_chunk
 
     passage = await run_in_threadpool(
-        get_chunk, chunk_id, source, SHARED_CORPUS_OWNER_ID
+        get_chunk, chunk_id, source, _corpus_owner_id(user)
     )
     if passage is None:
         raise HTTPException(status_code=404, detail="Passage not found.")
@@ -480,6 +491,7 @@ async def ask_question(
         use_web=payload.use_web,
         generate_image_requested=payload.generate_image,
         conversation_owner_id=user.uid if user else None,
+        corpus_owner_id=_corpus_owner_id(user),
         include_sources=user is not None,
     )
 
@@ -521,6 +533,7 @@ async def ask_question_with_image(
         use_web=use_web,
         generate_image_requested=generate_image,
         conversation_owner_id=user.uid,
+        corpus_owner_id=_corpus_owner_id(user),
         include_sources=True,
     )
 
@@ -534,6 +547,7 @@ async def _answer_and_record(
     use_web: bool = False,
     generate_image_requested: bool = False,
     conversation_owner_id: str | None,
+    corpus_owner_id: str,
     include_sources: bool,
 ) -> dict:
     from rag_engine import (
@@ -584,7 +598,7 @@ async def _answer_and_record(
             document_kwargs = {
                 "prepare_image_prompt": True,
             } if generate_image_requested else {}
-            document_kwargs["owner_id"] = SHARED_CORPUS_OWNER_ID
+            document_kwargs["owner_id"] = corpus_owner_id
             result = await run_in_threadpool(
                 ask_with_sources,
                 question,
@@ -709,7 +723,7 @@ async def edit_exchange(
             ask_with_sources,
             question,
             chat_history=history,
-            owner_id=SHARED_CORPUS_OWNER_ID,
+            owner_id=_corpus_owner_id(user),
         )
         replaced = await run_in_threadpool(
             replace_exchange_and_truncate,
@@ -958,9 +972,9 @@ async def index_file(
 async def upload_document(
     file: UploadFile = File(...),
     relative_path: str | None = Form(default=None),
-    user: AuthenticatedUser = Depends(require_admin),
+    user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
-    """Save and index one document, reusing an unindexed local copy if present."""
+    """Save and index a shared or private document, reusing local copies."""
     original_name = Path(file.filename or "").name
     if not original_name or original_name in {".", ".."}:
         raise HTTPException(status_code=400, detail="A document filename is required.")
@@ -976,7 +990,8 @@ async def upload_document(
             detail=f"The uploaded file type does not match its {extension} extension.",
         )
 
-    data_root = _tenant_data_root(SHARED_CORPUS_OWNER_ID)
+    corpus_owner_id = _corpus_owner_id(user)
+    data_root = _tenant_data_root(corpus_owner_id)
     data_root.mkdir(parents=True, exist_ok=True)
 
     path_parts = [original_name]
@@ -1018,7 +1033,7 @@ async def upload_document(
             is_document_indexed,
             source_name,
             file_path=destination,
-            owner_id=SHARED_CORPUS_OWNER_ID,
+            owner_id=corpus_owner_id,
         ):
             raise HTTPException(
                 status_code=409,
@@ -1034,7 +1049,7 @@ async def upload_document(
         chunks = await run_in_threadpool(
             index_document, pages, source_name, SOURCE_TYPES[extension],
             file_path=destination,
-            owner_id=SHARED_CORPUS_OWNER_ID,
+            owner_id=corpus_owner_id,
         )
     except ValueError as exc:
         if created_by_request:

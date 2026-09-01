@@ -181,17 +181,85 @@ class FirebaseAuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         search.assert_not_called()
 
-    def test_non_admin_cannot_upload_to_shared_corpus(self):
-        api.app.dependency_overrides[auth.get_current_user] = lambda: (
-            auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
-        )
-        response = TestClient(api.app).post(
-            "/upload",
-            files={"file": ("notes.txt", b"private", "text/plain")},
+    def test_non_admin_question_uses_private_corpus_and_returns_sources(self):
+        user = auth.AuthenticatedUser(uid="ordinary-user", email="ordinary@example.com")
+        api.app.dependency_overrides[auth.get_current_user] = lambda: user
+        api.app.dependency_overrides[auth.get_optional_user] = lambda: user
+        answer = {
+            "answer": "Private answer",
+            "sources": [{"source": "notes.txt", "preview": "Private note"}],
+            "timings": {"total_s": 0.1},
+        }
+        limiter = AllowAllLimiter()
+        with (
+            patch.object(api, "get_rate_limiter", return_value=limiter),
+            patch("rag_engine.ask_with_sources", return_value=answer) as ask,
+            patch.object(api, "record_exchange", return_value="conversation-id"),
+        ):
+            response = TestClient(api.app).post(
+                "/ask", json={"question": "What is in my notes?"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["sources"], answer["sources"])
+        ask.assert_called_once_with(
+            "What is in my notes?",
+            chat_history=[],
+            owner_id="ordinary-user",
         )
 
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json()["detail"], "Administrator access is required.")
+    def test_non_admin_uploads_to_private_corpus(self):
+        user = auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
+        api.app.dependency_overrides[auth.get_current_user] = lambda: user
+        pages = [{"page": 1, "text": "Private notes", "method": "text"}]
+        with tempfile.TemporaryDirectory() as data_dir:
+            with (
+                patch.object(api, "DATA_DIR", data_dir),
+                patch.object(api, "_extract_document", return_value=pages),
+                patch("indexer.is_document_indexed", return_value=False),
+                patch("indexer.index_document", return_value=1) as index_document,
+            ):
+                response = TestClient(api.app).post(
+                    "/upload",
+                    files={"file": ("notes.txt", b"private", "text/plain")},
+                )
+
+                private_file = api._tenant_data_root(user.uid) / "notes.txt"
+                self.assertEqual(response.status_code, 201)
+                self.assertEqual(private_file.read_bytes(), b"private")
+        index_document.assert_called_once_with(
+            pages, "notes.txt", "text", file_path=private_file,
+            owner_id="ordinary-user",
+        )
+
+    def test_non_admin_health_reports_private_library(self):
+        user = auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
+        api.app.dependency_overrides[auth.get_optional_user] = lambda: user
+        with patch("indexer.get_stats", return_value={"total_chunks": 2}) as stats:
+            response = TestClient(api.app).get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["total_chunks"], 2)
+        stats.assert_called_once_with(owner_id="ordinary-user")
+
+    def test_non_admin_can_open_only_own_document(self):
+        user = auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
+        other = auth.AuthenticatedUser(uid="other-user", is_admin=False)
+        api.app.dependency_overrides[auth.get_current_user] = lambda: user
+        with tempfile.TemporaryDirectory() as data_dir, patch.object(
+            api, "DATA_DIR", data_dir
+        ), patch.object(api, "FIREBASE_PROJECT_ID", "test-project"):
+            own_document = api._tenant_data_root(user.uid) / "notes.txt"
+            own_document.parent.mkdir(parents=True, exist_ok=True)
+            own_document.write_text("private notes", encoding="utf-8")
+            own_response = TestClient(api.app).get("/documents/notes.txt")
+
+            api.app.dependency_overrides[auth.get_current_user] = lambda: other
+            other_response = TestClient(api.app).get("/documents/notes.txt")
+
+        self.assertEqual(own_response.status_code, 200)
+        self.assertEqual(own_response.text, "private notes")
+        self.assertEqual(other_response.status_code, 404)
 
 
 class ConversationTenancyTests(unittest.TestCase):

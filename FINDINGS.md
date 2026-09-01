@@ -1372,3 +1372,10 @@ ephemeral address preserves the current DuckDNS endpoints while preventing stop/
 🟢 **CI-verified:** `test_existing_unindexed_pdf_is_indexed_without_overwrite` failed before
 its assertions because `_tenant_data_root()` already created the temporary parent directory. The
 fixture now uses `exist_ok=True`, preserving the test's intended upload behavior coverage.
+
+## 33. Corpus selection now follows authentication role (2026-09-01)
+
+🟢 **Code-verified:** guest requests and administrator sessions resolve to
+`SHARED_CORPUS_OWNER_ID`; every other verified Firebase UID resolves to its own opaque data and
+Chroma owner. Authenticated users can therefore upload and cite only their private documents,
+while administrator ingestion remains the shared source used by guests.

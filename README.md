@@ -235,11 +235,11 @@ it is the authoritative interface when this summary and the code ever disagree.
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/` | Service info |
-| `GET` | `/health` | Public shared-corpus status + index statistics |
-| `GET` | `/documents/{source_path}` | Publicly open a supported shared source |
-| `GET` | `/passages/{chunk_id}` | Publicly fetch the complete shared passage for an exact citation |
-| `GET` | `/passages/resolve-legacy` | Publicly resolve an older shared citation without a chunk ID |
-| `POST` | `/ask` | Ask the shared corpus; guests are ephemeral, signed-in exchanges are saved |
+| `GET` | `/health` | Public liveness; authenticated requests include shared or private index statistics |
+| `GET` | `/documents/{source_path}` | Authenticated users open a source from their own corpus; administrators open shared sources |
+| `GET` | `/passages/{chunk_id}` | Authenticated users fetch a passage from their own corpus or the shared corpus |
+| `GET` | `/passages/resolve-legacy` | Authenticated users resolve an older citation in their own or shared corpus |
+| `POST` | `/ask` | Guests and administrators query the shared corpus; other signed-in users query their private corpus |
 | `POST` | `/ask/image` | Authenticated question with a PNG, JPEG, or WebP attachment (maximum 10 MB) |
 | `GET` | `/conversations` | List saved conversations |
 | `GET` | `/conversations/{conversation_id}` | Load one conversation and its exchanges |
@@ -250,7 +250,7 @@ it is the authoritative interface when this summary and the code ever disagree.
 | `GET` | `/generated-images/{image_id}` | Return a generated image referenced by a conversation |
 | `POST` | `/index` | Administrator: index or deduplicate a shared local document |
 | `POST` | `/index/folder` | Administrator: recursively index an allowlisted shared folder |
-| `POST` | `/upload` | Administrator: upload and index a shared document (`201 Created`) |
+| `POST` | `/upload` | Authenticated users upload to their own corpus; administrators upload to the shared corpus (`201 Created`) |
 | `POST` | `/index/youtube` | Administrator: index a shared YouTube video or playlist |
 
 ```bash
@@ -333,11 +333,13 @@ a reverse proxy that routes `/` to the frontend and `/api/*` to FastAPI.
 For the current local-state architecture, the reproducible Google Cloud VM
 deployment is documented in [`deploy/README.md`](deploy/README.md).
 
-Guests can query and open sources from the corpus identified by
-`SHARED_CORPUS_OWNER_ID`; their answers are not persisted and they cannot use
-web search, prompt images, generated images, or ingestion routes. Signed-in
-users query the same shared corpus while conversations and generated images
-remain private to their verified Firebase UID.
+Guests can query the corpus identified by `SHARED_CORPUS_OWNER_ID`; their answers
+are not persisted and they cannot use web search, prompt images, generated
+images, or ingestion routes. Administrators query and manage that same shared
+corpus. Other signed-in users start with an empty corpus keyed by their verified
+Firebase UID, can upload their own documents, and receive source citations from
+only that private corpus. Their conversations and generated images remain private
+to the same UID.
 
 For production authentication, enable Google sign-in in Firebase Authentication
 and configure the backend `FIREBASE_PROJECT_ID` plus the frontend
@@ -442,9 +444,10 @@ Remember that the two servers have different responsibilities: restarting Uvicor
 port 8000 updates the API only; it does not rebuild or restart the frontend on port 3000.
 
 PDF, UTF-8 TXT, and UTF-8 Markdown uploads are limited to 500 MB, saved inside
-`data/`. A document already indexed in ChromaDB is rejected; when the file
-already exists in `data/` but is not indexed, that local copy is indexed without
-being overwritten. Set
+the authenticated user's opaque data root (or the shared root for administrators).
+A document already indexed in ChromaDB is rejected; when the file already exists
+in the selected root but is not indexed, that local copy is indexed without being
+overwritten. Set
 `RAG_ALLOWED_ORIGINS` in `.env` if
 the frontend runs on a different origin.
 

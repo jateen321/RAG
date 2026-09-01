@@ -315,7 +315,9 @@ export default function ChatWorkspace() {
     }
   }, [loadConversation]);
 
-  useEffect(() => { void refreshHealth(); }, [refreshHealth]);
+  useEffect(() => {
+    if (!checkingAuth) void refreshHealth();
+  }, [checkingAuth, identity?.uid, identity?.is_admin, refreshHealth]);
   useEffect(() => {
     if (checkingAuth) return;
     if (identity) {
@@ -808,7 +810,7 @@ export default function ChatWorkspace() {
   }
 
   function openCitation(source: Source) {
-    const href = sourceHref(source, isAdmin);
+    const href = sourceHref(source, isAuthenticated);
     if (source.source_type === 'web' && href) {
       window.open(href, '_blank', 'noopener,noreferrer');
       return;
@@ -887,7 +889,7 @@ export default function ChatWorkspace() {
         />
 
         <div className="library-heading">
-          <span>Shared library</span>
+          <span>{isAuthenticated && !isAdmin ? 'Your library' : 'Shared library'}</span>
           <span className="library-count">{isAuthenticated ? health?.documents?.length ?? '—' : '—'}</span>
         </div>
 
@@ -895,7 +897,7 @@ export default function ChatWorkspace() {
           {!health && !healthError && <div className="library-loading"><span /><span /><span /></div>}
           {healthError && <button className="inline-error" type="button" onClick={() => void refreshHealth()}>{healthError} <strong>Retry</strong></button>}
           {isAuthenticated && health?.documents?.map((document) => {
-            const href = documentHref(document, isAdmin);
+            const href = documentHref(document, isAuthenticated);
             const content = <>
               <BookIcon youtube={document.source_type === 'youtube'} />
               <span>
@@ -914,7 +916,7 @@ export default function ChatWorkspace() {
               </div>
             );
           })}
-          {isAuthenticated && health?.documents?.length === 0 && <p className="empty-library">The shared library is empty. An administrator can add a source.</p>}
+          {isAuthenticated && health?.documents?.length === 0 && <p className="empty-library">{isAdmin ? 'The shared library is empty. Add a source to make it available to guests.' : 'Your library is empty. Upload a document to get started.'}</p>}
           {!isAuthenticated && health && <p className="empty-library">Sign in to inspect sources and save your conversations.</p>}
         </div>
 
@@ -922,7 +924,7 @@ export default function ChatWorkspace() {
           <span className="status-dot" />
           <span>
             <strong>{healthError ? 'Server unavailable' : health ? 'Knowledge base ready' : 'Connecting…'}</strong>
-            <small>{health?.total_chunks != null ? `${health.total_chunks} passages indexed` : health ? 'Ask a question to search the shared library.' : 'Checking your library'}</small>
+            <small>{health?.total_chunks != null ? `${health.total_chunks} passages indexed` : health ? `Ask a question to search ${isAuthenticated && !isAdmin ? 'your library' : 'the shared library'}.` : 'Checking your library'}</small>
           </span>
         </div>
       </aside>
@@ -937,17 +939,17 @@ export default function ChatWorkspace() {
             </button>
             <div><span className="eyebrow">STUDY WORKSPACE</span><h1>Ask your books</h1></div>
           </div>
-          {isAdmin && (
-            <div className="header-actions" role="group" aria-label="Manage shared sources">
-              <button type="button" onClick={() => fileInput.current?.click()} aria-label="Add a document" title="Add a document">
-                <span aria-hidden="true">↑</span><span className="header-action-label">Add a document</span>
+          {isAuthenticated && (
+            <div className="header-actions" role="group" aria-label={isAdmin ? 'Manage shared sources' : 'Manage your sources'}>
+              <button type="button" onClick={() => fileInput.current?.click()} aria-label={isAdmin ? 'Add a shared document' : 'Upload a document'} title={isAdmin ? 'Add a shared document' : 'Upload a document'}>
+                <span aria-hidden="true">↑</span><span className="header-action-label">{isAdmin ? 'Add a document' : 'Upload a document'}</span>
               </button>
-              <button type="button" onClick={() => folderInput.current?.click()} aria-label="Add a folder" title="Add a folder">
-                <span aria-hidden="true">▤</span><span className="header-action-label">Add a folder</span>
+              <button type="button" onClick={() => folderInput.current?.click()} aria-label={isAdmin ? 'Add a shared folder' : 'Upload a folder'} title={isAdmin ? 'Add a shared folder' : 'Upload a folder'}>
+                <span aria-hidden="true">▤</span><span className="header-action-label">{isAdmin ? 'Add a folder' : 'Upload a folder'}</span>
               </button>
-              <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
+              {isAdmin && <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
                 <span aria-hidden="true">▶</span><span className="header-action-label">Add YouTube</span>
-              </button>
+              </button>}
             </div>
           )}
           <input ref={fileInput} className="visually-hidden" type="file" accept="application/pdf,text/plain,text/markdown,.pdf,.txt,.md" onChange={chooseFile} tabIndex={-1} aria-hidden="true" />
@@ -972,9 +974,9 @@ export default function ChatWorkspace() {
         {!hasConversation ? (
           <div className="welcome-state">
             <div className="welcome-seal">अ</div>
-            <p className="eyebrow">SHARED INDEXED KNOWLEDGE</p>
+            <p className="eyebrow">{isAuthenticated && !isAdmin ? 'YOUR INDEXED KNOWLEDGE' : 'SHARED INDEXED KNOWLEDGE'}</p>
             <h2>Read less. Understand more.</h2>
-            <p className="welcome-copy">Ask in English or Hindi. Every answer is grounded in the shared library and linked back to its source.</p>
+            <p className="welcome-copy">Ask in English or Hindi. Every answer is grounded in {isAuthenticated && !isAdmin ? 'your private library' : 'the shared library'} and linked back to its source.</p>
             <div className="suggestion-list">
               {suggestions.map((suggestion) => (
                 <button key={suggestion} type="button" onClick={() => void ask(suggestion)} disabled={isAsking}>
@@ -1034,7 +1036,7 @@ export default function ChatWorkspace() {
                         </button>
                         <div className="inline-sources">
                           {message.sources.map((source, index) => {
-                            const href = sourceHref(source, isAdmin);
+                            const href = sourceHref(source, isAuthenticated);
                             const content = <><strong>{index + 1}. {locationLabel(source)}</strong><span>{source.source}</span></>;
                             return source.preview
                               ? <button type="button" onClick={() => void viewPassage(source)} aria-label={`View cited passage from ${source.source}`} key={`${source.source}-${index}`}>{content}</button>
@@ -1064,7 +1066,7 @@ export default function ChatWorkspace() {
                 <button type="button" onClick={clearPromptImage} aria-label="Remove attached image" title="Remove image">×</button>
               </div>
             )}
-            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} onPaste={isAuthenticated ? pastePromptImage : undefined} onKeyDown={handleQuestionKey} aria-label="Ask a question" placeholder="Ask a question about the shared library…" rows={1} maxLength={2000} />
+            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} onPaste={isAuthenticated ? pastePromptImage : undefined} onKeyDown={handleQuestionKey} aria-label="Ask a question" placeholder={`Ask a question about ${isAuthenticated && !isAdmin ? 'your library' : 'the shared library'}…`} rows={1} maxLength={2000} />
             <div className="composer-footer">
               <div className="composer-tools">
                 {isAuthenticated ? (
@@ -1120,7 +1122,7 @@ export default function ChatWorkspace() {
             <h2>Sources for this answer.</h2>
             <div className="source-list">
               {activeSources.map((source, index) => {
-                const href = sourceHref(source, isAdmin);
+                const href = sourceHref(source, isAuthenticated);
                 const content = (
                   <>
                     <div className="source-card-head"><span>{String(index + 1).padStart(2, '0')}</span><strong>{locationLabel(source)}</strong></div>
@@ -1160,10 +1162,10 @@ export default function ChatWorkspace() {
             <button className="modal-close" type="button" onClick={() => setPassageViewer(null)} aria-label="Close passage">×</button>
             <p className="eyebrow">RETRIEVED EVIDENCE</p>
             <h2 id="passage-title">{locationLabel(passageViewer.source)}</h2>
-            {sourceHref(passageViewer.source, isAdmin) ? (
+            {sourceHref(passageViewer.source, isAuthenticated) ? (
               <a
                 className="passage-source passage-source-link"
-                href={sourceHref(passageViewer.source, isAdmin) || undefined}
+                href={sourceHref(passageViewer.source, isAuthenticated) || undefined}
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`Open ${passageViewer.source.video_title || passageViewer.source.source} at ${locationLabel(passageViewer.source)}`}
@@ -1183,8 +1185,8 @@ export default function ChatWorkspace() {
 
             <div className="modal-actions">
               <button type="button" className="secondary" onClick={() => setPassageViewer(null)}>Close</button>
-              {sourceHref(passageViewer.source, isAdmin) && (
-                <a className="primary" href={sourceHref(passageViewer.source, isAdmin) || undefined} target="_blank" rel="noreferrer">
+              {sourceHref(passageViewer.source, isAuthenticated) && (
+                <a className="primary" href={sourceHref(passageViewer.source, isAuthenticated) || undefined} target="_blank" rel="noreferrer">
                   Open original at {locationLabel(passageViewer.source)}
                 </a>
               )}
