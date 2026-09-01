@@ -369,21 +369,22 @@ Run without a flag to inspect the current claim. The account must sign out and
 in again before a session carries it. Revoking also revokes refresh tokens, which
 the API only enforces when `AUTH_CHECK_REVOKED=1`.
 
-Deploy the frontend and API on the same site (for example `app.example.com` and
-`api.example.com`) so `SameSite=Lax` session cookies work for API requests and
-direct PDF/image links. Truly cross-site domains require
-`SESSION_COOKIE_SAMESITE=none`, HTTPS, `SESSION_COOKIE_SECURE=1`, credentialed
-CORS, and browser third-party-cookie support; a same-site reverse proxy is more
-reliable.
+Deploy browser API requests on the same origin as the frontend (for example
+`https://app.example.com/api`) so `SameSite=Lax` session cookies work reliably
+for API requests and direct PDF/image links. Separate DuckDNS subdomains are
+cross-site for cookies, because DuckDNS is a Public Suffix List entry; browsers
+can block their API cookie as third-party state even with HTTPS and
+`SameSite=None`. A same-origin `/api` reverse proxy avoids that browser policy.
 
 ### Production deployment and continuous delivery
 
 The current production deployment uses one persistent Google Compute Engine VM
-in `asia-south1-a`. Caddy terminates HTTPS and routes the two same-site DuckDNS
-subdomains to the appropriate containers:
+in `asia-south1-a`. Caddy terminates HTTPS, serves the frontend, and routes the
+app's same-origin API requests to FastAPI:
 
 - App: [gyaan-sarthi.duckdns.org](https://gyaan-sarthi.duckdns.org)
-- API and health check: [gyaan-sarthi-api.duckdns.org/health](https://gyaan-sarthi-api.duckdns.org/health)
+- App API and primary health check: [gyaan-sarthi.duckdns.org/api/health](https://gyaan-sarthi.duckdns.org/api/health)
+- Compatibility API and health check: [gyaan-sarthi-api.duckdns.org/health](https://gyaan-sarthi-api.duckdns.org/health)
 
 Docker Compose runs the FastAPI backend, frontend, Redis, and Caddy. ChromaDB,
 uploaded documents, SQLite conversations, and generated images stay on the VM's
@@ -396,10 +397,10 @@ dependency audit. A push to `main` then performs continuous deployment:
 
 1. GitHub Actions authenticates to Google Cloud with Workload Identity Federation
    (no downloaded service-account key).
-2. It builds and publishes immutable backend and frontend images, tagged with the
-   Git commit SHA, to Artifact Registry.
+2. It builds and publishes immutable backend, frontend, and Caddy images, tagged
+   with the Git commit SHA, to Artifact Registry.
 3. It transfers the checked-in release script through IAP SSH, starts the image
-   pair with Docker Compose, waits for container health checks, and records the
+   set with Docker Compose, verifies `/api/health` through Caddy, and records the
    healthy release for rollback protection.
 
 Configure these GitHub repository variables before enabling deployment:

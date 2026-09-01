@@ -26,9 +26,10 @@ npm --prefix frontend run dev -- --host 127.0.0.1
 ```
 
 `NEXT_PUBLIC_RAG_API_URL` selects the backend URL. It defaults to
-`http://localhost:8000` when unset. Using `localhost` for both frontend and API
-keeps the development session cookie same-site. `NEXT_PUBLIC_SITE_URL` is used
-for page metadata and defaults to `http://localhost:3000`.
+`http://localhost:8000` when unset. Local development uses that URL; production
+builds set it to `/api` so browser requests stay on the app's own HTTPS origin.
+`NEXT_PUBLIC_SITE_URL` is used for page metadata and defaults to
+`http://localhost:3000`.
 
 ## Verification
 

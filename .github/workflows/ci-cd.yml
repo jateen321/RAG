@@ -89,19 +89,27 @@ jobs:
           registry="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY"
           backend_image="$registry/backend:${GITHUB_SHA}"
           frontend_image="$registry/frontend:${GITHUB_SHA}"
+          caddy_image="$registry/caddy:${GITHUB_SHA}"
           gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
           docker build --tag "$backend_image" .
           docker build \
-            --build-arg NEXT_PUBLIC_RAG_API_URL="https://$API_DOMAIN" \
+            --build-arg NEXT_PUBLIC_RAG_API_URL="/api" \
             --build-arg NEXT_PUBLIC_FIREBASE_API_KEY="$FIREBASE_API_KEY" \
             --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$FIREBASE_AUTH_DOMAIN" \
             --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
             --build-arg NEXT_PUBLIC_FIREBASE_APP_ID="$FIREBASE_APP_ID" \
             --tag "$frontend_image" frontend
+          docker build --file deploy/Dockerfile.caddy --tag "$caddy_image" .
+          docker run --rm \
+            --env APP_DOMAIN=example.com \
+            --env API_DOMAIN=api.example.com \
+            "$caddy_image" validate --config /etc/caddy/Caddyfile --adapter caddyfile
           docker push "$backend_image"
           docker push "$frontend_image"
+          docker push "$caddy_image"
           echo "BACKEND_IMAGE=$backend_image" >> "$GITHUB_ENV"
           echo "FRONTEND_IMAGE=$frontend_image" >> "$GITHUB_ENV"
+          echo "CADDY_IMAGE=$caddy_image" >> "$GITHUB_ENV"
       - name: Install current release script on VM
         run: |
           release_tmp="/tmp/gyaan-sarthi-release-${GITHUB_SHA}.sh"
@@ -123,4 +131,4 @@ jobs:
             --zone "$VM_ZONE" \
             --tunnel-through-iap \
             --quiet \
-            --command "sudo /opt/gyaan-sarthi/deploy/release.sh '$BACKEND_IMAGE' '$FRONTEND_IMAGE' '${GITHUB_SHA}'"
+            --command "sudo /opt/gyaan-sarthi/deploy/release.sh '$BACKEND_IMAGE' '$FRONTEND_IMAGE' '$CADDY_IMAGE' '${{ vars.APP_DOMAIN }}' '${GITHUB_SHA}'"

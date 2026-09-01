@@ -27,9 +27,11 @@ gcloud compute firewall-rules create allow-web \
   --allow=tcp:80,tcp:443 --target-tags=http-server,https-server
 ```
 
-Point two DNS A records at the VM's external IP: `APP_DOMAIN` for the frontend
-and `API_DOMAIN` for the API. Add both hostnames to Firebase Authentication's
-Authorized domains. Caddy obtains and renews HTTPS certificates automatically.
+Point the `APP_DOMAIN` DNS A record at the VM's external IP. `API_DOMAIN` can
+remain pointed at the same address for compatibility health checks and direct
+API access. Add `APP_DOMAIN` to Firebase Authentication's Authorized domains.
+Caddy obtains and renews HTTPS certificates automatically, and routes browser
+API requests from `https://${APP_DOMAIN}/api/*` to FastAPI on the same origin.
 
 ## Transfer and start
 
@@ -51,10 +53,12 @@ Firebase public configuration and backend secret, then start the stack:
 cd /opt/gyaan-sarthi
 cp .env.production.example .env.production
 docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
-curl -fsS "https://${API_DOMAIN}/health"
+curl -fsS "https://${APP_DOMAIN}/api/health"
 ```
 
-Use Secret Manager for `GEMINI_API_KEY` and any other sensitive values. Grant the
+Set `NEXT_PUBLIC_RAG_API_URL=/api`, `SESSION_COOKIE_SAMESITE=lax`, and
+`SESSION_COOKIE_SECURE=1` in `.env.production`. Use Secret Manager for
+`GEMINI_API_KEY` and any other sensitive values. Grant the
 VM service account only `roles/secretmanager.secretAccessor`; never commit a
 service-account key. Before opening the app publicly, verify that `/health`
 reports 21,499 shared chunks, guests can ask questions, and only the Firebase
