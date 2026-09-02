@@ -78,8 +78,8 @@ source .venv/bin/activate
 
 > 🪟 On Windows: `.venv\Scripts\activate`
 
-Built with **Python 3.14**. Your shell prompt shows `(.venv)` once it's active — the
-remaining steps assume it is. Run `deactivate` to leave.
+Built and tested with **Python 3.12**. Your shell prompt shows `(.venv)` once it's
+active — the remaining steps assume it is. Run `deactivate` to leave.
 
 > 💡 `.venv/` is gitignored. It's disposable: delete it and rebuild from
 > `requirements.txt` any time something gets tangled.
