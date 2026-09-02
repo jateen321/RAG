@@ -22,7 +22,9 @@ from conversation_memory import (
     needs_contextualization,
 )
 from llm_client import get_client
-from retrieval_pipeline import retrieve_context
+# Keep the historical local name so existing callers/tests remain stable while
+# document conversations use the adaptive direct-probe/expanded-retrieval path.
+from retrieval_pipeline import retrieve_adaptive_context as retrieve_context
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -520,6 +522,8 @@ def ask_with_sources(
             "rerank_candidate_count": retrieval["rerank_candidate_count"],
             "context_character_count": retrieval.get("context_character_count"),
             "adaptive": retrieval.get("adaptive", False),
+            "route": retrieval.get("route"),
+            "confidence": retrieval.get("confidence"),
         },
         "timings": {
             **retrieval["timings"],

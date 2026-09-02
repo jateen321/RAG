@@ -14,6 +14,7 @@ import api
 import conversation_memory as memory
 import conversation_store as storage
 import rag_engine
+import retrieval_pipeline
 from auth import AuthenticatedUser, get_current_user, get_optional_user
 
 
@@ -43,6 +44,30 @@ def retrieval_result(chunks):
 
 
 class ConversationMemoryTests(unittest.TestCase):
+    def test_document_generation_uses_adaptive_retrieval_entrypoint(self):
+        self.assertIs(rag_engine.retrieve_context, retrieval_pipeline.retrieve_adaptive_context)
+
+    def test_retrieval_diagnostics_are_returned_without_affecting_answer(self):
+        chunk = {"text": "A verified passage", "page": 1, "source": "book.pdf", "distance": 0.1}
+        retrieval = retrieval_result([chunk])
+        retrieval.update({
+            "route": "direct",
+            "confidence": {
+                "score": 0.91,
+                "confident": True,
+                "top_distance": 0.1,
+                "margin": 0.2,
+                "source_concentration": 1.0,
+            },
+        })
+        model = Mock()
+        model.models.generate_content.return_value = document_response()
+        with patch.object(rag_engine, "retrieve_context", return_value=retrieval), patch.object(rag_engine, "_client", model):
+            result = rag_engine.ask_with_sources("What is Bhagya?")
+
+        self.assertEqual(result["retrieval"]["route"], "direct")
+        self.assertEqual(result["retrieval"]["confidence"]["score"], 0.91)
+
     def test_context_dependent_question_is_rewritten_before_retrieval(self):
         chunk = {"text": "A verified passage", "page": 1, "source": "book.pdf", "distance": 0.1}
         model = Mock()

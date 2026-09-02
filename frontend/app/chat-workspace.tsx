@@ -94,6 +94,14 @@ type PassageViewer = {
   error?: string;
 };
 
+type RetrievalDiagnostics = {
+  route?: 'direct' | 'expanded';
+  score?: number;
+  top_distance?: number | null;
+  margin?: number | null;
+  source_concentration?: number;
+};
+
 type AskResponse = {
   answer: string;
   sources?: Source[];
@@ -102,6 +110,10 @@ type AskResponse = {
   exchange_id?: string;
   answer_basis?: 'documents' | 'web';
   generated_image_id?: string;
+  retrieval?: {
+    route?: 'direct' | 'expanded';
+    confidence?: RetrievalDiagnostics;
+  };
 };
 
 type Conversation = {
@@ -116,6 +128,7 @@ type Conversation = {
   generatedImageUrl?: string;
   requestedWeb?: boolean;
   requestedImage?: boolean;
+  retrieval?: AskResponse['retrieval'];
 };
 
 type ConversationSummary = {
@@ -465,6 +478,7 @@ export default function ChatWorkspace() {
         sources: data.sources ?? [],
         totalSeconds: data.timings?.total_s,
         answerBasis: data.answer_basis,
+        retrieval: data.retrieval,
         generatedImageUrl: data.generated_image_id ? generatedImageUrl(data.generated_image_id) : undefined,
       } : message));
       if (data.conversation_id) setActiveConversationId(data.conversation_id);
@@ -504,6 +518,7 @@ export default function ChatWorkspace() {
       sources: undefined,
       totalSeconds: undefined,
       answerBasis: undefined,
+      retrieval: undefined,
       generatedImageUrl: undefined,
       error: undefined,
       pending: true,
@@ -521,6 +536,7 @@ export default function ChatWorkspace() {
         sources: data.sources ?? [],
         totalSeconds: data.timings?.total_s,
         answerBasis: data.answer_basis,
+        retrieval: data.retrieval,
         generatedImageUrl: data.generated_image_id ? generatedImageUrl(data.generated_image_id) : undefined,
       } : item));
       setActiveSources(data.sources ?? []);
