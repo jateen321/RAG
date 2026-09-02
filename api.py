@@ -87,11 +87,13 @@ def _save_generated_image(image_id: str, data: bytes) -> Path:
 
 
 def _tenant_data_root(owner_id: str) -> Path:
-    return api_files.tenant_data_root(owner_id, DATA_DIR)
+    return api_files.tenant_data_root(owner_id, DATA_DIR, FIREBASE_PROJECT_ID)
 
 
 def _resolve_data_document(filename: str, owner_id: str | None = None) -> Path:
-    return api_files.resolve_data_document(filename, owner_id, DATA_DIR)
+    return api_files.resolve_data_document(
+        filename, owner_id, DATA_DIR, FIREBASE_PROJECT_ID
+    )
 
 
 app = FastAPI(

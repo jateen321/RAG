@@ -52,9 +52,13 @@ def save_generated_image(
     return destination
 
 
-def tenant_data_root(owner_id: str, data_root: str | Path = DATA_DIR) -> Path:
+def tenant_data_root(
+    owner_id: str,
+    data_root: str | Path = DATA_DIR,
+    firebase_project_id: str | None = FIREBASE_PROJECT_ID,
+) -> Path:
     """Use an opaque directory so Firebase UIDs never become path segments."""
-    if not FIREBASE_PROJECT_ID:
+    if not firebase_project_id:
         return Path(data_root).resolve()
     tenant = hashlib.sha256(owner_id.encode("utf-8")).hexdigest()
     return (Path(data_root).resolve() / "users" / tenant).resolve()
@@ -64,9 +68,14 @@ def resolve_data_document(
     filename: str,
     owner_id: str | None = None,
     data_root: str | Path = DATA_DIR,
+    firebase_project_id: str | None = FIREBASE_PROJECT_ID,
 ) -> Path:
     """Resolve a supported document while preventing traversal outside ``data/``."""
-    root = tenant_data_root(owner_id, data_root) if owner_id else Path(data_root).resolve()
+    root = (
+        tenant_data_root(owner_id, data_root, firebase_project_id)
+        if owner_id
+        else Path(data_root).resolve()
+    )
     relative_path = Path(filename)
     if relative_path.parts[:1] == ("data",):
         relative_path = Path(*relative_path.parts[1:])
