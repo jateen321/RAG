@@ -7,7 +7,7 @@ from functools import wraps
 from inspect import signature
 from pathlib import Path
 from typing import Callable
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from fastapi import (
     Depends, FastAPI, File, Form, HTTPException, Query, Request, Response,
@@ -16,8 +16,6 @@ from fastapi import (
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, Field
-
 from config import (
     FIREBASE_PROJECT_ID,
     CONVERSATION_DB_PATH,
@@ -65,6 +63,35 @@ from rate_limit import (
     RateLimitUnavailable,
     get_rate_limiter,
 )
+from backend.api import files as api_files
+from backend.api.models import (
+    AskRequest,
+    EditExchangeRequest,
+    FolderIndexRequest,
+    IndexRequest,
+    SessionRequest,
+    YouTubeIndexRequest,
+)
+
+
+def _detected_prompt_image_type(data: bytes) -> str | None:
+    return api_files.detected_prompt_image_type(data)
+
+
+def _generated_image_path(image_id: str) -> Path:
+    return api_files.generated_image_path(image_id, GENERATED_IMAGE_DIR)
+
+
+def _save_generated_image(image_id: str, data: bytes) -> Path:
+    return api_files.save_generated_image(image_id, data, GENERATED_IMAGE_DIR)
+
+
+def _tenant_data_root(owner_id: str) -> Path:
+    return api_files.tenant_data_root(owner_id, DATA_DIR)
+
+
+def _resolve_data_document(filename: str, owner_id: str | None = None) -> Path:
+    return api_files.resolve_data_document(filename, owner_id, DATA_DIR)
 
 
 app = FastAPI(
@@ -226,121 +253,6 @@ async def migrate_legacy_tenant_data() -> None:
     await run_in_threadpool(assign_legacy_documents, SHARED_CORPUS_OWNER_ID)
 
 
-class AskRequest(BaseModel):
-    question: str = Field(min_length=1, max_length=2000)
-    conversation_id: str | None = Field(default=None, min_length=1, max_length=64)
-    use_web: bool = False
-    generate_image: bool = False
-
-
-class SessionRequest(BaseModel):
-    id_token: str = Field(min_length=20, max_length=10000)
-
-
-class EditExchangeRequest(BaseModel):
-    question: str = Field(min_length=1, max_length=2000)
-
-
-class IndexRequest(BaseModel):
-    filename: str = Field(
-        min_length=1,
-        description="PDF, TXT, or Markdown filename inside the project's data directory.",
-    )
-
-
-class YouTubeIndexRequest(BaseModel):
-    url: str = Field(
-        min_length=1,
-        max_length=2000,
-        description="YouTube video or playlist URL.",
-    )
-
-
-class FolderIndexRequest(BaseModel):
-    folder_path: str = Field(
-        min_length=1,
-        max_length=4096,
-        description="Server-local folder under one of INDEX_FOLDER_ROOTS.",
-    )
-    recursive: bool = Field(
-        default=True,
-        description="Include supported documents in nested folders.",
-    )
-
-
-def _detected_prompt_image_type(data: bytes) -> str | None:
-    """Recognize the supported formats from their file signatures."""
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "image/png"
-    if data.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return "image/webp"
-    return None
-
-
-def _generated_image_path(image_id: str) -> Path:
-    """Resolve only canonical UUID filenames inside the generated-image root."""
-    try:
-        canonical_id = str(UUID(image_id))
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail="Generated image not found.") from exc
-    if canonical_id != image_id:
-        raise HTTPException(status_code=404, detail="Generated image not found.")
-    return Path(GENERATED_IMAGE_DIR).resolve() / canonical_id
-
-
-def _save_generated_image(image_id: str, data: bytes) -> Path:
-    directory = Path(GENERATED_IMAGE_DIR).resolve()
-    directory.mkdir(parents=True, exist_ok=True)
-    destination = directory / image_id
-    temporary = directory / f".{image_id}.tmp"
-    temporary.write_bytes(data)
-    temporary.replace(destination)
-    return destination
-
-
-def _tenant_data_root(owner_id: str) -> Path:
-    """Use an opaque directory so Firebase UIDs never become path segments."""
-    import hashlib
-
-    # A server without Firebase configuration cannot authenticate real traffic;
-    # retaining the historical root keeps dependency-overridden unit tests and
-    # local maintenance tools backward compatible.
-    if not FIREBASE_PROJECT_ID:
-        return Path(DATA_DIR).resolve()
-    tenant = hashlib.sha256(owner_id.encode("utf-8")).hexdigest()
-    return (Path(DATA_DIR).resolve() / "users" / tenant).resolve()
-
-
-def _resolve_data_document(filename: str, owner_id: str | None = None) -> Path:
-    """Resolve a supported document while preventing traversal outside ``data/``."""
-    data_root = _tenant_data_root(owner_id) if owner_id else Path(DATA_DIR).resolve()
-    relative_path = Path(filename)
-    # Older folder-indexing runs stored paths relative to the repository root,
-    # including the leading ``data/`` directory. Accept both that legacy form
-    # and the canonical path relative to DATA_DIR.
-    if relative_path.parts[:1] == ("data",):
-        relative_path = Path(*relative_path.parts[1:])
-    candidate = (data_root / relative_path).resolve()
-    if data_root != candidate.parent and data_root not in candidate.parents:
-        raise ValueError("The document must be located inside the data directory.")
-    if candidate.suffix.lower() not in SUPPORTED_DOCUMENT_EXTENSIONS:
-        raise ValueError("Only PDF, TXT, and Markdown files can be indexed.")
-    if not candidate.is_file() and owner_id in {
-        LEGACY_ADMIN_UID,
-        SHARED_CORPUS_OWNER_ID,
-    }:
-        legacy_root = Path(DATA_DIR).resolve()
-        legacy_candidate = (legacy_root / relative_path).resolve()
-        if (
-            legacy_candidate.parent == legacy_root
-            or legacy_root in legacy_candidate.parents
-        ) and legacy_candidate.is_file():
-            candidate = legacy_candidate
-    if not candidate.is_file():
-        raise ValueError(f"Document not found: {filename}")
-    return candidate
 
 
 @app.get("/")
