@@ -128,6 +128,19 @@ VERTEX_EMBEDDING_TIMEOUT_S = float(
 # ── Retrieval Configuration ───────────────────────────────────────────
 TOP_K = 5                 # Fixed cutoff used by explicit top_k/evaluation calls
 
+# ── Adaptive retrieval routing ───────────────────────────────────────
+# The router starts with one inexpensive direct vector search. These defaults
+# are deliberately conservative and should be calibrated on evaluation data;
+# environment variables make threshold sweeps reproducible without code edits.
+ADAPTIVE_ROUTER_ENABLED = os.getenv("ADAPTIVE_ROUTER_ENABLED", "1").strip().lower() not in {
+    "0", "false", "no"
+}
+ADAPTIVE_MAX_DISTANCE = float(os.getenv("ADAPTIVE_MAX_DISTANCE", "0.45"))
+ADAPTIVE_MIN_MARGIN = float(os.getenv("ADAPTIVE_MIN_MARGIN", "0.05"))
+ADAPTIVE_MIN_SOURCE_CONCENTRATION = float(
+    os.getenv("ADAPTIVE_MIN_SOURCE_CONCENTRATION", "0.60")
+)
+
 # Query rewrites widen recall before a separate lightweight model reranks the
 # fused candidates. Embeddings are batched, so rewrites still use one embedding
 # request. Every model-backed stage has a deterministic fallback.

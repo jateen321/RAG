@@ -110,6 +110,41 @@ class RankFusionTests(unittest.TestCase):
         self.assertEqual([item["chunk_id"] for item in filtered], ["a1", "d4"])
 
 class RetrievalPipelineTests(unittest.TestCase):
+    def test_direct_confidence_combines_distance_margin_and_source_coherence(self):
+        strong = [chunk("a1", 0.10), chunk("a2", 0.28), chunk("a3", 0.31)]
+        weak = [chunk("a1", 0.44), {**chunk("b2", 0.45), "source": "other.pdf"}]
+
+        strong_score = retrieval_pipeline.direct_confidence(strong)
+        weak_score = retrieval_pipeline.direct_confidence(weak)
+
+        self.assertTrue(strong_score["confident"])
+        self.assertGreater(strong_score["score"], weak_score["score"])
+        self.assertFalse(weak_score["confident"])
+
+    def test_adaptive_router_returns_direct_results_when_confident(self):
+        direct = [chunk("a1", 0.10), chunk("a2", 0.25)]
+        with patch.object(retrieval_pipeline, "retrieve", return_value=direct) as retrieve:
+            result = retrieval_pipeline.retrieve_adaptive_context("question", top_k=2)
+
+        retrieve.assert_called_once_with("question", top_k=2, owner_id=None)
+        self.assertEqual(result["route"], "direct")
+        self.assertEqual(result["chunks"], direct)
+        self.assertTrue(result["confidence"]["confident"])
+
+    def test_adaptive_router_expands_uncertain_results(self):
+        direct = [chunk("a1", 0.44), {**chunk("b2", 0.45), "source": "other.pdf"}]
+        expanded = {"chunks": [chunk("a1", 0.2)], "timings": {"retrieval_s": 0.2}}
+        with (
+            patch.object(retrieval_pipeline, "retrieve", return_value=direct),
+            patch.object(retrieval_pipeline, "retrieve_context", return_value=expanded) as pipeline,
+        ):
+            result = retrieval_pipeline.retrieve_adaptive_context("question", top_k=2)
+
+        pipeline.assert_called_once_with("question", top_k=2, owner_id=None)
+        self.assertEqual(result["route"], "expanded")
+        self.assertIs(result["chunks"], expanded["chunks"])
+        self.assertFalse(result["confidence"]["confident"])
+
     def test_pipeline_batches_queries_and_keeps_unique_candidates(self):
         result_lists = [
             [chunk("a1"), chunk("b2")],

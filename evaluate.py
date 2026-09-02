@@ -101,15 +101,36 @@ def _is_refusal(answer: str) -> bool:
     return any(re.search(p, answer, flags=re.IGNORECASE) for p in _REFUSAL_PATTERNS)
 
 
-def _retrieve_chunks(question: str, top_k: int, retrieval_mode: str) -> list[dict]:
-    """Retrieve through either the historical baseline or the app pipeline."""
+def _retrieve_result(question: str, top_k: int, retrieval_mode: str) -> dict:
+    """Retrieve once through the selected strategy and retain route metadata."""
     if retrieval_mode == "direct":
-        return retrieve(question, top_k=top_k)
+        chunks = retrieve(question, top_k=top_k)
+        return {
+            "chunks": chunks,
+            "queries": [question],
+            "raw_candidate_count": len(chunks),
+            "unique_candidate_count": len(chunks),
+            "distinct_candidate_count": len(chunks),
+            "rerank_candidate_count": 0,
+            "context_character_count": sum(len(c.get("text", "")) for c in chunks),
+            "route": "direct",
+            "timings": {"query_planning_s": 0.0, "vector_retrieval_s": 0.0,
+                        "reranking_s": 0.0, "retrieval_s": 0.0},
+        }
     if retrieval_mode == "pipeline":
         from retrieval_pipeline import retrieve_context
 
-        return retrieve_context(question)["chunks"]
+        return retrieve_context(question)
+    if retrieval_mode == "adaptive":
+        from retrieval_pipeline import retrieve_adaptive_context
+
+        return retrieve_adaptive_context(question, top_k=top_k)
     raise ValueError(f"Unknown retrieval mode: {retrieval_mode}")
+
+
+def _retrieve_chunks(question: str, top_k: int, retrieval_mode: str) -> list[dict]:
+    """Compatibility helper returning only selected chunks."""
+    return _retrieve_result(question, top_k, retrieval_mode)["chunks"]
 
 
 def evaluate(
@@ -126,7 +147,8 @@ def evaluate(
         unanswerable = item.get("category") == "unanswerable"
 
         started_at = time.perf_counter()
-        chunks = _retrieve_chunks(item["question"], top_k, retrieval_mode)
+        retrieval_result = _retrieve_result(item["question"], top_k, retrieval_mode)
+        chunks = retrieval_result["chunks"]
         latency = time.perf_counter() - started_at
         total_latency += latency
         rank = _rank_expected_source(item, chunks)
@@ -152,6 +174,8 @@ def evaluate(
             "best_distance": round(min((c["distance"] for c in chunks), default=0.0), 4),
             "selected_chunk_count": len(chunks),
             "latency_s": round(latency, 3),
+            "route": retrieval_result.get("route", retrieval_mode),
+            "confidence": retrieval_result.get("confidence"),
         }
 
         if generate:
@@ -164,6 +188,7 @@ def evaluate(
             generated = ask_with_sources(
                 item["question"],
                 **({"top_k": top_k} if retrieval_mode == "direct" else {}),
+                retrieval_result=retrieval_result,
             )
             answer = generated["answer"]
             row["declined"] = _is_refusal(answer)
@@ -215,6 +240,10 @@ def evaluate(
         "average_retrieval_latency_s": round(total_latency / len(rows), 3),
     }
 
+    routes = sorted({r["route"] for r in rows})
+    for route in routes:
+        summary[f"route_count_{route}"] = sum(r["route"] == route for r in rows)
+
     # Per-language breakdown: the whole point of a bilingual corpus is knowing
     # whether one language is being served worse than the other.
     for lang in sorted({r["language"] for r in scored}):
@@ -260,7 +289,7 @@ def main() -> None:
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument(
         "--retrieval-mode",
-        choices=("direct", "pipeline"),
+        choices=("direct", "pipeline", "adaptive"),
         default="direct",
         help=(
             "Use direct vector retrieval for historical baselines or the adaptive "

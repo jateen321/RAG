@@ -560,6 +560,7 @@ python evaluate.py                      # retrieval only; --top-k defaults to 5
 python evaluate.py --top-k 10           # sweep k to see where recall saturates
 python evaluate.py --output evaluation/results_myrun.json
 python evaluate.py --retrieval-mode pipeline --output evaluation/results_pipeline.json
+python evaluate.py --retrieval-mode adaptive --output evaluation/results_adaptive.json
 python evaluate.py --generate           # ALSO generate answers (costs LLM calls)
 ```
 

@@ -4,12 +4,17 @@ import json
 import logging
 import re
 import time
+from collections import Counter
 
 from google.genai import types
 from google.genai.errors import ClientError
 
 from config import (
     LLM_MODEL,
+    ADAPTIVE_MAX_DISTANCE,
+    ADAPTIVE_MIN_MARGIN,
+    ADAPTIVE_MIN_SOURCE_CONCENTRATION,
+    ADAPTIVE_ROUTER_ENABLED,
     MAX_CONTEXT_CHUNKS,
     MIN_CONTEXT_CHUNKS,
     NEAR_DUPLICATE_OVERLAP,
@@ -23,7 +28,7 @@ from config import (
     TOP_K,
 )
 from llm_client import get_client
-from retriever import retrieve_many
+from retriever import retrieve, retrieve_many
 
 logger = logging.getLogger(__name__)
 _client = get_client()
@@ -294,6 +299,97 @@ def rerank_candidates(
     except (ClientError, json.JSONDecodeError, TypeError, ValueError) as exc:
         logger.warning("Gemini reranking failed; using RRF order: %s", exc)
         return candidates[:minimum]
+
+
+def direct_confidence(chunks: list[dict]) -> dict:
+    """Summarize deterministic evidence quality for the adaptive router.
+
+    Distances are only comparable within this embedding/index configuration, so
+    the thresholds are configuration values intended for calibration on the
+    evaluation set rather than universal probabilities.
+    """
+    if not chunks:
+        return {
+            "score": 0.0,
+            "confident": False,
+            "top_distance": None,
+            "margin": None,
+            "source_concentration": 0.0,
+        }
+
+    distances = [float(chunk.get("distance", float("inf"))) for chunk in chunks]
+    top_distance = distances[0]
+    margin = distances[1] - top_distance if len(distances) > 1 else float("inf")
+    source_counts = Counter(str(chunk.get("source", "")) for chunk in chunks)
+    source_concentration = max(source_counts.values(), default=0) / len(chunks)
+
+    distance_score = max(
+        0.0, min(1.0, 1.0 - top_distance / max(ADAPTIVE_MAX_DISTANCE, 1e-9))
+    )
+    margin_score = (
+        1.0
+        if margin == float("inf")
+        else max(0.0, min(1.0, margin / max(ADAPTIVE_MIN_MARGIN * 2, 1e-9)))
+    )
+    score = round(
+        0.5 * distance_score + 0.3 * margin_score + 0.2 * source_concentration,
+        4,
+    )
+    confident = (
+        top_distance <= ADAPTIVE_MAX_DISTANCE
+        and margin >= ADAPTIVE_MIN_MARGIN
+        and source_concentration >= ADAPTIVE_MIN_SOURCE_CONCENTRATION
+    )
+    return {
+        "score": score,
+        "confident": confident,
+        "top_distance": round(top_distance, 4),
+        "margin": None if margin == float("inf") else round(margin, 4),
+        "source_concentration": round(source_concentration, 4),
+    }
+
+
+def retrieve_adaptive_context(
+    question: str, top_k: int = None, owner_id: str | None = None,
+) -> dict:
+    """Use direct retrieval when evidence is strong; otherwise expand the query."""
+    if not ADAPTIVE_ROUTER_ENABLED:
+        result = retrieve_context(question, top_k=top_k, owner_id=owner_id)
+        result["route"] = "expanded"
+        result["confidence"] = {"score": 0.0, "confident": False}
+        return result
+
+    started = time.perf_counter()
+    direct_top_k = top_k or TOP_K
+    direct_chunks = retrieve(question, top_k=direct_top_k, owner_id=owner_id)
+    confidence = direct_confidence(direct_chunks)
+    direct_finished = time.perf_counter()
+    if confidence["confident"]:
+        return {
+            "chunks": direct_chunks,
+            "queries": [question],
+            "raw_candidate_count": len(direct_chunks),
+            "unique_candidate_count": len(direct_chunks),
+            "distinct_candidate_count": len(direct_chunks),
+            "rerank_candidate_count": 0,
+            "context_character_count": sum(len(c.get("text", "")) for c in direct_chunks),
+            "adaptive": True,
+            "route": "direct",
+            "confidence": confidence,
+            "timings": {
+                "query_planning_s": 0.0,
+                "vector_retrieval_s": round(direct_finished - started, 3),
+                "reranking_s": 0.0,
+                "retrieval_s": round(direct_finished - started, 3),
+            },
+        }
+
+    expanded = retrieve_context(question, top_k=top_k, owner_id=owner_id)
+    expanded["route"] = "expanded"
+    expanded["confidence"] = confidence
+    expanded["timings"]["direct_probe_s"] = round(direct_finished - started, 3)
+    expanded["timings"]["retrieval_s"] = round(time.perf_counter() - started, 3)
+    return expanded
 
 
 def retrieve_context(

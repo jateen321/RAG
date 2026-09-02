@@ -361,6 +361,7 @@ def ask_with_sources(
     question: str,
     top_k: int = None,
     *,
+    retrieval_result: dict | None = None,
     chat_history: list[dict] | None = None,
     image_data: bytes | None = None,
     image_mime_type: str | None = None,
@@ -409,14 +410,18 @@ def ask_with_sources(
     ]
     history = bounded_history(chat_history)
     retrieval_query = _contextualize_question(question, history)
-    try:
-        kwargs = {"top_k": top_k} if top_k is not None else {}
-        if owner_id is not None:
-            kwargs["owner_id"] = owner_id
-        retrieval = retrieve_context(retrieval_query, **kwargs)
+    if retrieval_result is not None:
+        retrieval = retrieval_result
         chunks = retrieval["chunks"]
-    except ClientError as e:
-        _quota_guard(e)                  # 429 → RuntimeError; else re-raised
+    else:
+        try:
+            kwargs = {"top_k": top_k} if top_k is not None else {}
+            if owner_id is not None:
+                kwargs["owner_id"] = owner_id
+            retrieval = retrieve_context(retrieval_query, **kwargs)
+            chunks = retrieval["chunks"]
+        except ClientError as e:
+            _quota_guard(e)              # 429 → RuntimeError; else re-raised
     retrieved_at = time.perf_counter()
 
     if not chunks:
