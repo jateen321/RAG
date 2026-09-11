@@ -102,6 +102,23 @@ def _document_id(source_name: str, source_type: str = "pdf") -> str:
     return hashlib.sha256(key.encode()).hexdigest()[:12]
 
 
+def _scoped_document_id(identity: str, source_type: str, owner_id: str | None) -> str:
+    if owner_id:
+        identity = f"{owner_id}:{identity}"
+    return _document_id(identity, source_type)
+
+
+def is_keyed_document_indexed(
+    document_key: str, source_type: str, owner_id: str | None = None,
+) -> bool:
+    """True only when every chunk is stored; partial documents resume in index_chunks."""
+    doc_id = _scoped_document_id(document_key, source_type, owner_id)
+    metadatas = _get_collection().get(
+        where={"document_id": doc_id}, include=["metadatas"]
+    )["metadatas"] or []
+    return bool(metadatas) and bool(_complete_documents(metadatas))
+
+
 def _chroma_metadata(values: dict) -> dict:
     """Return metadata values Chroma can store.
 
@@ -467,10 +484,7 @@ def index_chunks(
 
     collection = _get_collection()
     before = collection.count()
-    document_identity = document_key or source_name
-    if owner_id:
-        document_identity = f"{owner_id}:{document_identity}"
-    doc_id = _document_id(document_identity, source_type)
+    doc_id = _scoped_document_id(document_key or source_name, source_type, owner_id)
     common_metadata = _chroma_metadata({
         **(source_metadata or {}),
         **({"owner_id": owner_id} if owner_id else {}),

@@ -678,12 +678,13 @@ export default function ChatWorkspace() {
     if (!youtubeUrl.trim()) return;
     setBusyAction('youtube');
     try {
-      const result = await requestJson<{ videos_indexed?: number; chunks_indexed?: number }>('/index/youtube', {
+      const result = await requestJson<{ videos_indexed?: number; videos_already_indexed?: number; chunks_indexed?: number }>('/index/youtube', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: youtubeUrl.trim() }),
       });
-      setNotice({ tone: 'success', text: `Indexed ${result.videos_indexed ?? 1} video${result.videos_indexed === 1 ? '' : 's'} and ${result.chunks_indexed ?? 0} passages.` });
+      const alreadyIndexed = result.videos_already_indexed ? ` ${result.videos_already_indexed} already in your library.` : '';
+      setNotice({ tone: 'success', text: `Indexed ${result.videos_indexed ?? 1} video${result.videos_indexed === 1 ? '' : 's'} and ${result.chunks_indexed ?? 0} passages.${alreadyIndexed}` });
       setYoutubeUrl('');
       setYoutubeOpen(false);
       await refreshHealth();
@@ -1235,7 +1236,7 @@ export default function ChatWorkspace() {
             <span className="modal-icon video">▶</span>
             <p className="eyebrow">ADD TO YOUR LIBRARY</p>
             <h2 id="youtube-title">Index a YouTube source</h2>
-            <p className="modal-copy">Paste a public video or playlist URL. Available captions will become searchable passages.</p>
+            <p className="modal-copy">Paste a public video, playlist, or channel URL. Channels import their latest 50 uploads. Available captions will become searchable passages.</p>
             <label className="field-label" htmlFor="youtube-url">YouTube URL</label>
             <input id="youtube-url" type="url" required placeholder="https://www.youtube.com/watch?v=…" value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} />
             <div className="modal-actions"><button type="button" className="secondary" onClick={() => setYoutubeOpen(false)} disabled={busyAction === 'youtube'}>Cancel</button><button type="submit" className="primary" disabled={busyAction === 'youtube' || !youtubeUrl.trim()}>{busyAction === 'youtube' ? 'Indexing…' : 'Index source'}</button></div>

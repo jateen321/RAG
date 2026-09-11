@@ -209,7 +209,7 @@ def cmd_index(pdf_path: str = None, force: bool = False):
 
 
 def cmd_index_youtube(url: str):
-    """Index transcripts from a YouTube video or playlist URL."""
+    """Index transcripts from a YouTube video, playlist, or channel URL."""
     from youtube_ingester import ingest_youtube
 
     console.print("\n[bold]🎬 Reading YouTube metadata and transcripts...[/bold]")
@@ -222,6 +222,7 @@ def cmd_index_youtube(url: str):
     console.print(Panel(
         f"[green]🎉 YouTube ingestion complete![/green]\n\n"
         f"Videos indexed: [bold]{report['videos_indexed']}[/bold]\n"
+        f"Already in library: [bold]{report['videos_already_indexed']}[/bold]\n"
         f"Videos skipped: [bold]{report['videos_skipped']}[/bold]\n"
         f"Chunks indexed: [bold]{report['chunks_indexed']}[/bold]",
         title="✅ Done",

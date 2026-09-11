@@ -29,7 +29,7 @@ class YouTubeIndexRequest(BaseModel):
     url: str = Field(
         min_length=1,
         max_length=2000,
-        description="YouTube video or playlist URL.",
+        description="YouTube video, playlist, or channel URL.",
     )
 
 

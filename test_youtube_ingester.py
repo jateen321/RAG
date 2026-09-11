@@ -3,18 +3,22 @@
 import os
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 
 from youtube_ingester import (  # noqa: E402
+    CHANNEL_VIDEO_LIMIT,
     TranscriptChunkConfig,
+    VideoResult,
+    _index_video,
     _select_transcript,
     _transcript_chunks,
     _transcript_quality,
+    ingest_youtube,
     validate_youtube_url,
 )
-from indexer import get_stats, index_chunks  # noqa: E402
+from indexer import get_stats, index_chunks, is_keyed_document_indexed  # noqa: E402
 
 
 def transcript(language_code: str, generated: bool):
@@ -37,11 +41,66 @@ class YouTubeUrlTests(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertEqual(validate_youtube_url(url), url)
 
-    def test_rejects_non_youtube_and_channel_urls(self):
-        for url in ("https://example.com/watch?v=x", "https://youtube.com/@channel"):
+    def test_channel_urls_normalize_to_videos_tab(self):
+        cases = {
+            "https://www.youtube.com/@channel": "https://www.youtube.com/@channel/videos",
+            "https://youtube.com/@channel/featured": "https://www.youtube.com/@channel/videos",
+            "https://m.youtube.com/channel/UC123/videos": "https://www.youtube.com/channel/UC123/videos",
+            "https://www.youtube.com/c/Name": "https://www.youtube.com/c/Name/videos",
+            "https://www.youtube.com/user/name/shorts": "https://www.youtube.com/user/name/videos",
+        }
+        for url, expected in cases.items():
+            with self.subTest(url=url):
+                self.assertEqual(validate_youtube_url(url), expected)
+
+    def test_rejects_non_youtube_and_incomplete_channel_urls(self):
+        for url in (
+            "https://example.com/watch?v=x",
+            "https://example.com/@channel",
+            "https://youtube.com/@",
+            "https://youtube.com/channel",
+        ):
             with self.subTest(url=url):
                 with self.assertRaises(ValueError):
                     validate_youtube_url(url)
+
+
+class ChannelIngestTests(unittest.TestCase):
+    def test_channel_import_requests_only_latest_uploads(self):
+        captured = {}
+
+        class FakeYoutubeDL:
+            def __init__(self, options):
+                captured["options"] = options
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def extract_info(self, url, download=False):
+                captured["url"] = url
+                return {
+                    "_type": "playlist",
+                    "id": "UC123",
+                    "title": "Channel - Videos",
+                    "entries": [{"id": "v1", "title": "One"}],
+                }
+
+            def sanitize_info(self, info):
+                return info
+
+        with patch("yt_dlp.YoutubeDL", FakeYoutubeDL), patch(
+            "youtube_ingester._index_video",
+            return_value=VideoResult("v1", "One", "indexed", 3),
+        ):
+            report = ingest_youtube("https://www.youtube.com/@channel")
+
+        self.assertEqual(captured["url"], "https://www.youtube.com/@channel/videos")
+        self.assertEqual(captured["options"]["playlist_items"], f"1:{CHANNEL_VIDEO_LIMIT}")
+        self.assertEqual(report["source_type"], "channel")
+        self.assertEqual(report["chunks_indexed"], 3)
 
 
 class TranscriptSelectionTests(unittest.TestCase):
@@ -160,6 +219,57 @@ class FakeCollection:
         for row_id, metadata in zip(ids, metadatas):
             embedding, document, previous = self.rows[row_id]
             self.rows[row_id] = (embedding, document, {**previous, **metadata})
+
+
+class SkipIndexedVideoTests(unittest.TestCase):
+    def test_keyed_document_counts_as_indexed_only_when_complete(self):
+        collection = FakeCollection()
+        chunks = [
+            {"text": "A" * 60, "chunk_index": 0},
+            {"text": "B" * 60, "chunk_index": 1},
+        ]
+        with (
+            patch("indexer._get_collection", return_value=collection),
+            patch("indexer._embed_batch", side_effect=lambda batch: [[0.1]] * len(batch)),
+        ):
+            self.assertFalse(is_keyed_document_indexed("vid1", "youtube", "owner"))
+            index_chunks(
+                chunks, "YouTube: One [vid1]", "youtube",
+                document_key="vid1", owner_id="owner",
+            )
+            self.assertTrue(is_keyed_document_indexed("vid1", "youtube", "owner"))
+            self.assertFalse(is_keyed_document_indexed("vid1", "youtube", "someone-else"))
+            # A half-finished earlier run must not count, so index_chunks can resume it.
+            collection.rows.pop(next(iter(collection.rows)))
+            self.assertFalse(is_keyed_document_indexed("vid1", "youtube", "owner"))
+
+    def test_already_indexed_video_skips_transcript_fetch(self):
+        with (
+            patch("youtube_ingester.is_keyed_document_indexed", return_value=True) as check,
+            patch("youtube_transcript_api.YouTubeTranscriptApi") as transcript_api,
+        ):
+            result = _index_video({"id": "vid1", "title": "One"}, owner_id="owner")
+
+        check.assert_called_once_with("vid1", "youtube", "owner")
+        transcript_api.assert_not_called()
+        self.assertEqual(result.status, "already_indexed")
+
+    def test_reimport_with_nothing_new_reports_instead_of_failing(self):
+        ydl = MagicMock()
+        ydl.__enter__.return_value = ydl
+        ydl.extract_info.return_value = {"id": "vid1", "title": "One"}
+        ydl.sanitize_info.side_effect = lambda info: info
+        with (
+            patch("yt_dlp.YoutubeDL", return_value=ydl),
+            patch(
+                "youtube_ingester._index_video",
+                return_value=VideoResult("vid1", "One", "already_indexed"),
+            ),
+        ):
+            report = ingest_youtube("https://www.youtube.com/watch?v=vid1")
+
+        self.assertEqual(report["videos_indexed"], 0)
+        self.assertEqual(report["videos_already_indexed"], 1)
 
 
 class SharedIndexerTests(unittest.TestCase):

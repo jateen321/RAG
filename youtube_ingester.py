@@ -1,6 +1,6 @@
-"""YouTube video/playlist metadata and transcript ingestion.
+"""YouTube video/playlist/channel metadata and transcript ingestion.
 
-Media is never downloaded. yt-dlp resolves video/playlist metadata and
+Media is never downloaded. yt-dlp resolves video/playlist/channel metadata and
 youtube-transcript-api fetches timestamped captions without a YouTube API key.
 """
 
@@ -19,11 +19,13 @@ from config import (
     YOUTUBE_CHUNK_TARGET_CHARS,
     YOUTUBE_CHUNK_TARGET_SECONDS,
 )
-from indexer import _content_hash, index_chunks
+from indexer import _content_hash, index_chunks, is_keyed_document_indexed
 
 
 YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
 PREFERRED_LANGUAGES = ("hi", "en")
+CHANNEL_VIDEO_LIMIT = 50
+_CHANNEL_PATH_PREFIXES = {"channel", "c", "user"}
 _HTML_TAG = re.compile(r"<[^>]+>")
 
 
@@ -60,13 +62,33 @@ class TranscriptChunkConfig:
             )
 
 
+def channel_videos_url(url: str) -> str | None:
+    """Return the Videos-tab URL for a YouTube channel URL, else None."""
+    parsed = urlparse(url.strip())
+    host = (parsed.hostname or "").lower()
+    if host not in YOUTUBE_HOSTS - {"youtu.be"}:
+        return None
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if path_parts and len(path_parts[0]) > 1 and path_parts[0].startswith("@"):
+        channel_path = path_parts[:1]
+    elif len(path_parts) >= 2 and path_parts[0] in _CHANNEL_PATH_PREFIXES:
+        channel_path = path_parts[:2]
+    else:
+        return None
+    # Any tab (/featured, /shorts, ...) maps to /videos: only regular uploads are indexed.
+    return "https://www.youtube.com/" + "/".join(channel_path) + "/videos"
+
+
 def validate_youtube_url(url: str) -> str:
     """Return a normalized URL or raise for unsupported/malformed input."""
     url = url.strip()
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
     if parsed.scheme not in {"http", "https"} or host not in YOUTUBE_HOSTS:
-        raise ValueError("Provide a valid youtube.com or youtu.be video/playlist URL.")
+        raise ValueError("Provide a valid youtube.com or youtu.be video, playlist, or channel URL.")
+    channel_url = channel_videos_url(url)
+    if channel_url:
+        return channel_url
     query = parse_qs(parsed.query)
     path_parts = [part for part in parsed.path.split("/") if part]
     is_short = host == "youtu.be" and bool(path_parts)
@@ -74,7 +96,7 @@ def validate_youtube_url(url: str) -> str:
     is_playlist = parsed.path.rstrip("/") == "/playlist" and bool(query.get("list"))
     is_short_form = len(path_parts) >= 2 and path_parts[0] in {"shorts", "live"}
     if not (is_short or is_watch or is_playlist or is_short_form):
-        raise ValueError("Only YouTube video and playlist URLs are supported.")
+        raise ValueError("Only YouTube video, playlist, and channel URLs are supported.")
     return url
 
 
@@ -258,6 +280,8 @@ def _index_video(
     title = str(info.get("title") or video_id or "Unknown video")
     if not video_id:
         raise ValueError("YouTube returned a video without an ID.")
+    if is_keyed_document_indexed(video_id, "youtube", owner_id):
+        return VideoResult(video_id, title, "already_indexed")
 
     transcript = _select_transcript(YouTubeTranscriptApi().list(video_id))
     fetched = transcript.fetch()
@@ -284,10 +308,11 @@ def _index_video(
 
 
 def ingest_youtube(url: str, owner_id: str | None = None) -> dict:
-    """Index a YouTube video or playlist and return a structured report."""
+    """Index a YouTube video, playlist, or channel and return a structured report."""
     from yt_dlp import YoutubeDL
 
     url = validate_youtube_url(url)
+    is_channel = channel_videos_url(url) is not None
     options = {
         "quiet": True,
         "no_warnings": True,
@@ -295,6 +320,9 @@ def ingest_youtube(url: str, owner_id: str | None = None) -> dict:
         "extract_flat": "in_playlist",
         "ignoreerrors": True,
     }
+    if is_channel:
+        # The Videos tab lists newest first, so this keeps the latest uploads.
+        options["playlist_items"] = f"1:{CHANNEL_VIDEO_LIMIT}"
     with YoutubeDL(options) as ydl:
         raw = ydl.extract_info(url, download=False)
         info = ydl.sanitize_info(raw) if raw else None
@@ -325,15 +353,17 @@ def ingest_youtube(url: str, owner_id: str | None = None) -> dict:
 
     indexed = [result for result in results if result.status == "indexed"]
     skipped = [result for result in results if result.status == "skipped"]
-    if not indexed:
+    already = [result for result in results if result.status == "already_indexed"]
+    if not indexed and not already:
         reasons = "; ".join(result.reason or "unknown error" for result in skipped[:3])
         raise RuntimeError(f"No videos were indexed. {reasons}")
     return {
-        "source_type": "playlist" if is_playlist else "video",
+        "source_type": "channel" if is_channel else ("playlist" if is_playlist else "video"),
         "playlist_id": info.get("id") if is_playlist else None,
         "playlist_title": info.get("title") if is_playlist else None,
         "videos_total": len(results),
         "videos_indexed": len(indexed),
+        "videos_already_indexed": len(already),
         "videos_skipped": len(skipped),
         "chunks_indexed": sum(result.chunks_indexed for result in indexed),
         "results": [result.__dict__ for result in results],
