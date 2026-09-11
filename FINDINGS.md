@@ -8,7 +8,7 @@ Consolidated findings for the Hindi/English RAG app. Each result is tagged with 
   ported into this repo. *Action: port the script/results back to make it reproducible here.*
 - ⚪ **Hypothesis** — believed/expected, not yet measured.
 
-Last updated: 2026-08-31.
+Last updated: 2026-09-11.
 
 ---
 
@@ -1398,3 +1398,46 @@ check inside the backend container, allowing the successful release marker to be
 🟢 **CI-verified:** the first workflow attempt to refresh the VM release script failed because
 `/tmp/gyaan-sarthi-release.sh` was already owned by root from manual recovery. CI now uses a
 commit-specific temporary filename and removes it after installation.
+
+## 37. Channel imports use yt-dlp's Videos tab and `playlist_items` (2026-09-11)
+
+🟢 **Repo-verified:** yt-dlp 2026.08.19 lists `playlistend` as deprecated ("Use playlist_items"),
+and `get_requested_items` turns start/end into `"start:end"`, so `playlist_items="1:50"` means the
+first 50 entries. Live check: `@YouTube` normalized to `…/@YouTube/videos` and returned
+`_type: playlist` with exactly 5 newest uploads for `1:5`. Channel imports are capped at the latest
+50 regular uploads (no Shorts or Live).
+
+## 38. Re-imports skipped embedding but not transcript fetching (2026-09-11)
+
+🟢 **Code-verified:** `index_chunks` reuses vectors whose `content_hash` matches, but `_index_video`
+fetched each transcript before reaching that check, so re-importing a channel re-requested every
+video from YouTube. `_index_video` now calls `is_keyed_document_indexed` first; only complete
+documents (every `chunk_total` row stored) count, so interrupted runs still resume. Trade-off:
+creator-edited captions are not refreshed without removing the video first.
+
+## 39. Transcript libraries reach YouTube from the server's own IP (2026-09-11)
+
+🟢 **Repo-verified:** `youtube-transcript-api` calls `youtube.com/watch` and
+`youtubei/v1/player` directly, its `RequestBlocked` error names cloud-provider IPs as a cause, and
+this project configures no proxy. ⚪ **Hypothesis:** parallel or large imports from the GCP VM risk
+IP blocks; the library's remedy is a rotating residential proxy (`WebshareProxyConfig`).
+
+## 40. A "busy" `Retry-After` is lease expiry, not import completion (2026-09-11)
+
+🟢 **Code-verified:** `_ACQUIRE_CONCURRENCY_SCRIPT` returns the earliest lease score minus now. The
+900 s lease is renewed every 300 s by `_heartbeat` and released on completion, so `Retry-After` can
+read ~600–900 s while the slot frees in seconds. Folder uploads send one request per file, so
+another import could take the slot between files and fail the rest. 429s now carry
+`X-RateLimit-Reason: busy|rate`; uploads poll `busy` (5 s, 10 s, then 15 s, ≤10 min per file) and
+still fail fast on `rate`. A busy rejection spends no token because `admit()` acquires before it
+charges. Known cost: each retry re-sends the whole file, since FastAPI parses the multipart body
+before admission runs.
+
+## 41. A push to `main` is the production deploy (2026-09-11)
+
+🟢 **CI-verified:** `ci-cd.yml` tests, builds commit-tagged images, and runs `deploy/release.sh`
+(health checks plus rollback) on every push to `main`. Run 34594287619 deployed `0f055f9`, and the
+VM's `releases/current.env` names those image tags. The top-level source files in
+`/opt/gyaan-sarthi` are stale leftovers from the manual transfer; the running code comes from the
+images. IAP SSH lands as the OS Login user `b22cs026_gmail_com`, which has passwordless `sudo` but is
+not in the `docker` group.
