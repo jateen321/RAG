@@ -1441,3 +1441,13 @@ VM's `releases/current.env` names those image tags. The top-level source files i
 `/opt/gyaan-sarthi` are stale leftovers from the manual transfer; the running code comes from the
 images. IAP SSH lands as the OS Login user `b22cs026_gmail_com`, which has passwordless `sudo` but is
 not in the `docker` group.
+
+## 42. Releases filled the VM disk because old images were never removed (2026-09-11)
+
+🟢 **Cloud-verified:** the `74f1727` deploy failed with `no space left on device` while pulling,
+and rollback then failed to copy a 398-byte file, leaving an empty `rollback-*.env`. Production
+kept serving `0f055f9` (public `/api/health` 200). The disk was 29 GB with 258 MB free: 25 images
+totalled 23.8 GB with only 4 in use (each release adds a ~1.14 GB backend and ~1.25 GB frontend),
+plus 6.6 GB of build cache from the first manual build; app data was only 1.4 GB. `release.sh` now
+runs `docker image prune --all` and `docker builder prune --all` before each pull. Every release
+image remains in Artifact Registry, which has no cleanup policy yet (⚪ growing storage cost).

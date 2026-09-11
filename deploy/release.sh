@@ -82,6 +82,11 @@ rollback() {
 candidate="$RELEASE_DIR/$RELEASE_ID.env"
 write_release "$candidate"
 
+# Free disk before pulling; running containers keep their images and rollback re-pulls.
+if ! docker image prune --all --force >/dev/null || ! docker builder prune --all --force >/dev/null; then
+  echo "Image cleanup failed; continuing with the pull." >&2
+fi
+
 if ! run_compose "$candidate" pull backend frontend caddy; then
   rollback 1
 fi
