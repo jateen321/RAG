@@ -194,6 +194,9 @@ def _rate_limited(
                 select(arguments.arguments) if select else (rates, concurrency)
             )
             user = arguments.arguments["user"]
+            if user is not None and user.is_admin:
+                # Admins share _corpus_owner_id's exemption; keeps "root user" tied to the claim, not a hardcoded email.
+                return await endpoint(*args, **kwargs)
             if user is None:
                 http_request = arguments.arguments.get("http_request")
                 client_host = (
