@@ -65,6 +65,20 @@ class DistributedRateLimiterTests(unittest.IsolatedAsyncioTestCase):
             await limiter.charge("firebase-user", ("image",))
 
         self.assertEqual(raised.exception.retry_after, 2)
+        self.assertEqual(raised.exception.reason, "rate")
+
+    async def test_busy_rejection_is_tagged_busy(self):
+        redis = AsyncMock()
+        redis.eval.return_value = [0, 600000]
+        limiter = DistributedRateLimiter(redis, enabled=True)
+
+        with self.assertRaises(RateLimitExceeded) as raised:
+            async with limiter.admit(
+                "firebase-user", rates=("ingest",), concurrency=("ingest",)
+            ):
+                pass
+
+        self.assertEqual(raised.exception.reason, "busy")
 
     async def test_concurrency_lease_is_released(self):
         redis = AsyncMock()
@@ -164,6 +178,7 @@ class ApiRateLimitResponseTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.headers["Retry-After"], "8")
+        self.assertEqual(response.headers["X-RateLimit-Reason"], "rate")
         self.assertEqual(
             limiter.calls,
             [(
@@ -184,6 +199,21 @@ class ApiRateLimitResponseTests(unittest.TestCase):
 
         exposed = response.headers["Access-Control-Expose-Headers"].lower()
         self.assertIn("retry-after", exposed)
+        self.assertIn("x-ratelimit-reason", exposed)
+
+    def test_busy_rejection_reports_busy_reason(self):
+        limiter = StubLimiter(
+            RateLimitExceeded(
+                600, "The service is busy. Please wait.", reason="busy"
+            )
+        )
+        with patch.object(api, "get_rate_limiter", return_value=limiter):
+            response = self.client.post(
+                "/ask", json={"question": "Explain the indexed text"}
+            )
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers["X-RateLimit-Reason"], "busy")
 
     def test_redis_admission_failure_returns_503(self):
         limiter = StubLimiter(

@@ -24,9 +24,12 @@ logger = logging.getLogger(__name__)
 class RateLimitExceeded(Exception):
     """The caller exhausted a bucket or all concurrency slots are occupied."""
 
-    def __init__(self, retry_after: float, detail: str) -> None:
+    def __init__(
+        self, retry_after: float, detail: str, *, reason: str = "rate"
+    ) -> None:
         self.retry_after = max(1, math.ceil(retry_after))
         self.detail = detail
+        self.reason = reason
         super().__init__(detail)
 
 
@@ -303,6 +306,7 @@ class DistributedRateLimiter:
             raise RateLimitExceeded(
                 float(result[1]) / 1000,
                 "The service is busy. Please wait before trying again.",
+                reason="busy",
             )
 
     async def _renew(self, policies: list[ConcurrencyPolicy], token: str) -> None:

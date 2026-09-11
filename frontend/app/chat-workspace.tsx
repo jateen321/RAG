@@ -176,6 +176,21 @@ const suggestions = [
   'भाग्य और कर्म के संबंध को समझाइए',
 ];
 
+class RequestError extends Error {
+  status: number;
+  reason: string | null;
+
+  constructor(message: string, status: number, reason: string | null) {
+    super(message);
+    this.status = status;
+    this.reason = reason;
+  }
+}
+
+const BUSY_RETRY_DELAYS_MS = [5000, 10000];
+const BUSY_RETRY_INTERVAL_MS = 15000;
+const BUSY_WAIT_BUDGET_MS = 10 * 60 * 1000;
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -193,7 +208,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     if (response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
       message = `${message} Try again in ${Math.ceil(retryAfter)} seconds.`;
     }
-    throw new Error(message);
+    throw new RequestError(message, response.status, response.headers.get('X-RateLimit-Reason'));
   }
   return payload as T;
 }
@@ -269,6 +284,7 @@ export default function ChatWorkspace() {
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadWaiting, setUploadWaiting] = useState(false);
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [busyAction, setBusyAction] = useState<'upload' | 'youtube' | null>(null);
@@ -649,14 +665,28 @@ export default function ChatWorkspace() {
       const body = new FormData();
       body.append('file', file);
       if (pendingUpload.folderName && file.webkitRelativePath) body.append('relative_path', file.webkitRelativePath);
-      try {
-        const result = await requestJson<{ source: string; pages_with_text: number; chunks_indexed: number }>('/upload', {
-          method: 'POST',
-          body,
-        });
-        indexed.push(result.source);
-      } catch (error) {
-        failures.push(`${file.name}: ${error instanceof Error ? error.message : 'could not be indexed'}`);
+      const startedAt = Date.now();
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          const result = await requestJson<{ source: string; pages_with_text: number; chunks_indexed: number }>('/upload', {
+            method: 'POST',
+            body,
+          });
+          indexed.push(result.source);
+          break;
+        } catch (error) {
+          // Busy Retry-After is the other holder's lease expiry, not when its import ends, so poll instead.
+          const delay = BUSY_RETRY_DELAYS_MS[attempt] ?? BUSY_RETRY_INTERVAL_MS;
+          if (error instanceof RequestError && error.status === 429 && error.reason === 'busy' && Date.now() - startedAt + delay <= BUSY_WAIT_BUDGET_MS) {
+            setUploadWaiting(true);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+          failures.push(`${file.name}: ${error instanceof Error ? error.message : 'could not be indexed'}`);
+          break;
+        } finally {
+          setUploadWaiting(false);
+        }
       }
       setUploadProgress(index + 1);
     }
@@ -1224,7 +1254,7 @@ export default function ChatWorkspace() {
             {pendingUpload.folderName && (pendingUpload.skippedNested > 0 || pendingUpload.skippedUnsupported > 0 || pendingUpload.skippedOversize > 0) && (
               <p className="selection-note">Skipped: {pendingUpload.skippedNested} from nested folders, {pendingUpload.skippedUnsupported} unsupported, {pendingUpload.skippedOversize} over 500 MB.</p>
             )}
-            <div className="modal-actions"><button type="button" className="secondary" onClick={closeUploadDialog} disabled={busyAction === 'upload'}>Cancel</button><button type="button" className="primary" onClick={() => void uploadDocument()} disabled={busyAction === 'upload'}>{busyAction === 'upload' ? `Indexing ${uploadProgress}/${pendingUpload.files.length}…` : 'Upload & index'}</button></div>
+            <div className="modal-actions"><button type="button" className="secondary" onClick={closeUploadDialog} disabled={busyAction === 'upload'}>Cancel</button><button type="button" className="primary" onClick={() => void uploadDocument()} disabled={busyAction === 'upload'}>{busyAction === 'upload' ? (uploadWaiting ? `Waiting for another import… (${uploadProgress}/${pendingUpload.files.length})` : `Indexing ${uploadProgress}/${pendingUpload.files.length}…`) : 'Upload & index'}</button></div>
           </section>
         </div>
       )}

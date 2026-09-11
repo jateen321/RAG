@@ -160,7 +160,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type"],
-    expose_headers=["Retry-After"],
+    expose_headers=["Retry-After", "X-RateLimit-Reason"],
 )
 
 
@@ -227,7 +227,10 @@ def _rate_limited(
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail=exc.detail,
-                    headers={"Retry-After": str(exc.retry_after)},
+                    headers={
+                        "Retry-After": str(exc.retry_after),
+                        "X-RateLimit-Reason": exc.reason,
+                    },
                 ) from exc
             except RateLimitUnavailable as exc:
                 raise HTTPException(
