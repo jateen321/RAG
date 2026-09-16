@@ -3,7 +3,7 @@
 import { ChangeEvent, ClipboardEvent, FormEvent, KeyboardEvent, type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 
 import { AnswerMarkdown } from './answer-markdown';
-import { useAuth } from './auth-gate';
+import { AuthSession, useAuth } from './auth-gate';
 
 const API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || 'http://localhost:8000';
 const DEFAULT_EVIDENCE_WIDTH = 320;
@@ -1207,6 +1207,7 @@ export default function ChatWorkspace() {
               </button>
             </div>
           )}
+          <AuthSession />
           <input ref={fileInput} className="visually-hidden" type="file" accept="application/pdf,text/plain,text/markdown,.pdf,.txt,.md" onChange={chooseFile} tabIndex={-1} aria-hidden="true" />
           <input
             ref={(node) => {
