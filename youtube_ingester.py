@@ -6,6 +6,7 @@ youtube-transcript-api fetches timestamped captions without a YouTube API key.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from html import unescape
 import re
@@ -307,7 +308,11 @@ def _index_video(
     return VideoResult(video_id, title, "indexed", count)
 
 
-def ingest_youtube(url: str, owner_id: str | None = None) -> dict:
+def ingest_youtube(
+    url: str,
+    owner_id: str | None = None,
+    on_progress: Callable[[dict], None] | None = None,
+) -> dict:
     """Index a YouTube video, playlist, or channel and return a structured report."""
     from yt_dlp import YoutubeDL
 
@@ -335,21 +340,34 @@ def ingest_youtube(url: str, owner_id: str | None = None) -> dict:
         raise ValueError("The playlist contains no accessible videos.")
 
     results: list[VideoResult] = []
+
+    def report_progress() -> None:
+        if on_progress:
+            on_progress({
+                "done": len(results),
+                "total": len(entries),
+                "indexed": sum(r.status == "indexed" for r in results),
+                "already_indexed": sum(r.status == "already_indexed" for r in results),
+                "skipped": sum(r.status == "skipped" for r in results),
+            })
+
+    report_progress()
     for entry in entries:
         if not entry:
             results.append(VideoResult("unknown", "Unavailable video", "skipped", reason="Unavailable or private"))
-            continue
-        try:
-            results.append(
-                _index_video(entry, info if is_playlist else None, owner_id=owner_id)
-            )
-        except Exception as exc:
-            results.append(VideoResult(
-                str(entry.get("id") or "unknown"),
-                str(entry.get("title") or "Unknown video"),
-                "skipped",
-                reason=str(exc),
-            ))
+        else:
+            try:
+                results.append(
+                    _index_video(entry, info if is_playlist else None, owner_id=owner_id)
+                )
+            except Exception as exc:
+                results.append(VideoResult(
+                    str(entry.get("id") or "unknown"),
+                    str(entry.get("title") or "Unknown video"),
+                    "skipped",
+                    reason=str(exc),
+                ))
+        report_progress()
 
     indexed = [result for result in results if result.status == "indexed"]
     skipped = [result for result in results if result.status == "skipped"]

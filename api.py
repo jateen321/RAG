@@ -51,11 +51,8 @@ from conversation_store import (
     replace_latest_exchange_with_web_answer,
 )
 from document_ingester import (
-    SOURCE_TYPES,
     SUPPORTED_DOCUMENT_EXTENSIONS,
-    extract_document as _extract_document,
     extract_text_document as _extract_text_document,
-    index_folder,
     resolve_allowed_folder,
 )
 from rate_limit import (
@@ -63,6 +60,7 @@ from rate_limit import (
     RateLimitUnavailable,
     get_rate_limiter,
 )
+import index_jobs
 from backend.api import files as api_files
 from backend.api.models import (
     AskRequest,
@@ -94,6 +92,46 @@ def _resolve_data_document(filename: str, owner_id: str | None = None) -> Path:
     return api_files.resolve_data_document(
         filename, owner_id, DATA_DIR, FIREBASE_PROJECT_ID
     )
+
+
+def _queued_response(job: dict) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={"job": job},
+        headers={"Location": f"/index/jobs/{job['job_id']}"},
+    )
+
+
+def _enqueue_job(
+    user: AuthenticatedUser,
+    kind: str,
+    label: str,
+    total: int | None,
+    payload: dict,
+) -> dict:
+    """Persist a serializable job and enqueue it; never enqueue request objects."""
+    # This role bit is derived from verified Firebase claims, never request
+    # JSON/form data. The worker uses it to preserve admin admission exemption.
+    payload = {**payload, "rate_limit_bypass": bool(user.is_admin)}
+    try:
+        job = index_jobs.create(
+            user.uid, kind, label, total, payload=payload,
+        )
+        _dispatch_job(user.uid, job["job_id"])
+        return job
+    except index_jobs.ActiveJobError:
+        raise _active_job_conflict() from None
+    except Exception as exc:
+        # A state record without a queue entry must not block the tenant.
+        if "job" in locals():
+            index_jobs.finish(user.uid, job["job_id"], "failed", "The import could not be queued.")
+        raise HTTPException(status_code=503, detail="The indexing queue is temporarily unavailable.") from exc
+
+
+def _dispatch_job(owner_id: str, job_id: str) -> None:
+    from worker import enqueue
+
+    enqueue(owner_id, job_id)
 
 
 app = FastAPI(
@@ -137,6 +175,25 @@ def _corpus_owner_id(user: AuthenticatedUser | None) -> str:
     return user.uid
 
 
+def _active_job_conflict() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="An indexing job is already running for your account. Wait for it to finish.",
+        headers={"X-Index-Conflict": "active-job"},
+    )
+
+
+def _require_no_active_job(user: AuthenticatedUser = Depends(get_current_user)) -> None:
+    # A dependency runs before _rate_limited admission, so the user's own import
+    # yields this 409 instead of a misleading 429 for the ingest slot it holds.
+    try:
+        active = index_jobs.is_running(user.uid)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail="Indexing job state is temporarily unavailable.") from exc
+    if active:
+        raise _active_job_conflict()
+
+
 @app.middleware("http")
 async def enforce_trusted_origin(request: Request, call_next):
     """Reject cross-site writes so a session cookie alone cannot authorize them.
@@ -160,7 +217,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type"],
-    expose_headers=["Retry-After", "X-RateLimit-Reason"],
+    expose_headers=["Retry-After", "X-RateLimit-Reason", "X-Index-Conflict"],
 )
 
 
@@ -840,13 +897,11 @@ async def remove_conversation(
 
 
 @app.post("/index")
-@_rate_limited(rates=("ingest",), concurrency=("ingest",))
+@_rate_limited(rates=("ingest",))
 async def index_file(
     request: IndexRequest,
     user: AuthenticatedUser = Depends(require_admin),
 ) -> dict:
-    from indexer import index_document, is_document_indexed
-
     try:
         document_path = _resolve_data_document(
             request.filename, SHARED_CORPUS_OWNER_ID
@@ -857,182 +912,200 @@ async def index_file(
             if tenant_root in document_path.parents
             else document_path.relative_to(Path(DATA_DIR).resolve()).as_posix()
         )
-        if await run_in_threadpool(
-            is_document_indexed,
+        job = _enqueue_job(
+            user,
+            "file",
             source_name,
-            file_path=document_path,
-            owner_id=SHARED_CORPUS_OWNER_ID,
-        ):
-            return {"source": source_name, "pages_with_text": 0,
-                    "chunks_indexed": 0, "deduplicated": True}
-        pages = await run_in_threadpool(_extract_document, document_path)
-        chunks = await run_in_threadpool(
-            index_document,
-            pages,
-            source_name,
-            SOURCE_TYPES[document_path.suffix.lower()],
-            file_path=document_path,
-            owner_id=SHARED_CORPUS_OWNER_ID,
+            1,
+            {
+                "kind": "file", "path": str(document_path), "source_name": source_name,
+                "extension": document_path.suffix.lower(),
+                "corpus_owner_id": SHARED_CORPUS_OWNER_ID,
+            },
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    return {
-        "source": source_name,
-        "pages_with_text": len(pages),
-        "chunks_indexed": chunks,
-        "deduplicated": chunks == 0 and bool(pages),
-    }
+    return _queued_response(job)
 
 
-@app.post("/upload", status_code=status.HTTP_201_CREATED)
-@_rate_limited(rates=("ingest",), concurrency=("ingest",))
-async def upload_document(
-    file: UploadFile = File(...),
-    relative_path: str | None = Form(default=None),
-    user: AuthenticatedUser = Depends(get_current_user),
-) -> dict:
-    """Save and index a shared or private document, reusing local copies."""
-    original_name = Path(file.filename or "").name
+def _validate_upload_metadata(filename: str | None, content_type: str | None, relative_path: str | None, user: AuthenticatedUser) -> dict:
+    original_name = Path(filename or "").name
     if not original_name or original_name in {".", ".."}:
         raise HTTPException(status_code=400, detail="A document filename is required.")
     extension = Path(original_name).suffix.lower()
     if extension not in SUPPORTED_DOCUMENT_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail="Only PDF, TXT, and Markdown files can be uploaded.",
-        )
-    if file.content_type not in ALLOWED_CONTENT_TYPES[extension]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"The uploaded file type does not match its {extension} extension.",
-        )
-
-    corpus_owner_id = _corpus_owner_id(user)
-    data_root = _tenant_data_root(corpus_owner_id)
-    data_root.mkdir(parents=True, exist_ok=True)
-
+        raise HTTPException(status_code=400, detail="Only PDF, TXT, and Markdown files can be uploaded.")
+    if content_type not in ALLOWED_CONTENT_TYPES[extension]:
+        raise HTTPException(status_code=400, detail=f"The uploaded file type does not match its {extension} extension.")
     path_parts = [original_name]
     if relative_path:
         if "\\" in relative_path:
             raise HTTPException(status_code=400, detail="Invalid document path.")
         path_parts = relative_path.split("/")
-        if (
-            any(part in {"", ".", ".."} for part in path_parts)
-            or path_parts[-1] != original_name
-        ):
+        if any(part in {"", ".", ".."} for part in path_parts) or path_parts[-1] != original_name:
             raise HTTPException(status_code=400, detail="Invalid document path.")
-
-    source_name = "/".join(path_parts)
-    destination = data_root.joinpath(*path_parts).resolve()
-    if destination.parent != data_root and data_root not in destination.parents:
+    # Resolve both sides: macOS commonly aliases /var to /private/var, and
+    # a patched/test data root must still pass the same containment check.
+    root = Path(_tenant_data_root(_corpus_owner_id(user))).resolve()
+    destination = root.joinpath(*path_parts).resolve()
+    if destination.parent != root and root not in destination.parents:
         raise HTTPException(status_code=400, detail="Invalid document filename.")
+    return {
+        "source_name": "/".join(path_parts), "extension": extension,
+        "destination": destination, "corpus_owner_id": _corpus_owner_id(user),
+    }
 
-    from indexer import index_document, is_document_indexed
 
+async def _stream_upload(file: UploadFile, metadata: dict) -> bool:
+    """Fully persist bytes before returning; worker receives only the path."""
+    destination = metadata["destination"]
+    if destination.exists():
+        return False
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    partial = destination.with_name(f".{destination.name}.{uuid4().hex}.part")
     total = 0
-    created_by_request = False
-    used_existing_file = destination.exists()
     try:
-        if not used_existing_file:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            with destination.open("xb") as output:
-                created_by_request = True
-                while chunk := await file.read(1024 * 1024):
-                    total += len(chunk)
-                    if total > MAX_UPLOAD_BYTES:
-                        raise HTTPException(
-                            status_code=413,
-                            detail="Document is larger than the 500 MB upload limit.",
-                        )
-                    output.write(chunk)
-
-        if await run_in_threadpool(
-            is_document_indexed,
-            source_name,
-            file_path=destination,
-            owner_id=corpus_owner_id,
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail=f"'{source_name}' is already indexed in the library.",
-            )
-
-        pages = await run_in_threadpool(_extract_document, destination)
-        if not pages:
-            raise HTTPException(
-                status_code=422,
-                detail="No readable text could be extracted from this document.",
-            )
-        chunks = await run_in_threadpool(
-            index_document, pages, source_name, SOURCE_TYPES[extension],
-            file_path=destination,
-            owner_id=corpus_owner_id,
-        )
-    except ValueError as exc:
-        if created_by_request:
-            destination.unlink(missing_ok=True)
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except HTTPException:
-        if created_by_request:
-            destination.unlink(missing_ok=True)
-        raise
-    except RuntimeError as exc:
-        if created_by_request:
-            destination.unlink(missing_ok=True)
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        with partial.open("xb") as output:
+            while chunk := await file.read(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail="Document is larger than the 500 MB upload limit.")
+                output.write(chunk)
+            output.flush()
+            os.fsync(output.fileno())
+        try:
+            os.link(partial, destination)
+        except FileExistsError:
+            # Another request won the same-path race; never overwrite its file.
+            return False
+        finally:
+            partial.unlink(missing_ok=True)
     except Exception:
-        if created_by_request:
-            destination.unlink(missing_ok=True)
+        partial.unlink(missing_ok=True)
+        raise
+    return True
+
+
+@app.post("/upload")
+@_rate_limited(rates=("ingest",))
+async def upload_document(
+    file: UploadFile = File(...),
+    relative_path: str | None = Form(default=None),
+    user: AuthenticatedUser = Depends(get_current_user),
+) -> dict:
+    """Persist a shared/private document, then enqueue indexing."""
+    metadata = _validate_upload_metadata(file.filename, file.content_type, relative_path, user)
+    payload = {
+        "kind": "file",
+        "corpus_owner_id": metadata["corpus_owner_id"],
+        "rate_limit_bypass": bool(user.is_admin),
+    }
+    try:
+        queued_job = index_jobs.create(
+            user.uid, "file", metadata["source_name"], 1, payload=payload,
+        )
+    except index_jobs.ActiveJobError:
+        raise _active_job_conflict() from None
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Indexing job state is temporarily unavailable.",
+        ) from exc
+
+    created_by_job = False
+    try:
+        created_by_job = await _stream_upload(file, metadata)
+        payload = {
+            "kind": "file", "path": str(metadata["destination"]),
+            "source_name": metadata["source_name"], "extension": metadata["extension"],
+            "corpus_owner_id": metadata["corpus_owner_id"], "created_by_job": created_by_job,
+            "rate_limit_bypass": bool(user.is_admin),
+        }
+        index_jobs.set_payload(user.uid, queued_job["job_id"], payload)
+        try:
+            _dispatch_job(user.uid, queued_job["job_id"])
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="The indexing queue is temporarily unavailable.",
+            ) from exc
+        return _queued_response(queued_job)
+    except Exception:
+        if created_by_job:
+            metadata["destination"].unlink(missing_ok=True)
+        index_jobs.finish(
+            user.uid,
+            queued_job["job_id"],
+            "failed",
+            "The upload could not be queued.",
+        )
         raise
     finally:
         await file.close()
 
-    return {
-        "source": source_name,
-        "pages_with_text": len(pages),
-        "chunks_indexed": chunks,
-        "deduplicated": chunks == 0,
-        "used_existing_file": used_existing_file,
-    }
 
-
-@app.post("/index/youtube")
-@_rate_limited(rates=("ingest",), concurrency=("ingest",))
+@app.post("/index/youtube", dependencies=[Depends(_require_no_active_job)])
+@_rate_limited(rates=("ingest",))
 async def index_youtube(
     request: YouTubeIndexRequest,
     user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
-    from youtube_ingester import ingest_youtube
-
     try:
-        return await run_in_threadpool(
-            ingest_youtube, request.url, _corpus_owner_id(user)
+        from youtube_ingester import validate_youtube_url
+
+        normalized_url = validate_youtube_url(request.url)
+        job = _enqueue_job(
+            user, "youtube", normalized_url, None,
+            {"kind": "youtube", "url": normalized_url, "corpus_owner_id": _corpus_owner_id(user)},
         )
+    except index_jobs.ActiveJobError:
+        raise _active_job_conflict() from None
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return _queued_response(job)
+
+
+@app.get("/index/progress")
+def index_progress(
+    job_id: str | None = Query(default=None, min_length=1, max_length=64),
+    user: AuthenticatedUser = Depends(get_current_user),
+) -> dict:
+    """Return the caller's most recent indexing job; polled, so not rate limited."""
+    return {"job": index_jobs.current(user.uid, job_id)}
+
+
+@app.get("/index/jobs/{job_id}")
+def get_index_job(job_id: str, user: AuthenticatedUser = Depends(get_current_user)) -> dict:
+    job = index_jobs.get(user.uid, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Indexing job not found.")
+    return {"job": job}
 
 
 @app.post("/index/folder")
-@_rate_limited(rates=("ingest",), concurrency=("ingest",))
+@_rate_limited(rates=("ingest",))
 async def index_local_folder(
     request: FolderIndexRequest,
     user: AuthenticatedUser = Depends(require_admin),
 ) -> dict:
-    """Index an allowlisted server-local folder without blocking the event loop."""
+    """Validate an allowlisted folder and enqueue its ingestion."""
     try:
         folder_path = resolve_allowed_folder(
             request.folder_path, INDEX_FOLDER_ROOTS
         )
-        return await run_in_threadpool(
-            index_folder,
-            folder_path,
-            request.recursive,
-            owner_id=SHARED_CORPUS_OWNER_ID,
+        job = _enqueue_job(
+            user,
+            "folder",
+            str(folder_path),
+            None,
+            {"kind": "folder", "folder_path": str(folder_path), "recursive": request.recursive,
+             "corpus_owner_id": SHARED_CORPUS_OWNER_ID},
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _queued_response(job)

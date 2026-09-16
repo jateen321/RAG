@@ -9,6 +9,13 @@ YouTube transcripts. It retrieves evidence before answering, links citations
 back to their exact page or timestamp, and can turn the same retrieved evidence
 into a generated study visual.
 
+Authenticated web indexing is durable and asynchronous. `POST /index`,
+`/upload`, `/index/youtube`, and `/index/folder` validate input, persist safe
+upload bytes, enqueue an RQ job, and return `202` with `{job}` plus a
+`Location` header. Poll `GET /index/jobs/{job_id}` (or `/index/progress`) until
+the authenticated job is `finished` or `failed`; OCR, embeddings, folder scans,
+and YouTube imports run in the dedicated worker process backed by Redis.
+
 Uses **Google Gemini** for query planning, embeddings, reranking, and answers.
 PDF pages with clean text layers are read directly; scanned or garbled pages use
 the configured OCR backend: **Google Cloud Vision** (default), **Tesseract**, or
@@ -22,8 +29,8 @@ configuration is free.
 
 - **Evidence-grounded chat** in English, Hindi, or mixed language, with source
   citations that open the original page, passage, or YouTube timestamp.
-- **Adaptive ingestion** for PDF, TXT, Markdown, individual YouTube videos, and
-  playlists, with OCR only where a PDF's text layer is missing or unreliable.
+- **Adaptive ingestion** for PDF, TXT, Markdown, and YouTube videos, playlists,
+  and channels, with OCR only where a PDF's text layer is missing or unreliable.
 - **Multimodal questions** that combine a written prompt with PNG, JPEG, or WebP
   input (up to 10 MB).
 - **Grounded study visuals**: Image mode returns the normal answer and sends the
@@ -138,20 +145,33 @@ This will:
 - Split into boundary-aware, searchable chunks
 - Create embeddings and store them in ChromaDB
 
-### 5b. Index a YouTube video or playlist
+### 5b. Index a YouTube video, playlist, or channel
 
 No YouTube API key is required, and the application does not download media:
 
 ```bash
 python app.py index-youtube "https://www.youtube.com/watch?v=VIDEO_ID"
 python app.py index-youtube "https://www.youtube.com/playlist?list=PLAYLIST_ID"
+python app.py index-youtube "https://www.youtube.com/@HANDLE"
 ```
 
-For playlists, accessible videos are indexed independently. Videos that are
+Channel URLs in `/@handle`, `/channel/UC…`, `/c/name`, or `/user/name` form are
+accepted from any tab and normalized to the channel's **Videos** tab. A channel
+import indexes the newest 50 regular uploads (`CHANNEL_VIDEO_LIMIT`), so the
+channel's Shorts and Live tabs are not imported. A direct `/shorts/ID` or
+`/live/ID` URL still indexes as a single video. Playlists are not capped.
+
+For playlists and channels, accessible videos are indexed independently. Videos that are
 private, unavailable, or have no transcript are skipped and reported without
 discarding successful videos. Transcript selection prefers manually created
 captions over auto-generated captions, with Hindi then English preferred within
 each category.
+
+Re-importing is cheap: a video already fully indexed in the same library is
+skipped before its transcript is fetched, and reported as already indexed (the
+CLI prints "Already in library"). A partially indexed video does not count, so an
+interrupted import resumes. Trade-off: captions the creator edits after indexing
+are not refreshed unless that video is removed first.
 
 Each transcript chunk stores its start/end timestamps, video ID and title,
 channel, source URL, transcript language/type, and playlist identity/position
@@ -185,7 +205,7 @@ python app.py chat
 | `python app.py index` | Pick a PDF from `data/` and index it |
 | `python app.py index <pdf>` | Index a PDF for searching |
 | `python app.py index-folder <folder>` | Recursively index PDF, TXT, and Markdown files |
-| `python app.py index-youtube <url>` | Index a YouTube video or playlist transcript |
+| `python app.py index-youtube <url>` | Index a YouTube video, playlist, or channel (latest 50 uploads) |
 | `python app.py ask "question"` | Ask a one-shot question |
 | `python app.py chat` | Start interactive chat |
 | `python app.py status` | Show indexed documents, pages, and chunk counts |
@@ -248,16 +268,23 @@ it is the authoritative interface when this summary and the code ever disagree.
 | `POST` | `/conversations/{conversation_id}/exchanges/{exchange_id}/generate-image` | Generate a visual for an eligible saved exchange |
 | `DELETE` | `/conversations/{conversation_id}` | Delete one saved conversation (`204 No Content`) |
 | `GET` | `/generated-images/{image_id}` | Return a generated image referenced by a conversation |
-| `POST` | `/index` | Administrator: index or deduplicate a shared local document |
-| `POST` | `/index/folder` | Administrator: recursively index an allowlisted shared folder |
-| `POST` | `/upload` | Authenticated users upload to their own corpus; administrators upload to the shared corpus (`201 Created`) |
-| `POST` | `/index/youtube` | Authenticated users index a YouTube video or playlist in their own corpus; administrators index it in the shared corpus |
+| `POST` | `/index` | Administrator: queue indexing/deduplication of a shared local document (`202 Accepted`, then poll the job) |
+| `POST` | `/index/folder` | Administrator: queue recursive indexing of an allowlisted shared folder (`202 Accepted`, then poll the job) |
+| `POST` | `/upload` | Authenticated users upload to their own corpus; administrators upload to the shared corpus (`202 Accepted`, then poll the job) |
+| `POST` | `/index/youtube` | Authenticated users queue a YouTube video, playlist, or channel in their own corpus; administrators queue it in the shared corpus (`202 Accepted`) |
+| `GET` | `/index/progress` | The caller's running or recently ended import as `{"job": …}` (not rate limited; the UI polls it) |
+| `GET` | `/index/jobs/{job_id}` | Authenticated polling for one tenant-owned queued, running, finished, or failed job |
 
 ```bash
 curl -X POST http://127.0.0.1:8000/index/youtube \
   -H "Content-Type: application/json" \
   -d '{"url":"https://www.youtube.com/watch?v=VIDEO_ID"}'
 ```
+
+The YouTube report includes `source_type` (`video`, `playlist`, or `channel`),
+`videos_indexed`, `videos_already_indexed`, `videos_skipped`, and per-video
+results. If no video was indexed or already present, the request fails with `503`
+and the first skip reasons.
 
 Folder indexing accepts server-local paths and is recursive by default:
 
@@ -342,7 +369,7 @@ administrator access.
 | User | Corpus visible to answers | What they can do |
 |---|---|---|
 | Guest | Shared library | Ask questions without saving history. Citations, source cards, uploads, web search, and image features are unavailable. |
-| Signed-in user | Their own initially empty library, keyed by Firebase UID | Upload PDF, TXT, or Markdown documents; index YouTube videos or playlists; view citations; and keep conversations and generated images private. One user's sources are not searchable by another user. |
+| Signed-in user | Their own initially empty library, keyed by Firebase UID | Upload PDF, TXT, or Markdown documents; index YouTube videos, playlists, or channels; view citations; and keep conversations and generated images private. One user's sources are not searchable by another user. |
 | Administrator | Shared library | Use the shared sources available to guests; upload shared documents; and index server-local files, folders, and YouTube content for every guest. |
 
 Administrators query and manage the same shared corpus used by guests. Each
@@ -357,9 +384,11 @@ first production start only when pre-tenancy SQLite conversations must be
 assigned to one existing Firebase user. Unowned Chroma rows are automatically
 assigned to the shared corpus at API startup.
 
-`LEGACY_ADMIN_UID` does not grant the administrator role. Every ingestion route
-requires an `admin` custom claim, and Firebase custom claims can only be written
-by a trusted server through the Admin SDK. Grant it once after the account exists:
+`LEGACY_ADMIN_UID` does not grant the administrator role. Writing to the shared
+library, including server-local `/index` and `/index/folder`, requires an `admin`
+custom claim, and the claim also exempts the account from rate limiting. Firebase
+custom claims can only be written by a trusted server through the Admin SDK.
+Grant it once after the account exists:
 
 ```bash
 .venv/bin/python grant_admin.py you@example.com --grant
@@ -392,16 +421,20 @@ persistent disk. This design is appropriate for the current single-VM deployment
 those stateful services must move to managed storage before scaling across
 instances or using Cloud Run.
 
-Every pull request runs backend tests plus frontend lint, build, and production
-dependency audit. A push to `main` then performs continuous deployment:
+Every pull request and every push to `main` runs backend tests plus frontend lint,
+build, and production dependency audit. A push to `main` then deploys to
+production; there is no manual `git pull` or `scp` update step:
 
 1. GitHub Actions authenticates to Google Cloud with Workload Identity Federation
    (no downloaded service-account key).
 2. It builds and publishes immutable backend, frontend, and Caddy images, tagged
    with the Git commit SHA, to Artifact Registry.
 3. It transfers the checked-in Compose configuration and release script through
-   IAP SSH, starts the image set, verifies `/api/health` through Caddy, and
-   records the healthy release for rollback protection.
+   IAP SSH and runs `deploy/release.sh`, which prunes unused Docker images and
+   build cache (a full disk once broke a deploy), pulls and starts the image set,
+   checks health inside the backend container and at `/api/health` through Caddy,
+   and records the healthy release. If the pull, start, or a health check fails,
+   it restores the previous healthy release.
 
 Configure these GitHub repository variables before enabling deployment:
 `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SERVICE_ACCOUNT`,
@@ -499,8 +532,33 @@ overwritten. Set
 `RAG_ALLOWED_ORIGINS` in `.env` if
 the frontend runs on a different origin.
 
-**Status codes:** `400` for a bad request, `503` when nothing is indexed yet or the Gemini
-quota is exhausted — a rate limit upstream becomes a "try again later" downstream, never a 500.
+The upload dialog sends one request per file. If a file is rejected with `429`
+and `X-RateLimit-Reason: busy` (another import holds the shared ingestion slot),
+it waits and retries after 5 s, 10 s, then every 15 s, for up to 10 minutes per
+file. It does not trust `Retry-After` for this (see
+[admission control](#public-api-admission-control)). A `rate` rejection fails
+that file immediately. Each retry re-sends the whole file, because FastAPI parses
+the upload before admission runs.
+
+**Import progress and one import per user.** Each signed-in user can run one import
+at a time. Redis keeps a durable tenant-scoped job per user (`index_jobs.py`) with
+`queued`, `running`, `finished`, or `failed` status plus `done`, `total`, `indexed`,
+`already_indexed`, and `skipped` counters. The header shows it as a progress bar
+("7 of 50 videos processed") while you keep asking questions. A second import from
+another tab, browser, or a refreshed page gets `409` with
+`X-Index-Conflict: active-job`, and that page follows the running job instead.
+A YouTube import runs in the RQ worker, so refreshing mid-import loses nothing; the
+page finds it again through `GET /index/progress` or authenticated
+`GET /index/jobs/{job_id}`. A folder upload is driven by the browser, which
+persists, queues, and polls one durable file job at a time. Closing the tab does
+not cancel a file the server already accepted, and it does not leave a parent job
+blocking future imports; files the browser had not submitted must be selected again.
+
+**Status codes:** `202` means an indexing job was accepted and should be polled;
+`400` is a bad request, `409` means an import is already running, `429` means
+admission control rejected the submission, and `503` means the queue/state service
+or Gemini backend is unavailable. A rate limit upstream becomes a "try again later"
+downstream, never a 500.
 
 ## 🏗️ How It Works
 
@@ -517,8 +575,8 @@ Your Question → Gemini query rewrites → batched vector search → RRF fusion
                                                         └→ study visual (optional)
 ```
 
-YouTube follows a parallel ingestion path: `yt-dlp` reads video/playlist
-metadata, `youtube-transcript-api` retrieves timestamped captions, and the
+YouTube follows a parallel ingestion path: `yt-dlp` reads video, playlist, or
+channel metadata, `youtube-transcript-api` retrieves timestamped captions, and the
 resulting chunks enter the same Gemini embedding and ChromaDB pipeline. Answers
 cite transcript timestamps instead of PDF page numbers.
 
@@ -667,6 +725,10 @@ RAG/
 ├── app.py              # CLI interface (main entry point)
 ├── dev.py              # Unified backend/frontend development supervisor
 ├── api.py              # FastAPI web interface (/ask, /index, /health)
+├── auth.py             # Firebase sign-in, session cookies, admin claim
+├── grant_admin.py      # Grants or revokes the admin custom claim (read-only by default)
+├── rate_limit.py       # Redis token buckets + concurrency slots (admission control)
+├── index_jobs.py       # Per-user import progress; one running import per user
 ├── config.py           # Configuration & constants
 ├── llm_client.py       # Gemini client factory (Developer API vs Vertex)
 ├── ocr_engine.py       # PDF → text, per-page routing + selectable OCR
@@ -685,6 +747,7 @@ RAG/
 ├── OCR_NOTES.md        # Text-extraction issues log: routing, legacy fonts, corrupt layers
 ├── AGENTS.md           # Working conventions for AI-assisted sessions on this repo
 ├── frontend/           # Vinext/React interface and contributor README
+├── deploy/             # Caddy image, release.sh (pull, health-check, rollback), VM setup guide
 ├── evaluation/
 │   ├── questions_v2.json      # Eval dataset (easy / hard / unanswerable tiers)
 │   ├── verify_questions.py    # Audits ground truth against what is actually indexed
@@ -727,13 +790,14 @@ in `.env` as shown in `.env.example`:
 | `LAYER_CHECK_MIN_SIMILARITY` | 0.4 | Median OCR-vs-layer similarity below this → distrust the layer and OCR the whole document |
 | `EMBEDDING_MODEL` | `gemini-embedding-001` | Embedding model |
 | `LLM_MODEL` | `gemini-3.5-flash-lite` | Generation and query-planning model |
-| `RAG_RATE_LIMIT_ENABLED` | `0` | Enable Redis-backed admission control; set to `1` for public deployment |
-| `REDIS_URL` | unset | Managed Redis connection URL, required when admission control is enabled |
+| `RAG_RATE_LIMIT_ENABLED` | `0` | Enable Redis-backed admission control; `docker-compose.production.yml` sets `1` |
+| `REDIS_URL` | unset | Redis connection URL, required when admission control is enabled (production Compose uses its private `redis` service) |
 | `SHARED_CORPUS_OWNER_ID` | `__shared_corpus__` | Internal metadata owner used for the guest-readable corpus |
 | `RAG_RATE_LIMIT_ASK_PER_MINUTE` / `ASK_BURST` | `10` / `3` | Sustained and burst allowance per user or hashed guest IP |
 | `RAG_RATE_LIMIT_WEB_PER_MINUTE` / `WEB_BURST` | `5` / `2` | Web-search allowance per authenticated user |
 | `RAG_RATE_LIMIT_IMAGE_PER_MINUTE` / `IMAGE_BURST` | `2` / `1` | Image-generation allowance per authenticated user |
-| `RAG_RATE_LIMIT_INGEST_PER_HOUR` / `INGEST_BURST` | `5` / `5` | Ingestion starts per authenticated user; server-folder indexing also requires an administrator |
+| `RAG_RATE_LIMIT_INGEST_PER_HOUR` / `INGEST_BURST` | `5` / `5` | Ingestion starts per signed-in user; administrators are exempt from all admission limits |
+| `RAG_INDEX_JOB_TIMEOUT_S` | `3600` (minimum) | RQ indexing job timeout; increase for unusually large OCR imports |
 | `RAG_CONCURRENCY_INTERACTIVE` | `4` | Shared active document-answer limit across all replicas |
 | `RAG_CONCURRENCY_WEB` | `2` | Shared active web-search limit across all replicas |
 | `RAG_CONCURRENCY_IMAGE` | `1` | Shared active image-generation limit across all replicas |
@@ -750,11 +814,20 @@ Uvicorn workers and deployment replicas and expire after a crashed worker.
 When enabled, admission **fails closed** if Redis cannot be reached: costly work
 returns HTTP 503 instead of reaching paid providers without protection. An
 exhausted bucket or busy concurrency pool returns HTTP 429 with an integer
-`Retry-After` header. Work that was admitted before a temporary Redis outage is
+`Retry-After` header and `X-RateLimit-Reason: rate` or `busy`. CORS exposes both
+headers to the browser. For `busy`, `Retry-After` is when the current holder's
+lease would expire, not when its work ends. Ingestion leases last 900 s and renew
+every 300 s, so it can read 10–15 minutes while the slot frees within seconds. A
+`busy` rejection spends no token, because the slot is acquired before buckets are
+charged. Work that was admitted before a temporary Redis outage is
 allowed to finish; its lease eventually expires even if renewal and cleanup
-cannot reach Redis. Use a TLS `rediss://` URL, keep Redis credentials in the
+cannot reach Redis. For Redis reached over a network, use a TLS `rediss://` URL, keep Redis credentials in the
 deployment secret manager, and run a Redis connectivity smoke test before
 serving public traffic.
+
+Administrators (the Firebase `admin` claim granted with `grant_admin.py`) bypass
+admission entirely: they spend no tokens and take no concurrency slot, so an
+administrator import can run while another user's import holds the ingestion slot.
 
 > **Embedding model lifecycle:** This application currently uses
 > `gemini-embedding-001`, which remains available for text-only workloads.
@@ -797,6 +870,7 @@ serving public traffic.
 | Garbled Hindi from a PDF that looks fine | Expected — corrupt-layer detection should force OCR automatically |
 | OCR gives poor results | Confirm the configured `OCR_BACKEND`, its language settings, and whether the page was routed to `direct` or `ocr`; compare backends with `benchmark_ocr.py` before changing DPI |
 | `429` / rate limit errors | Check the quota for the selected backend/model/region, reduce request frequency, and retry with backoff |
+| API `429` with `X-RateLimit-Reason` | This is the app's own admission control, not Gemini. `rate`: your bucket is empty; wait for `Retry-After`. `busy`: a shared slot (such as the single ingestion slot) is taken; retry shortly, which the upload dialog does automatically |
 | `Address already in use` on port 3000 or 8000 | A frontend or backend process is already listening. Find it with `lsof` and stop it with `Ctrl+C` in its original terminal before restarting |
 | Browser still shows old UI after code/branch changes | Restart the frontend dev server, then hard-refresh the browser; restarting Uvicorn affects only the backend |
 | Backend still uses old Python code | Start Uvicorn with `--reload` during development, or manually restart the existing backend process |

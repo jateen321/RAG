@@ -179,17 +179,67 @@ const suggestions = [
 class RequestError extends Error {
   status: number;
   reason: string | null;
+  conflict: string | null;
 
-  constructor(message: string, status: number, reason: string | null) {
+  constructor(message: string, status: number, reason: string | null, conflict: string | null = null) {
     super(message);
     this.status = status;
     this.reason = reason;
+    this.conflict = conflict;
   }
 }
+
+// A 409 from any import endpoint means "you already have an import running" only when the
+// server marks it; /upload also answers 409 (without the header) for an already-indexed file.
+function isActiveJobConflict(error: unknown): error is RequestError {
+  return error instanceof RequestError && error.status === 409 && error.conflict === 'active-job';
+}
+
+type IndexJob = {
+  job_id: string;
+  kind: 'youtube' | 'upload' | 'file' | 'folder';
+  label: string;
+  status: 'queued' | 'running' | 'finished' | 'failed';
+  done: number;
+  total: number | null;
+  indexed: number;
+  already_indexed: number;
+  skipped: number;
+  message: string | null;
+  result?: { source?: string; [key: string]: unknown } | null;
+};
 
 const BUSY_RETRY_DELAYS_MS = [5000, 10000];
 const BUSY_RETRY_INTERVAL_MS = 15000;
 const BUSY_WAIT_BUDGET_MS = 10 * 60 * 1000;
+const PROGRESS_POLL_MS = 2000;
+
+function jobUnit(job: IndexJob, count: number) {
+  if (job.kind === 'youtube') return count === 1 ? 'video' : 'videos';
+  return count === 1 ? 'file' : 'files';
+}
+
+function jobProgressText(job: IndexJob) {
+  const total = job.total && job.total > 0 ? job.total : null;
+  if (total !== null) return `${job.done} of ${total} ${jobUnit(job, total)} processed`;
+  if (job.done > 0) return `${job.done} ${jobUnit(job, job.done)} processed`;
+  return 'Starting…';
+}
+
+function warnBeforeUnload(event: BeforeUnloadEvent) {
+  // The remaining files of a folder import exist only in this tab.
+  event.preventDefault();
+  event.returnValue = '';
+}
+
+async function waitForIndexJob(jobId: string, onUpdate?: (job: IndexJob) => void): Promise<IndexJob> {
+  for (;;) {
+    const { job } = await requestJson<{ job: IndexJob }>(`/index/jobs/${encodeURIComponent(jobId)}`);
+    onUpdate?.(job);
+    if (job.status !== 'queued' && job.status !== 'running') return job;
+    await new Promise((resolve) => setTimeout(resolve, PROGRESS_POLL_MS));
+  }
+}
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -208,7 +258,12 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     if (response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
       message = `${message} Try again in ${Math.ceil(retryAfter)} seconds.`;
     }
-    throw new RequestError(message, response.status, response.headers.get('X-RateLimit-Reason'));
+    throw new RequestError(
+      message,
+      response.status,
+      response.headers.get('X-RateLimit-Reason'),
+      response.headers.get('X-Index-Conflict'),
+    );
   }
   return payload as T;
 }
@@ -283,12 +338,19 @@ export default function ChatWorkspace() {
   const [historyResizing, setHistoryResizing] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadWaiting, setUploadWaiting] = useState(false);
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [busyAction, setBusyAction] = useState<'upload' | 'youtube' | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  // The import shown in the header progress row: polled from the server, or driven by this tab's upload loop.
+  const [indexJob, setIndexJob] = useState<IndexJob | null>(null);
+  // Which import this tab is itself driving (it announces its own result, so polls must not).
+  const [ownedImport, setOwnedImport] = useState<'youtube' | 'upload' | null>(null);
+  const [importWaiting, setImportWaiting] = useState(false);
+  const [pollActive, setPollActive] = useState(false);
+  const ownedImportRef = useRef<'youtube' | 'upload' | null>(null);
+  const watchedJobId = useRef<string | null>(null);
+  // Epoch of the progress request currently in flight (null when idle); prevents overlapping polls.
+  const pollInFlight = useRef<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const threadEnd = useRef<HTMLDivElement>(null);
@@ -343,6 +405,83 @@ export default function ChatWorkspace() {
       setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'Could not load conversation history.' });
     }
   }, [loadConversation]);
+
+  const announceEndedJob = useCallback((job: IndexJob) => {
+    if (job.status === 'finished') {
+      const alreadyIndexed = job.already_indexed ? ` ${job.already_indexed} already in your library.` : '';
+      const tone: NonNullable<Notice>['tone'] = job.skipped > 0 ? 'error' : 'success';
+      setNotice({ tone, text: job.message || `Finished importing ${job.label}: ${job.indexed} ${jobUnit(job, job.indexed)} indexed.${alreadyIndexed}` });
+    } else {
+      setNotice({ tone: 'error', text: job.message || `The import of ${job.label} did not finish.` });
+    }
+  }, []);
+
+  // Bumped whenever ownership or identity changes, so a poll answered after that point is ignored.
+  const progressEpoch = useRef(0);
+
+  const checkProgress = useCallback(async () => {
+    const epoch = progressEpoch.current;
+    if (pollInFlight.current === epoch) return;
+    pollInFlight.current = epoch;
+    try {
+      const { job } = await requestJson<{ job: IndexJob | null }>('/index/progress');
+      if (epoch !== progressEpoch.current) return;
+      const owned = ownedImportRef.current;
+      if (job?.status === 'queued' || job?.status === 'running') {
+        watchedJobId.current = job.job_id;
+        setIndexJob(job);
+        setPollActive(true);
+        return;
+      }
+      const watched = watchedJobId.current;
+      watchedJobId.current = null;
+      setPollActive(false);
+      setIndexJob(null);
+      if (job && (watched === job.job_id || owned === 'youtube')) {
+        if (owned === 'youtube') {
+          ownedImportRef.current = null;
+          setOwnedImport(null);
+        }
+        announceEndedJob(job);
+        void refreshHealth();
+      }
+    } catch (error) {
+      if (epoch !== progressEpoch.current) return;
+      if (error instanceof RequestError && (error.status === 401 || error.status === 403) && !ownedImportRef.current) {
+        watchedJobId.current = null;
+        setPollActive(false);
+        setIndexJob(null);
+      }
+      // Other failures are usually transient; keep polling quietly rather than toasting every 2 s.
+    } finally {
+      if (pollInFlight.current === epoch) pollInFlight.current = null;
+    }
+  }, [announceEndedJob, refreshHealth]);
+
+  const setOwned = useCallback((kind: 'youtube' | 'upload' | null) => {
+    progressEpoch.current += 1;
+    ownedImportRef.current = kind;
+    setOwnedImport(kind);
+  }, []);
+
+  useEffect(() => {
+    if (!pollActive) return;
+    const timer = window.setInterval(() => void checkProgress(), PROGRESS_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [pollActive, checkProgress]);
+
+  const identityUid = identity?.uid;
+  useEffect(() => {
+    if (checkingAuth || ownedImportRef.current) return;
+    progressEpoch.current += 1;
+    watchedJobId.current = null;
+    setPollActive(false);
+    setIndexJob(null);
+    // Recover after a refresh or a sign-in: show (and follow) an import that is still running.
+    if (identityUid) void checkProgress();
+  }, [checkingAuth, identityUid, checkProgress]);
+
+  useEffect(() => () => window.removeEventListener('beforeunload', warnBeforeUnload), []);
 
   useEffect(() => {
     if (!checkingAuth) void refreshHealth();
@@ -649,84 +788,150 @@ export default function ChatWorkspace() {
 
   function closeUploadDialog() {
     setPendingUpload(null);
-    setUploadProgress(0);
     if (fileInput.current) fileInput.current.value = '';
     if (folderInput.current) folderInput.current.value = '';
   }
 
   async function uploadDocument() {
-    if (!pendingUpload) return;
-    setBusyAction('upload');
-    setUploadProgress(0);
+    const upload = pendingUpload;
+    if (!upload || importRunning) return;
+    closeUploadDialog();
+    const label = upload.folderName || upload.files[0].name;
+    const total = upload.files.length;
+    // The browser owns unsent files, while each accepted file becomes its own
+    // durable server job. Closing the tab therefore cannot strand a batch lock.
+    setOwned('upload');
+    setIndexJob({ job_id: '', kind: 'upload', label, status: 'queued', done: 0, total, indexed: 0, already_indexed: 0, skipped: 0, message: null });
+
     const indexed: string[] = [];
     const failures: string[] = [];
-
-    for (const [index, file] of pendingUpload.files.entries()) {
-      const body = new FormData();
-      body.append('file', file);
-      if (pendingUpload.folderName && file.webkitRelativePath) body.append('relative_path', file.webkitRelativePath);
-      const startedAt = Date.now();
-      for (let attempt = 0; ; attempt += 1) {
-        try {
-          const result = await requestJson<{ source: string; pages_with_text: number; chunks_indexed: number }>('/upload', {
-            method: 'POST',
-            body,
-          });
-          indexed.push(result.source);
-          break;
-        } catch (error) {
-          // Busy Retry-After is the other holder's lease expiry, not when its import ends, so poll instead.
-          const delay = BUSY_RETRY_DELAYS_MS[attempt] ?? BUSY_RETRY_INTERVAL_MS;
-          if (error instanceof RequestError && error.status === 429 && error.reason === 'busy' && Date.now() - startedAt + delay <= BUSY_WAIT_BUDGET_MS) {
-            setUploadWaiting(true);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            continue;
+    let alreadyIndexed = 0;
+    let lostJob: RequestError | null = null;
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    try {
+      for (const [index, file] of upload.files.entries()) {
+        const body = new FormData();
+        body.append('file', file);
+        if (upload.folderName && file.webkitRelativePath) body.append('relative_path', file.webkitRelativePath);
+        const startedAt = Date.now();
+        for (let attempt = 0; ; attempt += 1) {
+          try {
+            const result = await requestJson<{ job: IndexJob }>('/upload', {
+              method: 'POST',
+              body,
+            });
+            const completed = await waitForIndexJob(result.job.job_id, (job) => {
+              setIndexJob((current) => current ? {
+                ...current,
+                job_id: job.job_id,
+                status: job.status,
+                done: index + job.done,
+                indexed: indexed.length + job.indexed,
+                already_indexed: alreadyIndexed + job.already_indexed,
+                skipped: failures.length + job.skipped,
+              } : current);
+            });
+            if (completed.status === 'failed') {
+              failures.push(`${file.name}: ${completed.message || 'could not be indexed'}`);
+            } else if (completed.already_indexed) {
+              alreadyIndexed += 1;
+            } else {
+              indexed.push(completed.result?.source || file.name);
+            }
+            break;
+          } catch (error) {
+            if (isActiveJobConflict(error)) {
+              // Another tab or request now owns the tenant's active job slot.
+              lostJob = error;
+              break;
+            }
+            if (error instanceof RequestError && error.status === 409) {
+              alreadyIndexed += 1;
+              break;
+            }
+            // Busy Retry-After is the other holder's lease expiry, not when its import ends, so poll instead.
+            const delay = BUSY_RETRY_DELAYS_MS[attempt] ?? BUSY_RETRY_INTERVAL_MS;
+            if (error instanceof RequestError && error.status === 429 && error.reason === 'busy' && Date.now() - startedAt + delay <= BUSY_WAIT_BUDGET_MS) {
+              setImportWaiting(true);
+              await new Promise((resolve) => setTimeout(resolve, delay));
+              setImportWaiting(false);
+              continue;
+            }
+            failures.push(`${file.name}: ${error instanceof Error ? error.message : 'could not be indexed'}`);
+            break;
           }
-          failures.push(`${file.name}: ${error instanceof Error ? error.message : 'could not be indexed'}`);
-          break;
-        } finally {
-          setUploadWaiting(false);
         }
+        if (lostJob) break;
+        const counts = { done: index + 1, indexed: indexed.length, already_indexed: alreadyIndexed, skipped: failures.length };
+        setIndexJob((current) => current && { ...current, ...counts });
       }
-      setUploadProgress(index + 1);
+    } finally {
+      window.removeEventListener('beforeunload', warnBeforeUnload);
+      setImportWaiting(false);
     }
 
-    if (indexed.length) await refreshHealth();
-    if (failures.length) {
-      setNotice({ tone: 'error', text: `Indexed ${indexed.length} of ${pendingUpload.files.length}. ${failures.length} failed. ${failures[0]}` });
-    } else if (pendingUpload.folderName) {
-      setNotice({ tone: 'success', text: `${indexed.length} documents from ${pendingUpload.folderName} were indexed.` });
-    } else {
-      setNotice({ tone: 'success', text: `${indexed[0]} indexed successfully.` });
+    if (lostJob) {
+      setOwned(null);
+      setIndexJob(null);
+      setNotice({ tone: 'error', text: `Stopped importing ${label} after ${indexed.length} of ${total} files. ${lostJob.message}` });
+      if (indexed.length) void refreshHealth();
+      void checkProgress();
+      return;
     }
-    closeUploadDialog();
-    setBusyAction(null);
+
+    const alreadyText = alreadyIndexed ? ` ${alreadyIndexed} already in your library.` : '';
+    let summary: NonNullable<Notice>;
+    if (failures.length) {
+      summary = { tone: 'error', text: `Indexed ${indexed.length} of ${total}.${alreadyText} ${failures.length} failed. ${failures[0]}` };
+    } else if (upload.folderName) {
+      summary = { tone: 'success', text: `${indexed.length} document${indexed.length === 1 ? '' : 's'} from ${upload.folderName} indexed.${alreadyText}` };
+    } else if (indexed.length) {
+      summary = { tone: 'success', text: `${indexed[0]} indexed successfully.` };
+    } else {
+      summary = { tone: 'success', text: `${upload.files[0].name} is already in your library.` };
+    }
+    setOwned(null);
+    setIndexJob(null);
+    setNotice(summary);
+    if (indexed.length) await refreshHealth();
   }
 
   async function indexYoutube(event: FormEvent) {
     event.preventDefault();
-    if (!youtubeUrl.trim()) return;
-    setBusyAction('youtube');
+    const url = youtubeUrl.trim();
+    if (!url || importRunning) return;
+    setYoutubeOpen(false);
+    setYoutubeUrl('');
+    setOwned('youtube');
+    watchedJobId.current = null;
+    setIndexJob({ job_id: '', kind: 'youtube', label: url, status: 'running', done: 0, total: null, indexed: 0, already_indexed: 0, skipped: 0, message: null });
+    const request = requestJson<{ job: IndexJob }>('/index/youtube', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    let conflict = false;
     try {
-      const result = await requestJson<{ videos_indexed?: number; videos_already_indexed?: number; chunks_indexed?: number }>('/index/youtube', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: youtubeUrl.trim() }),
-      });
-      const alreadyIndexed = result.videos_already_indexed ? ` ${result.videos_already_indexed} already in your library.` : '';
-      setNotice({ tone: 'success', text: `Indexed ${result.videos_indexed ?? 1} video${result.videos_indexed === 1 ? '' : 's'} and ${result.chunks_indexed ?? 0} passages.${alreadyIndexed}` });
-      setYoutubeUrl('');
-      setYoutubeOpen(false);
-      await refreshHealth();
+      const result = await request;
+      watchedJobId.current = result.job.job_id;
+      setIndexJob(result.job);
+      setPollActive(true);
     } catch (error) {
+      conflict = isActiveJobConflict(error);
       setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'The YouTube source could not be indexed.' });
-    } finally {
-      setBusyAction(null);
+      setOwned(null);
+      watchedJobId.current = null;
+      setPollActive(false);
+      setIndexJob(null);
     }
+    // Another tab or browser already has an import running: show and follow that one instead.
+    if (conflict) void checkProgress();
   }
 
   const hasConversation = conversations.length > 0;
   const isAsking = conversations.some((message) => message.pending);
+  const importRunning = ownedImport !== null || indexJob?.status === 'queued' || indexJob?.status === 'running';
+  const progressTotal = indexJob?.total && indexJob.total > 0 ? indexJob.total : null;
 
   function resizeEvidenceTo(width: number) {
     setContextWidth(clampEvidenceWidth(width, window.innerWidth, sidebarCollapsed, libraryWidth));
@@ -988,13 +1193,13 @@ export default function ChatWorkspace() {
           </div>
           {isAuthenticated && (
             <div className="header-actions" role="group" aria-label={isAdmin ? 'Manage shared sources' : 'Manage your sources'}>
-              <button type="button" onClick={() => fileInput.current?.click()} aria-label={isAdmin ? 'Add a shared document' : 'Upload a document'} title={isAdmin ? 'Add a shared document' : 'Upload a document'}>
+              <button type="button" onClick={() => fileInput.current?.click()} disabled={importRunning} aria-label={isAdmin ? 'Add a shared document' : 'Upload a document'} title={importRunning ? 'An import is already running' : isAdmin ? 'Add a shared document' : 'Upload a document'}>
                 <span aria-hidden="true">↑</span><span className="header-action-label">{isAdmin ? 'Add a document' : 'Upload a document'}</span>
               </button>
-              <button type="button" onClick={() => folderInput.current?.click()} aria-label={isAdmin ? 'Add a shared folder' : 'Upload a folder'} title={isAdmin ? 'Add a shared folder' : 'Upload a folder'}>
+              <button type="button" onClick={() => folderInput.current?.click()} disabled={importRunning} aria-label={isAdmin ? 'Add a shared folder' : 'Upload a folder'} title={importRunning ? 'An import is already running' : isAdmin ? 'Add a shared folder' : 'Upload a folder'}>
                 <span aria-hidden="true">▤</span><span className="header-action-label">{isAdmin ? 'Add a folder' : 'Upload a folder'}</span>
               </button>
-              <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
+              <button type="button" onClick={() => setYoutubeOpen(true)} disabled={importRunning} aria-label="Add YouTube" title={importRunning ? 'An import is already running' : 'Add YouTube'}>
                 <span aria-hidden="true">▶</span><span className="header-action-label">Add YouTube</span>
               </button>
             </div>
@@ -1016,6 +1221,18 @@ export default function ChatWorkspace() {
             tabIndex={-1}
             aria-hidden="true"
           />
+          {isAuthenticated && importRunning && indexJob && (
+            <div className="index-progress" role="status" aria-live="polite">
+              <span className="index-progress-label" title={indexJob.label}>
+                {indexJob.kind === 'youtube' ? 'Importing YouTube' : 'Importing'} <span>{indexJob.label}</span>
+              </span>
+              <span className="index-progress-count">{importWaiting ? 'Waiting for another import…' : jobProgressText(indexJob)}</span>
+              {progressTotal !== null
+                ? <progress max={progressTotal} value={indexJob.done} aria-label={`Import progress for ${indexJob.label}`} />
+                : <progress aria-label={`Import progress for ${indexJob.label}`} />}
+              <small>You can keep asking questions.</small>
+            </div>
+          )}
         </header>
 
         {!hasConversation ? (
@@ -1254,7 +1471,7 @@ export default function ChatWorkspace() {
             {pendingUpload.folderName && (pendingUpload.skippedNested > 0 || pendingUpload.skippedUnsupported > 0 || pendingUpload.skippedOversize > 0) && (
               <p className="selection-note">Skipped: {pendingUpload.skippedNested} from nested folders, {pendingUpload.skippedUnsupported} unsupported, {pendingUpload.skippedOversize} over 500 MB.</p>
             )}
-            <div className="modal-actions"><button type="button" className="secondary" onClick={closeUploadDialog} disabled={busyAction === 'upload'}>Cancel</button><button type="button" className="primary" onClick={() => void uploadDocument()} disabled={busyAction === 'upload'}>{busyAction === 'upload' ? (uploadWaiting ? `Waiting for another import… (${uploadProgress}/${pendingUpload.files.length})` : `Indexing ${uploadProgress}/${pendingUpload.files.length}…`) : 'Upload & index'}</button></div>
+            <div className="modal-actions"><button type="button" className="secondary" onClick={closeUploadDialog}>Cancel</button><button type="button" className="primary" onClick={() => void uploadDocument()}>Upload &amp; index</button></div>
           </section>
         </div>
       )}
@@ -1269,7 +1486,7 @@ export default function ChatWorkspace() {
             <p className="modal-copy">Paste a public video, playlist, or channel URL. Channels import their latest 50 uploads. Available captions will become searchable passages.</p>
             <label className="field-label" htmlFor="youtube-url">YouTube URL</label>
             <input id="youtube-url" type="url" required placeholder="https://www.youtube.com/watch?v=…" value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} />
-            <div className="modal-actions"><button type="button" className="secondary" onClick={() => setYoutubeOpen(false)} disabled={busyAction === 'youtube'}>Cancel</button><button type="submit" className="primary" disabled={busyAction === 'youtube' || !youtubeUrl.trim()}>{busyAction === 'youtube' ? 'Indexing…' : 'Index source'}</button></div>
+            <div className="modal-actions"><button type="button" className="secondary" onClick={() => setYoutubeOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={!youtubeUrl.trim()}>Index source</button></div>
           </form>
         </div>
       )}

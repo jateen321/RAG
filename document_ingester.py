@@ -212,6 +212,7 @@ def index_folder(
     extract: Callable[[Path], list[dict]] = extract_document,
     force: bool = False,
     owner_id: str | None = None,
+    on_progress: Callable[[dict], None] | None = None,
 ) -> dict:
     """Index every supported file in a folder and isolate per-file failures.
 
@@ -234,6 +235,16 @@ def index_folder(
     results = []
     chunks_indexed = 0
 
+    def report_progress() -> None:
+        if on_progress:
+            on_progress({
+                "done": len(results),
+                "total": len(documents),
+                "indexed": sum(r["status"] == "indexed" for r in results),
+                "already_indexed": sum(r["status"] == "skipped" for r in results),
+                "skipped": sum(r["status"] == "failed" for r in results),
+            })
+
     for document_path in documents:
         relative_path = document_path.relative_to(root).as_posix()
         source_name = f"{root.name}/{relative_path}"
@@ -248,6 +259,7 @@ def index_folder(
                     "reason": "Identical file content is already indexed.",
                     "chunks_indexed": 0,
                 })
+                report_progress()
                 continue
             pages = extract(document_path)
             if not pages:
@@ -257,6 +269,7 @@ def index_folder(
                     "reason": "No readable text found.",
                     "chunks_indexed": 0,
                 })
+                report_progress()
                 continue
 
             chunk_count = index_document(
@@ -280,6 +293,7 @@ def index_folder(
                 "pages_with_text": len(pages),
                 "chunks_indexed": chunk_count,
             })
+            report_progress()
         except Exception as exc:
             results.append({
                 "source": source_name,
@@ -287,6 +301,7 @@ def index_folder(
                 "reason": str(exc),
                 "chunks_indexed": 0,
             })
+            report_progress()
 
     return {
         "folder_path": str(root),

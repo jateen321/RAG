@@ -23,6 +23,28 @@ services:
       retries: 3
       start_period: 20s
 
+  index-worker:
+    image: ${BACKEND_IMAGE:-gyaan-sarthi-backend:latest}
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      RAG_RATE_LIMIT_ENABLED: "1"
+      REDIS_URL: redis://redis:6379/0
+      RAG_INDEX_JOB_TIMEOUT_S: ${RAG_INDEX_JOB_TIMEOUT_S:-3600}
+    command: ["python", "worker.py"]
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from redis import Redis; Redis.from_url('redis://redis:6379/0').ping()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   frontend:
     image: ${FRONTEND_IMAGE:-gyaan-sarthi-frontend:latest}
     build:

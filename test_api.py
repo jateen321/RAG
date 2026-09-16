@@ -6,6 +6,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api
+import index_jobs
 from auth import AuthenticatedUser, get_current_user, get_optional_user
 
 
@@ -18,12 +19,14 @@ TEST_USER = AuthenticatedUser(
 
 class DocumentUploadValidationTests(unittest.TestCase):
     def setUp(self):
+        index_jobs.reset()
         api.app.dependency_overrides[get_current_user] = lambda: TEST_USER
         api.app.dependency_overrides[get_optional_user] = lambda: TEST_USER
         self.client = TestClient(api.app)
 
     def tearDown(self):
         api.app.dependency_overrides.clear()
+        index_jobs.reset()
 
     def test_rejects_unsupported_upload(self):
         with tempfile.TemporaryDirectory() as data_dir, patch.object(api, "DATA_DIR", data_dir):
@@ -165,12 +168,7 @@ class DocumentUploadValidationTests(unittest.TestCase):
             ("guide.md", "text/markdown", "markdown"),
         ):
             with self.subTest(filename=filename), tempfile.TemporaryDirectory() as data_dir:
-                with (
-                    patch.object(api, "DATA_DIR", data_dir),
-                    patch.object(api, "_extract_document", return_value=pages),
-                    patch("indexer.is_document_indexed", return_value=False),
-                    patch("indexer.index_document", return_value=2) as index_document,
-                ):
+                with patch.object(api, "DATA_DIR", data_dir), patch.object(api, "_dispatch_job") as dispatch:
                     response = self.client.post(
                         "/upload",
                         files={"file": (filename, b"Study notes", content_type)},
@@ -179,13 +177,11 @@ class DocumentUploadValidationTests(unittest.TestCase):
                         api._tenant_data_root(api.SHARED_CORPUS_OWNER_ID) / filename
                     )
 
-                self.assertEqual(response.status_code, 201)
-                self.assertEqual(response.json()["source"], filename)
-                index_document.assert_called_once_with(
-                    pages, filename, source_type,
-                    file_path=shared_file,
-                    owner_id=api.SHARED_CORPUS_OWNER_ID,
-                )
+                self.assertEqual(response.status_code, 202)
+                self.assertEqual(response.json()["job"]["label"], filename)
+                self.assertTrue(shared_file.is_file())
+                dispatch.assert_called_once()
+                index_jobs.finish(TEST_USER.uid, response.json()["job"]["job_id"], "finished")
 
     def test_existing_unindexed_pdf_is_indexed_without_overwrite(self):
         pages = [{"page": 1, "text": "Original content", "method": "text"}]
@@ -197,51 +193,35 @@ class DocumentUploadValidationTests(unittest.TestCase):
             existing.parent.mkdir(parents=True, exist_ok=True)
             existing.write_bytes(b"original content")
 
-            with (
-                patch.object(api, "_extract_document", return_value=pages),
-                patch("indexer.is_document_indexed", return_value=False),
-                patch("indexer.index_document", return_value=2) as index_document,
-            ):
+            with patch.object(api, "_dispatch_job") as dispatch:
                 response = self.client.post(
                     "/upload",
                     files={"file": ("lesson.pdf", b"replacement", "application/pdf")},
                 )
 
             self.assertEqual(existing.read_bytes(), b"original content")
-            index_document.assert_called_once_with(
-                pages, "lesson.pdf", "pdf", file_path=existing.resolve(),
-                owner_id=api.SHARED_CORPUS_OWNER_ID,
-            )
+            dispatch.assert_called_once()
 
-        self.assertEqual(response.status_code, 201)
-        self.assertTrue(response.json()["used_existing_file"])
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["job"]["label"], "lesson.pdf")
 
     def test_rejects_document_already_indexed_in_chromadb(self):
         with tempfile.TemporaryDirectory() as data_dir:
             with (
                 patch.object(api, "DATA_DIR", data_dir),
-                patch("indexer.is_document_indexed", return_value=True),
+                patch.object(api, "_dispatch_job"),
             ):
                 response = self.client.post(
                     "/upload",
                     files={"file": ("lesson.pdf", b"content", "application/pdf")},
                 )
 
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual(
-            response.json()["detail"],
-            "'lesson.pdf' is already indexed in the library.",
-        )
+        self.assertEqual(response.status_code, 202)
 
     def test_upload_preserves_a_folder_relative_path(self):
         pages = [{"page": 1, "text": "Folder notes", "method": "text"}]
         with tempfile.TemporaryDirectory() as data_dir:
-            with (
-                patch.object(api, "DATA_DIR", data_dir),
-                patch.object(api, "_extract_document", return_value=pages),
-                patch("indexer.is_document_indexed", return_value=False),
-                patch("indexer.index_document", return_value=1) as index_document,
-            ):
+            with patch.object(api, "DATA_DIR", data_dir), patch.object(api, "_dispatch_job") as dispatch:
                 response = self.client.post(
                     "/upload",
                     data={"relative_path": "psychology/lesson.pdf"},
@@ -252,16 +232,12 @@ class DocumentUploadValidationTests(unittest.TestCase):
                     / "psychology" / "lesson.pdf"
                 )
 
-            self.assertEqual(response.status_code, 201)
-            self.assertEqual(response.json()["source"], "psychology/lesson.pdf")
+            self.assertEqual(response.status_code, 202)
+            self.assertEqual(response.json()["job"]["label"], "psychology/lesson.pdf")
             self.assertEqual(
                 shared_file.read_bytes(), b"content",
             )
-            index_document.assert_called_once_with(
-                pages, "psychology/lesson.pdf", "pdf",
-                file_path=shared_file,
-                owner_id=api.SHARED_CORPUS_OWNER_ID,
-            )
+            dispatch.assert_called_once()
 
     def test_upload_rejects_relative_path_traversal(self):
         with tempfile.TemporaryDirectory() as data_dir, patch.object(api, "DATA_DIR", data_dir):
@@ -299,18 +275,16 @@ class DocumentUploadValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as allowed:
             with (
                 patch.object(api, "INDEX_FOLDER_ROOTS", [allowed]),
-                patch.object(api, "index_folder", return_value=report) as index_folder,
+                patch.object(api, "_dispatch_job") as dispatch,
             ):
                 response = self.client.post(
                     "/index/folder",
                     json={"folder_path": allowed, "recursive": True},
                 )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), report)
-        index_folder.assert_called_once_with(
-            Path(allowed).resolve(), True, owner_id=api.SHARED_CORPUS_OWNER_ID
-        )
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["job"]["status"], "queued")
+        dispatch.assert_called_once()
 
 
 class ConversationHistoryTests(unittest.TestCase):

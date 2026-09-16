@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 import api
 import document_ingester
 import indexer
+import index_jobs
+import worker
 from auth import AuthenticatedUser, get_current_user
 
 
@@ -19,6 +21,8 @@ class DocumentIdentityTests(unittest.TestCase):
     OWNER_ID = api.SHARED_CORPUS_OWNER_ID
 
     def setUp(self):
+        index_jobs.reset()
+        self.addCleanup(index_jobs.reset)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve() / "data"
@@ -38,11 +42,17 @@ class DocumentIdentityTests(unittest.TestCase):
             uid=self.OWNER_ID, email="test@example.com", is_admin=True
         )
         self.addCleanup(api.app.dependency_overrides.clear)
+        self.enterContext(patch.object(api, "_dispatch_job"))
         self.client = TestClient(api.app)
 
     @staticmethod
     def pages(text="Evidence about the history of a book. " * 4):
         return [{"page": 1, "text": text, "method": "text"}]
+
+    def process(self, response):
+        """Run the accepted job outside TestClient's event loop."""
+        job = response.json()["job"]
+        return worker.process_job(self.OWNER_ID, job["job_id"])
 
     def test_folder_then_direct_and_reverse_for_all_supported_formats(self):
         for extension, mime in ((".pdf", "application/pdf"),
@@ -57,7 +67,7 @@ class DocumentIdentityTests(unittest.TestCase):
                     nested.write_bytes(body)
                     pages = self.pages(body.decode())
                     before = self.collection.count()
-                    with patch.object(api, "_extract_document", return_value=pages):
+                    with patch.object(document_ingester, "extract_document", return_value=pages):
                         def upload():
                             return self.client.post("/upload", files={"file": (name, body, mime)})
 
@@ -69,10 +79,14 @@ class DocumentIdentityTests(unittest.TestCase):
                         if folder_first:
                             self.assertEqual(ingest_folder()["files_indexed"], 1)
                             ids = set(self.collection.get()["ids"])
-                            self.assertEqual(upload().status_code, 409)
+                            response = upload()
+                            self.assertEqual(response.status_code, 202)
+                            self.process(response)
                             self.assertFalse((self.root / name).exists())
                         else:
-                            self.assertEqual(upload().status_code, 201)
+                            response = upload()
+                            self.assertEqual(response.status_code, 202)
+                            self.process(response)
                             ids = set(self.collection.get()["ids"])
                             self.assertEqual(ingest_folder()["files_skipped"], 1)
                     self.assertEqual(set(self.collection.get()["ids"]), ids)
@@ -104,15 +118,19 @@ class DocumentIdentityTests(unittest.TestCase):
         path = folder / "notes.txt"
         path.write_text(self.pages()[0]["text"])
         response = self.client.post("/index", json={"filename": "book/notes.txt"})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["source"], "book/notes.txt")
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["job"]["label"], "book/notes.txt")
+        self.process(response)
         count = self.collection.count()
         report = document_ingester.index_folder(
             folder, force=True, owner_id=self.OWNER_ID
         )
         self.assertEqual(report["files_skipped"], 1)
         response = self.client.post("/index", json={"filename": "book/notes.txt"})
-        self.assertTrue(response.json()["deduplicated"])
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["job"]["status"], "queued")
+        self.process(response)
+        self.assertEqual(index_jobs.get(self.OWNER_ID, response.json()["job"]["job_id"])["status"], "finished")
         self.assertEqual(self.collection.count(), count)
         self.assertEqual(self.embed.call_count, 1)
 

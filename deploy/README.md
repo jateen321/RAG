@@ -2,7 +2,7 @@
 
 This deployment keeps the current local-state design intact: ChromaDB, SQLite,
 uploaded documents, and generated images live on a persistent VM disk. It runs
-the FastAPI backend, Next/Vinext frontend, Redis rate limiter, and Caddy HTTPS
+the FastAPI backend, dedicated RQ indexing worker, Next/Vinext frontend, Redis rate limiter, and Caddy HTTPS
 proxy with Docker Compose.
 
 ## One-time Google Cloud setup
@@ -10,7 +10,10 @@ proxy with Docker Compose.
 Use a billing-enabled Google Cloud project. The recommended starting size is an
 `e2-medium` VM in `asia-south1` with at least a 30 GB standard persistent disk.
 The Compute Engine free tier is not sufficient for this application's current
-~1.4 GB corpus plus runtime headroom in every region.
+~1.4 GB corpus plus runtime headroom in every region. Each release adds
+roughly 2.4 GB of images. A 30 GB disk stays workable only because
+`deploy/release.sh` prunes unused images and build cache before each pull; see
+FINDINGS §42.
 
 ```bash
 gcloud auth login
@@ -62,7 +65,28 @@ Set `NEXT_PUBLIC_RAG_API_URL=/api`, `SESSION_COOKIE_SAMESITE=lax`, and
 VM service account only `roles/secretmanager.secretAccessor`; never commit a
 service-account key. Before opening the app publicly, verify that `/health`
 reports 21,499 shared chunks, guests can ask questions, and only the Firebase
-user with the `admin` custom claim can ingest documents.
+user with the `admin` custom claim can ingest into the shared library (other
+signed-in users ingest into their own private libraries).
+
+The Compose stack runs `index-worker` from the same backend image with the
+persistent `chroma_db` and `data` volumes. It consumes the Redis-backed RQ
+`indexing` queue serially and owns the long-lived ingestion concurrency lease;
+the API only validates/submits work and charges the submission rate. Set
+`RAG_INDEX_JOB_TIMEOUT_S` to at least 3600 seconds for large OCR imports (the
+worker enforces that minimum).
+
+## Ongoing deploys
+
+The transfer above is a one-time bootstrap. Do not `scp` or `git pull` later
+updates: every push to `main` runs
+[`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml). It tests, builds
+commit-tagged images, installs the current `release.sh` and Compose file on the VM
+over IAP SSH, and runs `deploy/release.sh`. The script prunes unused Docker images
+and build cache (`docker image prune --all`, `docker builder prune --all`), pulls
+and starts the new image set, and checks health inside the backend container and
+through Caddy. If any of those steps fails, it restores the release recorded in
+`releases/current.env`. The running code comes from the images, not from the
+source files copied into `/opt/gyaan-sarthi` during bootstrap.
 
 ## Backups and rollback
 

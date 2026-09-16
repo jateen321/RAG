@@ -85,6 +85,22 @@ button { color: inherit; }
 .header-actions button:hover { border-color: #aeb8ac; background: #eef1e8; }
 .header-actions button:focus-visible { outline: 3px solid rgba(31,91,78,.18); outline-offset: 2px; }
 .header-actions button > span[aria-hidden] { color: var(--orange); font-size: 15px; }
+.header-actions button:disabled, .header-actions button:disabled:hover { border-color: var(--line); background: var(--card); opacity: .5; cursor: not-allowed; }
+/* Import progress: its own full-width row inside the sticky header, so the auth pill and toasts can't cover it. */
+.index-progress { display: grid; flex: 1 0 100%; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px 12px; padding: 8px 12px; border: 1px solid #b6ccb9; border-radius: 10px; background: #f4fbf3; font-size: 11px; }
+.index-progress-label { min-width: 0; overflow: hidden; color: var(--green); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.index-progress-label span { color: var(--muted); font-weight: 500; }
+.index-progress-count { color: var(--green); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.index-progress progress { grid-column: 1 / -1; width: 100%; height: 6px; overflow: hidden; border: 0; border-radius: 6px; background: var(--sage); appearance: none; }
+.index-progress progress::-webkit-progress-bar { border-radius: 6px; background: var(--sage); }
+.index-progress progress::-webkit-progress-value { border-radius: 6px; background: var(--green); transition: width .3s ease; }
+.index-progress progress::-moz-progress-bar { border-radius: 6px; background: var(--green); }
+.index-progress progress:indeterminate { background: linear-gradient(90deg, var(--sage) 0 35%, var(--green) 45% 55%, var(--sage) 65% 100%) 0 0 / 300% 100%; animation: index-progress-slide 1.4s linear infinite; }
+.index-progress progress:indeterminate::-webkit-progress-bar { background: transparent; }
+.index-progress progress:indeterminate::-moz-progress-bar { background: transparent; }
+.index-progress small { grid-column: 1 / -1; color: var(--muted); font-size: 10px; }
+@keyframes index-progress-slide { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .index-progress progress:indeterminate { animation: none; } }
 .index-status { display: grid; flex: 0 0 auto; grid-template-columns: 10px 1fr; gap: 9px; align-items: start; margin-top: 12px; padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.48); }
 .status-dot { width: 8px; height: 8px; margin-top: 3px; border-radius: 50%; background: #439466; box-shadow: 0 0 0 3px rgba(67,148,102,.12); }
 .index-status strong, .index-status small { display: block; }

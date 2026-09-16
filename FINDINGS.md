@@ -8,7 +8,12 @@ Consolidated findings for the Hindi/English RAG app. Each result is tagged with 
   ported into this repo. *Action: port the script/results back to make it reproducible here.*
 - ⚪ **Hypothesis** — believed/expected, not yet measured.
 
-Last updated: 2026-09-11.
+Last updated: 2026-09-12.
+
+- 🟣 **Cloud session (2026-09-16):** The Swadhyay Sadan course page exposed 342 book entries in 12 folders; 59 filename labels were visually truncated with ellipses and should be verified before download.
+
+Section numbers repeat (two §20s; §7–§14 appear both in the block below and in the main
+body). They are left as-is so existing references stay valid; cite a section by number and title.
 
 ---
 
@@ -1313,6 +1318,11 @@ operation concurrency; endpoint requests-per-minute alone cannot represent or ca
 consumption. Redis-backed atomic state is required when multiple API workers or replicas share the
 same paid provider credentials.
 
+**Revised 2026-09-12 (🟢 code-verified):** administrators are now outside this protection.
+`_rate_limited` returns before `admit()` when `user.is_admin`, so admin requests spend no bucket
+tokens and hold no global concurrency slot. An admin import can therefore run alongside a user's
+import despite `RAG_CONCURRENCY_INGEST=1`.
+
 ## 27. Authentication without storage filters is not tenant isolation (2026-08-31)
 
 🟢 **Repo-verified design:** before authentication, conversation IDs, source paths, generated-image
@@ -1360,6 +1370,12 @@ layout and the `{identity_tag}` / `{global}` hash tags keep multi-key scripts in
 but reviewed-and-plausible is not verified. Installing `fakeredis` and exercising bucket
 exhaustion, refill, lease expiry, and heartbeat renewal is the outstanding work before the
 concurrency claims can be stated as fact.
+
+**Revised 2026-09-12 (🟢 code-verified):** the test gap still stands (`test_rate_limit.py` mocks Redis with
+`AsyncMock`), but the path is no longer dormant. Since the VM deployment (`49c4c77`),
+`docker-compose.production.yml` sets `RAG_RATE_LIMIT_ENABLED: "1"` with a Compose `redis` service,
+so this unverified Lua runs in production. §40's `Retry-After` analysis comes from reading
+`_ACQUIRE_CONCURRENCY_SCRIPT`, not from a Redis run.
 
 ## 31. VM public IP is now static (2026-09-01)
 
@@ -1449,5 +1465,81 @@ and rollback then failed to copy a 398-byte file, leaving an empty `rollback-*.e
 kept serving `0f055f9` (public `/api/health` 200). The disk was 29 GB with 258 MB free: 25 images
 totalled 23.8 GB with only 4 in use (each release adds a ~1.14 GB backend and ~1.25 GB frontend),
 plus 6.6 GB of build cache from the first manual build; app data was only 1.4 GB. `release.sh` now
-runs `docker image prune --all` and `docker builder prune --all` before each pull. Every release
+runs `docker image prune --all` and `docker builder prune --all` before each pull; the first such
+release (`7cb6eb7`) took the disk from 258 MB free to 19 GB free (34% used). Every release
 image remains in Artifact Registry, which has no cleanup policy yet (⚪ growing storage cost).
+
+## 43. The CI audit gate skips packages that run in production (2026-09-11)
+
+🟢 **CI-verified:** CI's `npm audit --omit=dev --audit-level=high` reports 0 findings, while a full
+`npm audit` reports 12 (11 high). `vinext`, which `npm start` runs, and `react-server-dom-webpack`,
+pulled in by `vinext` and `@vitejs/plugin-rsc`, are declared devDependencies, so the gate never
+audits them. The runtime stage also copies the whole build stage (`COPY --from=build /app ./`),
+shipping every devDependency and making the frontend image 1.25 GB. ⚪ The flagged
+`react-server-dom` Server Functions DoS is likely unreachable (no `'use server'` in
+`frontend/app`), but runtime packages must be reclassified before `--omit=dev` means production.
+
+## 44. Each deploy may leave a non-expiring OS Login key (2026-09-11)
+
+🟢 **CI-verified:** every deploy logs "You do not have an SSH key for gcloud… SSH keygen will be
+executed" because runners start clean, and the workflow's `gcloud compute ssh`/`scp` calls pass no
+`--ssh-key-expire-after`. ⚪ **Hypothesis:** keys accumulate on `github-deployer`'s OS Login profile
+until its size limit breaks deploys. Listing them failed: impersonating the account was denied
+(`iam.serviceAccounts.getAccessToken`).
+
+## 45. The browser cannot fetch YouTube transcripts, and YouTube failures are unlogged (2026-09-11)
+
+🟢 **Measured:** with `Origin: https://gyaan-sarthi.duckdns.org`, the YouTube watch page returned 200
+with no `Access-Control-Allow-Origin`, and the `youtubei/v1/player` preflight returned 403, so the
+web page cannot fetch transcripts from the user's IP. From the production container,
+`list()` + `fetch()` for one video succeeded (61 snippets), as it did from a home IP. Production logged
+`/index/youtube` as 503, 200, 200, 503, 503 between 15:28 and 15:37 UTC. A 503 means no video was
+indexed (`ingest_youtube` raises `RuntimeError` → 503; since `63fd550`, only when none was already in
+the library either, and which build served these requests is not recorded here). The skip reasons
+go only to the browser (`api.py` has no logger calls), so the logs cannot say whether YouTube blocked
+them. ⚪ A temporary, volume-triggered block after the 15:31 import fits the pattern but is unconfirmed.
+
+## 46. A client disconnect does not cancel a running import (2026-09-12)
+
+🟢 **Measured locally:** the real `api:app` under Uvicorn 0.52.3 / Starlette 1.6.0 with a 4 s stub
+import. `curl --max-time 1` gave up (exit 28), yet the server still logged the import finishing, the
+code after `await` running, and the ingestion slot being released. No `CancelledError` was raised.
+So refreshing the page mid-import neither stops a YouTube import nor leaks the slot, and the per-user
+job registry needs no `asyncio.shield`. Probe script: session scratchpad, not in the repo.
+⚪ **Not measured:** the same behavior through Caddy in production. Uvicorn, not the proxy, decides
+whether the handler is cancelled, so it is expected to hold.
+
+## 47. Import progress is process-local and upload jobs are driven by the browser (2026-09-12)
+
+🟢 **Repo-verified:** `index_jobs.py` keeps one job per `user.uid` in a dict behind a
+`threading.Lock`. That is valid only because the Dockerfile runs a single Uvicorn process; adding
+`--workers` would give each worker its own registry, and "one import per user" would silently break
+(Redis would fix it). The conflict check runs as a FastAPI dependency, which resolves before the
+`_rate_limited` wrapper, so a second tab gets `409` without spending an `ingest` token. The atomic
+`index_jobs.start()` still decides races, which matters for admins, who skip the global slot. Upload
+jobs are marked abandoned after 5 idle minutes. A request carrying the job's `job_id` counts as
+activity even when it is then rate limited, and the timer pauses while an `/upload` is in flight, so
+busy retries and long OCR runs are not mistaken for a closed tab. **Tradeoff:** a tab closed
+mid-upload blocks that user's next import for up to 5 minutes.
+
+**Revised 2026-09-16 (🟢 code-verified):** production ingestion now uses Redis-backed RQ jobs and a
+dedicated single `index-worker`; API routes return `202` after uploads are persisted, and the worker
+owns the ingestion concurrency lease. The frontend submits folder files as independent jobs, so a
+closed tab cannot strand a parent batch lock. The old process-local/parent-job behavior above is
+retained only as historical context.
+
+## 48. Local Chroma state limits horizontal scaling (2026-09-16)
+
+🟢 **Repo-verified:** `docker-compose.production.yml` mounts `./chroma_db`, uploaded `./data`, and
+SQLite conversation state from one VM. Redis job state and rate limits are shareable across API
+replicas, but Chroma/SQLite and the local files are not a shared multi-VM data plane. Keep one
+ingestion worker until the vector store, conversation store, and document storage move to managed
+shared services; scaling API containers alone is safe only within the same VM and shared filesystem.
+
+## 49. Upload streaming must publish atomically (2026-09-16)
+
+🟢 **Code-verified:** `/upload` streams multipart bytes to a unique hidden `.part` file, flushes and
+fsyncs it, then creates the final path with a no-overwrite hard link before enqueueing extraction and
+embedding. A failed or oversized transfer removes the partial file; a same-path race never overwrites
+the first completed upload. This keeps large uploads out of API memory and prevents a crash from
+turning an incomplete file into an indexable document.

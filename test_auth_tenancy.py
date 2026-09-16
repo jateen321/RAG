@@ -2,13 +2,14 @@ import tempfile
 import unittest
 from contextlib import asynccontextmanager
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 from fastapi.testclient import TestClient
 
 import api
 import auth
 import conversation_store as storage
+import index_jobs
 import retriever
 
 
@@ -25,6 +26,7 @@ class AllowAllLimiter:
 class FirebaseAuthenticationTests(unittest.TestCase):
     def tearDown(self):
         api.app.dependency_overrides.clear()
+        index_jobs.reset()
 
     def test_protected_route_rejects_missing_session(self):
         response = TestClient(api.app).get("/conversations")
@@ -213,57 +215,45 @@ class FirebaseAuthenticationTests(unittest.TestCase):
         api.app.dependency_overrides[auth.get_current_user] = lambda: user
         pages = [{"page": 1, "text": "Private notes", "method": "text"}]
         with tempfile.TemporaryDirectory() as data_dir:
-            with (
-                patch.object(api, "DATA_DIR", data_dir),
-                patch.object(api, "_extract_document", return_value=pages),
-                patch("indexer.is_document_indexed", return_value=False),
-                patch("indexer.index_document", return_value=1) as index_document,
-            ):
+            with patch.object(api, "DATA_DIR", data_dir), patch.object(api, "_dispatch_job") as dispatch:
                 response = TestClient(api.app).post(
                     "/upload",
                     files={"file": ("notes.txt", b"private", "text/plain")},
                 )
 
                 private_file = api._tenant_data_root(user.uid) / "notes.txt"
-                self.assertEqual(response.status_code, 201)
+                self.assertEqual(response.status_code, 202)
                 self.assertEqual(private_file.read_bytes(), b"private")
-        index_document.assert_called_once_with(
-            pages, "notes.txt", "text", file_path=private_file,
-            owner_id="ordinary-user",
-        )
+                dispatch.assert_called_once()
 
     def test_youtube_import_uses_the_authenticated_users_corpus(self):
         user = auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
         api.app.dependency_overrides[auth.get_current_user] = lambda: user
-        report = {"videos_indexed": 1, "chunks_indexed": 3}
-
-        with patch("youtube_ingester.ingest_youtube", return_value=report) as ingest:
+        with patch.object(api, "_dispatch_job") as dispatch:
             response = TestClient(api.app).post(
                 "/index/youtube",
                 json={"url": "https://www.youtube.com/watch?v=video123"},
             )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), report)
-        ingest.assert_called_once_with(
-            "https://www.youtube.com/watch?v=video123", "ordinary-user"
-        )
+        self.assertEqual(response.status_code, 202)
+        job = response.json()["job"]
+        self.assertEqual(index_jobs.get_payload(user.uid, job["job_id"])["corpus_owner_id"], "ordinary-user")
+        dispatch.assert_called_once()
 
     def test_admin_youtube_import_uses_the_shared_corpus(self):
         user = auth.AuthenticatedUser(uid="admin-user", is_admin=True)
         api.app.dependency_overrides[auth.get_current_user] = lambda: user
 
-        with patch("youtube_ingester.ingest_youtube", return_value={}) as ingest:
+        with patch.object(api, "_dispatch_job") as dispatch:
             response = TestClient(api.app).post(
                 "/index/youtube",
                 json={"url": "https://www.youtube.com/watch?v=video123"},
             )
 
-        self.assertEqual(response.status_code, 200)
-        ingest.assert_called_once_with(
-            "https://www.youtube.com/watch?v=video123",
-            api.SHARED_CORPUS_OWNER_ID,
-        )
+        self.assertEqual(response.status_code, 202)
+        job = response.json()["job"]
+        self.assertEqual(index_jobs.get_payload(user.uid, job["job_id"])["corpus_owner_id"], api.SHARED_CORPUS_OWNER_ID)
+        dispatch.assert_called_once()
 
     def test_non_admin_health_reports_private_library(self):
         user = auth.AuthenticatedUser(uid="ordinary-user", is_admin=False)
