@@ -6,9 +6,9 @@ html, body { margin: 0; min-height: 100%; }
 body { background: var(--paper); color: var(--ink); font-family: var(--font-geist-sans), Arial, sans-serif; }
 button, textarea { font: inherit; }
 button { color: inherit; }
-.app-shell { display: grid; grid-template-columns: 280px minmax(480px, 1fr) max-content; min-height: 100vh; background: radial-gradient(circle at 56% 28%, rgba(255,255,255,.8), transparent 34%), var(--paper); transition: grid-template-columns .24s ease; }
+.app-shell { display: grid; grid-template-columns: var(--library-width, 280px) minmax(480px, 1fr) max-content; min-height: 100vh; background: radial-gradient(circle at 56% 28%, rgba(255,255,255,.8), transparent 34%), var(--paper); transition: grid-template-columns .24s ease; }
 .app-shell.sidebar-collapsed { grid-template-columns: 0 minmax(480px, 1fr) max-content; }
-.app-shell.context-collapsed { grid-template-columns: 280px minmax(480px, 1fr) 48px; }
+.app-shell.context-collapsed { grid-template-columns: var(--library-width, 280px) minmax(480px, 1fr) 48px; }
 .app-shell.sidebar-collapsed.context-collapsed { grid-template-columns: 0 minmax(480px, 1fr) 48px; }
 .app-shell.column-resizing { cursor: col-resize; user-select: none; transition: none; }
 .app-shell.row-resizing { cursor: row-resize; user-select: none; }
@@ -161,7 +161,7 @@ button { color: inherit; }
 .quote-mark { display: block; height: 30px; color: #e9aa78; font-family: Georgia, serif; font-size: 45px; line-height: 1; }
 .source-note p { margin: 8px 0; font-family: Georgia, serif; font-size: 18px; }
 .source-note small { color: #c6d5cf; font-size: 10px; line-height: 1.45; }
-@media (max-width: 1040px) { .app-shell { grid-template-columns: 250px minmax(0, 1fr); } .app-shell.sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr); } .library-panel { width: 250px !important; } .library-resizer, .context-panel { display: none; } }
+@media (max-width: 1040px) { .app-shell { grid-template-columns: var(--library-width, 250px) minmax(0, 1fr); } .app-shell.sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr); } .library-resizer, .context-panel { display: none; } }
 @media (max-width: 720px) { .app-shell, .app-shell.sidebar-collapsed { display: block; } .conversation-header { padding: 14px 20px; } .welcome-state { width: calc(100% - 36px); padding-bottom: 158px; } .welcome-state h2 { font-size: 34px; } .composer-wrap { padding: 16px 18px 18px; } }
 @media (prefers-reduced-motion: no-preference) { .welcome-state { animation: settle .55s ease-out both; } @keyframes settle { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } } }
 

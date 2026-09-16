@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, ClipboardEvent, FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, ClipboardEvent, FormEvent, KeyboardEvent, type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 
 import { AnswerMarkdown } from './answer-markdown';
 import { useAuth } from './auth-gate';
@@ -1071,8 +1071,11 @@ export default function ChatWorkspace() {
   }
 
   return (
-    <main className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${contextCollapsed ? 'context-collapsed' : ''} ${contextResizing || libraryResizing ? 'column-resizing' : ''} ${historyResizing ? 'row-resizing' : ''}`}>
-      <aside id="library-sidebar" className={`library-panel ${mobileLibraryOpen ? 'mobile-open' : ''}`} style={{ width: libraryWidth }}>
+    <main
+      className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${contextCollapsed ? 'context-collapsed' : ''} ${contextResizing || libraryResizing ? 'column-resizing' : ''} ${historyResizing ? 'row-resizing' : ''}`}
+      style={{ '--library-width': `${sidebarCollapsed ? 0 : libraryWidth}px` } as CSSProperties}
+    >
+      <aside id="library-sidebar" className={`library-panel ${mobileLibraryOpen ? 'mobile-open' : ''}`} style={{ width: '100%' }}>
         <div
           className="library-resizer"
           role="separator"
