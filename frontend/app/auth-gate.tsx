@@ -67,7 +67,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={authState}>
-      <div className="auth-session" aria-live="polite">
+      <div className={`auth-session${error ? ' has-error' : ''}`} aria-live="polite">
         {identity ? (
           <>
             <span className="auth-identity">

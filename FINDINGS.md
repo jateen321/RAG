@@ -11,6 +11,7 @@ Consolidated findings for the Hindi/English RAG app. Each result is tagged with 
 Last updated: 2026-09-12.
 
 - 🟣 **Cloud session (2026-09-16):** The Swadhyay Sadan course page exposed 342 book entries in 12 folders; 59 filename labels were visually truncated with ellipses and should be verified before download.
+- 🟢 **Repo-verified (2026-09-16):** `AuthGate` rendered Firebase auth errors as a third item in the sign-in tray's single flex row, allowing long errors to compete horizontally with the Sign in button. The new error state moves the message to a full-width second row; frontend lint and production build both pass.
 
 Section numbers repeat (two §20s; §7–§14 appear both in the block below and in the main
 body). They are left as-is so existing references stay valid; cite a section by number and title.
