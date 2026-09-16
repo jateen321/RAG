@@ -156,7 +156,6 @@ type Notice = { tone: 'success' | 'error'; text: string } | null;
 type PendingUpload = {
   files: File[];
   folderName?: string;
-  skippedNested: number;
   skippedUnsupported: number;
   skippedOversize: number;
 };
@@ -760,7 +759,7 @@ export default function ChatWorkspace() {
       event.target.value = '';
       return;
     }
-    setPendingUpload({ files: [file], skippedNested: 0, skippedUnsupported: 0, skippedOversize: 0 });
+    setPendingUpload({ files: [file], skippedUnsupported: 0, skippedOversize: 0 });
   }
 
   function chooseFolder(event: ChangeEvent<HTMLInputElement>) {
@@ -770,20 +769,18 @@ export default function ChatWorkspace() {
     const relativePath = (file: File) => file.webkitRelativePath || file.name;
     const firstPathParts = relativePath(selectedFiles[0]).split('/');
     const folderName = firstPathParts.length > 1 ? firstPathParts[0] : 'Selected folder';
-    const topLevelFiles = selectedFiles.filter((file) => relativePath(file).split('/').length <= 2);
-    const supportedFiles = topLevelFiles.filter((file) => ['.pdf', '.txt', '.md'].some((extension) => file.name.toLowerCase().endsWith(extension)));
+    const supportedFiles = selectedFiles.filter((file) => ['.pdf', '.txt', '.md'].some((extension) => file.name.toLowerCase().endsWith(extension)));
     const files = supportedFiles.filter((file) => file.size <= 500 * 1024 * 1024);
-    const skippedNested = selectedFiles.length - topLevelFiles.length;
-    const skippedUnsupported = topLevelFiles.length - supportedFiles.length;
+    const skippedUnsupported = selectedFiles.length - supportedFiles.length;
     const skippedOversize = supportedFiles.length - files.length;
 
     if (!files.length) {
-      setNotice({ tone: 'error', text: `No eligible top-level PDF, TXT, or Markdown files were found in ${folderName}.` });
+      setNotice({ tone: 'error', text: `No eligible PDF, TXT, or Markdown files were found in ${folderName}.` });
       event.target.value = '';
       return;
     }
 
-    setPendingUpload({ files, folderName, skippedNested, skippedUnsupported, skippedOversize });
+    setPendingUpload({ files, folderName, skippedUnsupported, skippedOversize });
   }
 
   function closeUploadDialog() {
@@ -1471,9 +1468,9 @@ export default function ChatWorkspace() {
             <p className="eyebrow">ADD TO YOUR LIBRARY</p>
             <h2 id="upload-title">Index this {pendingUpload.folderName ? 'folder' : 'document'}?</h2>
             <p className="modal-copy">Gyaan Sarthi will extract the text, create searchable passages, and preserve the selected folder path in your local library.</p>
-            <div className="selected-file"><BookIcon /><span><strong>{pendingUpload.folderName || pendingUpload.files[0].name}</strong><small>{pendingUpload.folderName ? `${pendingUpload.files.length} supported top-level document${pendingUpload.files.length === 1 ? '' : 's'}` : `${(pendingUpload.files[0].size / 1024 / 1024).toFixed(1)} MB`}</small></span></div>
-            {pendingUpload.folderName && (pendingUpload.skippedNested > 0 || pendingUpload.skippedUnsupported > 0 || pendingUpload.skippedOversize > 0) && (
-              <p className="selection-note">Skipped: {pendingUpload.skippedNested} from nested folders, {pendingUpload.skippedUnsupported} unsupported, {pendingUpload.skippedOversize} over 500 MB.</p>
+            <div className="selected-file"><BookIcon /><span><strong>{pendingUpload.folderName || pendingUpload.files[0].name}</strong><small>{pendingUpload.folderName ? `${pendingUpload.files.length} supported document${pendingUpload.files.length === 1 ? '' : 's'} (including nested folders)` : `${(pendingUpload.files[0].size / 1024 / 1024).toFixed(1)} MB`}</small></span></div>
+            {pendingUpload.folderName && (pendingUpload.skippedUnsupported > 0 || pendingUpload.skippedOversize > 0) && (
+              <p className="selection-note">Skipped: {pendingUpload.skippedUnsupported} unsupported, {pendingUpload.skippedOversize} over 500 MB.</p>
             )}
             <div className="modal-actions"><button type="button" className="secondary" onClick={closeUploadDialog}>Cancel</button><button type="button" className="primary" onClick={() => void uploadDocument()}>Upload &amp; index</button></div>
           </section>
