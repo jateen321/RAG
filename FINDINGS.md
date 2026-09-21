@@ -1556,3 +1556,32 @@ finding id` from `collection.query()`. Metadata reads and a vector probe succeed
 idle, so the failure was transient concurrent access rather than an empty collection. The API and worker
 now serialize Chroma operations with a shared file lock, and this specific transient error is reported as
 retryable `503` instead of `500`.
+
+## 51. Local folder indexing is blocked by external OCR authorization (2026-09-21)
+
+**Issue:** indexing `data/Swadhyay Sadan` failed first with a Chroma SIGSEGV and then stopped on
+Google Vision `ServiceUnavailable` errors while processing an uncached 1,264-page PDF.
+
+🟢 **Findings:** the folder contains 342 supported PDFs; 59 currently match indexed content
+fingerprints. The Chroma crash was reproducible in `collection.count()` and traced to persisted HNSW
+metadata with `dimensionality=None`, alongside a malformed SQLite FTS5 index. Moving the HNSW pickle
+aside and rebuilding only the FTS5 index restored safe reads (`count=32,816`); no document or vector
+rows were deleted. The OCR failure was DNS resolution for `vision.googleapis.com` inside the sandbox,
+not a PDF parse failure.
+
+**Remaining blocker:** finishing the remaining files requires explicit authorization to transmit
+their contents to Google Vision and the embedding service, or a deliberate switch to local Tesseract
+OCR. The interrupted run did not force or reset existing documents.
+
+## 52. Chroma HNSW segment was truncated during local recovery (2026-09-21)
+
+**Issue:** while resuming folder indexing after removing the corrupt HNSW metadata pickle, the
+persisted vector segment changed from approximately 387 MB / 32,618 elements to 1.2 MB. The
+indexing process was stopped before further writes.
+
+🟢 **Findings:** SQLite remains intact (`PRAGMA integrity_check=ok`, 32,816 embedding rows and 199
+queued operations), and metadata reads still work. A zero-vector probe now returns only vectors from
+the active `473362c77333` document, so the previous HNSW vectors are not currently searchable. No
+backup of the original binary segment exists in the local workspace; the SQLite backup cannot restore
+those vector bytes. Recovery requires restoring the original HNSW directory or re-embedding the
+stored document texts before any further indexing.
