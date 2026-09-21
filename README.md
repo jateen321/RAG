@@ -768,13 +768,13 @@ in `.env` as shown in `.env.example`:
 | `CHUNK_OVERLAP` | 100 | **Minimum** overlap between chunks (floor) |
 | `MAX_CHUNK_OVERLAP` | 250 | **Maximum** overlap between chunks (ceiling). Takes precedence over the floor — prevents one long sentence being copied whole into the next chunk |
 | `MIN_CHUNK_LENGTH` | 50 | Skip chunks shorter than this |
-| `TOP_K` | 5 | Fixed cutoff for explicit `top_k` calls and evaluation |
+| `TOP_K` | 10 | Fixed cutoff for explicit `top_k` calls and evaluation |
 | `ADAPTIVE_ROUTER_ENABLED` | `1` | Probe direct retrieval first, then expand uncertain document questions |
 | `ADAPTIVE_MAX_DISTANCE` | `0.45` | Maximum direct top-result distance for the confident route |
 | `ADAPTIVE_MIN_MARGIN` | `0.05` | Minimum distance gap between the first and second direct results |
 | `ADAPTIVE_MIN_SOURCE_CONCENTRATION` | `0.60` | Minimum top-k share from the dominant source for the confident route |
 | `QUERY_REWRITE_MAX_QUERIES` | 10 | Maximum total queries, including the original |
-| `QUERY_RETRIEVAL_TOP_K` | 5 | Candidates retrieved per query before fusion |
+| `QUERY_RETRIEVAL_TOP_K` | 10 | Candidates retrieved per query before fusion |
 | `RERANK_CANDIDATE_LIMIT` | 15 | Maximum RRF candidates sent to Gemini reranking |
 | `RERANK_MODEL` | `gemini-3.5-flash-lite` | Lightweight structured-output model used only for reranking |
 | `IMAGE_MODEL` | `gemini-3.1-flash-image` | Model used for optional generated study visuals |
