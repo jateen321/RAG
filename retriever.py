@@ -12,6 +12,7 @@ from config import (
     CHROMA_DB_PATH, COLLECTION_NAME,
 )
 from embedding_client import get_embedding_client
+from chroma_lock import chroma_db_lock
 
 console = Console()
 
@@ -105,28 +106,29 @@ def retrieve_many(
     result = _client.models.embed_content(model=EMBEDDING_MODEL, contents=queries)
     query_embeddings = [embedding.values for embedding in result.embeddings]
 
-    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-    try:
-        collection = client.get_collection(name=COLLECTION_NAME)
-    except Exception:
-        console.print("[red]❌ No indexed documents found![/red]")
-        console.print("   Run: [bold]python app.py index <pdf_file>[/bold] first.")
-        return [[] for _ in queries]
+    with chroma_db_lock():
+        client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+        try:
+            collection = client.get_collection(name=COLLECTION_NAME)
+        except Exception:
+            console.print("[red]❌ No indexed documents found![/red]")
+            console.print("   Run: [bold]python app.py index <pdf_file>[/bold] first.")
+            return [[] for _ in queries]
 
-    if owner_id is None:
-        count = collection.count()
-    else:
-        count = len(collection.get(where={"owner_id": owner_id}, include=[])["ids"])
-    if count == 0:
-        console.print("[red]❌ Database is empty. Index a PDF first.[/red]")
-        return [[] for _ in queries]
+        if owner_id is None:
+            count = collection.count()
+        else:
+            count = len(collection.get(where={"owner_id": owner_id}, include=[])["ids"])
+        if count == 0:
+            console.print("[red]❌ Database is empty. Index a PDF first.[/red]")
+            return [[] for _ in queries]
 
-    results = collection.query(
-        query_embeddings=query_embeddings,
-        n_results=min(top_k, count),
-        **({"where": {"owner_id": owner_id}} if owner_id is not None else {}),
-        include=["documents", "metadatas", "distances"],
-    )
+        results = collection.query(
+            query_embeddings=query_embeddings,
+            n_results=min(top_k, count),
+            **({"where": {"owner_id": owner_id}} if owner_id is not None else {}),
+            include=["documents", "metadatas", "distances"],
+        )
     return [_format_results(results, i) for i in range(len(queries))]
 
 

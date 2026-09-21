@@ -16,6 +16,7 @@ from fastapi import (
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from chromadb.errors import InternalError as ChromaInternalError
 from config import (
     FIREBASE_PROJECT_ID,
     CONVERSATION_DB_PATH,
@@ -647,6 +648,11 @@ async def _answer_and_record(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ChromaInternalError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="The indexed library is temporarily busy. Please try again.",
+        ) from exc
 
 
 @app.get("/conversations")

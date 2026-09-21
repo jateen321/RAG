@@ -1547,3 +1547,12 @@ fsyncs it, then creates the final path with a no-overwrite hard link before enqu
 embedding. A failed or oversized transfer removes the partial file; a same-path race never overwrites
 the first completed upload. This keeps large uploads out of API memory and prevents a crash from
 turning an incomplete file into an indexable document.
+
+## 50. Chroma queries must not overlap persistent writes (2026-09-21)
+
+🟢 **Production-verified:** while the RQ worker was upserting 395 chunks into the host-mounted Chroma
+collection, the API returned `chromadb.errors.InternalError: Error executing plan: Internal error: Error
+finding id` from `collection.query()`. Metadata reads and a vector probe succeeded after the worker became
+idle, so the failure was transient concurrent access rather than an empty collection. The API and worker
+now serialize Chroma operations with a shared file lock, and this specific transient error is reported as
+retryable `503` instead of `500`.
