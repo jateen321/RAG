@@ -1585,3 +1585,11 @@ the active `473362c77333` document, so the previous HNSW vectors are not current
 backup of the original binary segment exists in the local workspace; the SQLite backup cannot restore
 those vector bytes. Recovery requires restoring the original HNSW directory or re-embedding the
 stored document texts before any further indexing.
+
+## 53. Chroma preflight now fails closed on unsafe persisted segments (2026-09-21)
+
+🟢 **Code-verified:** `chroma_lock.validate_chroma_store()` now runs before
+`PersistentClient` opens an existing collection. It checks SQLite `quick_check`, confirms that a
+non-empty collection has HNSW metadata, validates a positive dimensionality, and compares it with
+SQLite's collection dimension. Invalid stores raise an actionable `ChromaStoreError` instead of
+entering the Rust loader. Five focused preflight tests and the full 197-test suite pass.

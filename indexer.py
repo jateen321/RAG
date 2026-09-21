@@ -23,7 +23,7 @@ from config import (
     EMBED_BACKOFF_BASE_S, EMBED_PACE_MAX_S, EMBED_PACE_DECAY_AFTER,
 )
 from embedding_client import get_embedding_client
-from chroma_lock import LockedCollection, chroma_db_lock
+from chroma_lock import LockedCollection, chroma_db_lock, validate_chroma_store
 
 console = Console()
 
@@ -428,6 +428,7 @@ def _embed_texts(texts: list[str], batch_size: int = None, on_progress=None) -> 
 def _get_collection():
     """Get or create the ChromaDB collection."""
     with chroma_db_lock():
+        validate_chroma_store(CHROMA_DB_PATH, COLLECTION_NAME)
         client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
         collection = client.get_or_create_collection(
             name=COLLECTION_NAME,
