@@ -1593,3 +1593,10 @@ stored document texts before any further indexing.
 non-empty collection has HNSW metadata, validates a positive dimensionality, and compares it with
 SQLite's collection dimension. Invalid stores raise an actionable `ChromaStoreError` instead of
 entering the Rust loader. Five focused preflight tests and the full 197-test suite pass.
+
+## 54. Citation labels must match the grounding prompt (2026-09-21)
+
+🟢 **Code-verified:** the answer prompt used an exact source/location label that was not included in
+the returned source metadata. The frontend therefore could not resolve some valid citations and showed
+the raw `⟦...⟧` marker instead of a numbered citation. Source serialization now preserves that exact
+`citation_label`.
