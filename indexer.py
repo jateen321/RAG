@@ -442,24 +442,32 @@ def assign_legacy_documents(owner_id: str) -> int:
     if not owner_id:
         return 0
     collection = _get_collection()
-    stored = collection.get(include=["metadatas"])
-    positions = [
-        index
-        for index, metadata in enumerate(stored["metadatas"] or [])
-        if not (metadata or {}).get("owner_id")
-    ]
-    if not positions:
-        return 0
-    for start in range(0, len(positions), OWNER_MIGRATION_BATCH_SIZE):
-        batch = positions[start:start + OWNER_MIGRATION_BATCH_SIZE]
-        collection.update(
-            ids=[stored["ids"][index] for index in batch],
-            metadatas=[
-                {**(stored["metadatas"][index] or {}), "owner_id": owner_id}
-                for index in batch
-            ],
+    migrated = 0
+    offset = 0
+    while True:
+        stored = collection.get(
+            include=["metadatas"],
+            limit=OWNER_MIGRATION_BATCH_SIZE,
+            offset=offset,
         )
-    return len(positions)
+        ids = stored["ids"]
+        if not ids:
+            break
+        updates = [
+            (chunk_id, {**(metadata or {}), "owner_id": owner_id})
+            for chunk_id, metadata in zip(ids, stored["metadatas"] or [])
+            if not (metadata or {}).get("owner_id")
+        ]
+        if updates:
+            collection.update(
+                ids=[chunk_id for chunk_id, _ in updates],
+                metadatas=[metadata for _, metadata in updates],
+            )
+            migrated += len(updates)
+        offset += len(ids)
+        if len(ids) < OWNER_MIGRATION_BATCH_SIZE:
+            break
+    return migrated
 
 
 def index_chunks(
