@@ -463,6 +463,10 @@ def ask_with_sources(
             "chunk_id": c.get("chunk_id"),
             "page": c["page"],
             "source": c["source"],
+            # Keep the exact label shown to Gemini in the API payload so the
+            # frontend can resolve citations even when source/video-title
+            # metadata use a different display form.
+            "citation_label": _chunk_label(c),
             "distance": c["distance"],
             "rrf_score": c.get("rrf_score"),
             "query_hits": c.get("query_hits"),
