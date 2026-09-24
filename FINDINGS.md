@@ -1600,3 +1600,10 @@ entering the Rust loader. Five focused preflight tests and the full 197-test sui
 the returned source metadata. The frontend therefore could not resolve some valid citations and showed
 the raw `⟦...⟧` marker instead of a numbered citation. Source serialization now preserves that exact
 `citation_label`.
+
+## 55. The production e2-micro ran out of memory during API startup (2026-09-24)
+
+🟢 **Production-verified:** the 953 MiB VM had no swap and repeatedly OOM-killed `uvicorn`, leaving
+Caddy `/api/health` at 502. A 4 GiB swap file on the existing disk restored healthy containers and
+HTTP 200; startup exceeded the release script's former 120-second wait. The ownership migration also
+fetched all Chroma metadata at once, so its reads are now paged.
