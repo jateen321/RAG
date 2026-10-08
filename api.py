@@ -1,6 +1,7 @@
 """FastAPI interface for the Gyaan Sarthi RAG pipeline."""
 
 import hashlib
+import logging
 import re
 import os
 from functools import wraps
@@ -71,6 +72,8 @@ from backend.api.models import (
     SessionRequest,
     YouTubeIndexRequest,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _detected_prompt_image_type(data: bytes) -> str | None:
@@ -649,6 +652,7 @@ async def _answer_and_record(
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ChromaInternalError as exc:
+        logger.exception("Chroma access failed")
         raise HTTPException(
             status_code=503,
             detail="The indexed library is temporarily busy. Please try again.",
