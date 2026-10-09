@@ -969,5 +969,154 @@
     "proximity": "far",
     "note": "No answer exists in the corpus. A correct response DECLINES. Scored inverted: retrieval_hit is not meaningful; the metric is whether the model refuses instead of fabricating.",
     "difficulty": "n/a"
+  },
+  {
+    "id": "gita-04-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "गीता के श्लोक 2.47–2.48 में कृष्ण फल की आसक्ति के साथ-साथ किस दूसरी अतिशयता से बचने को कहते हैं, और सफलता-असफलता में कौन-सा भाव योग कहलाता है?",
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      64,
+      65
+    ],
+    "answer_keywords": [
+      "फल",
+      "अकर्म",
+      "सिद्धि",
+      "असिद्धि",
+      "समत्व"
+    ],
+    "evidence": "कर्म न करने में भी आसक्ति न हो",
+    "match": "page",
+    "difficulty": "hard"
+  },
+  {
+    "id": "gita-05-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "अर्जुन ने स्थितप्रज्ञ के बारे में कौन-से तीन व्यवहारगत प्रश्न पूछे, और कृष्ण के अगले श्लोक में कौन-सी दो आंतरिक विशेषताएँ उसकी पहचान बताती हैं?",
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      68,
+      69
+    ],
+    "answer_keywords": [
+      "बोलता",
+      "बैठता",
+      "चलता",
+      "कामनाओं",
+      "आत्मा",
+      "सन्तुष्ट"
+    ],
+    "evidence": "स्थिर बुद्धि पुरुष कैसे बोलता है, कैसे बैठता है और कैसे चलता है ?",
+    "match": "page",
+    "difficulty": "hard"
+  },
+  {
+    "id": "gita-06-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "श्लोक 4.7–4.9 के अनुसार कृष्ण किन परिस्थितियों में प्रकट होते हैं, उनके प्रकट होने के तीन उद्देश्य क्या हैं, और उनके दिव्य जन्म-कर्म को तत्त्व से जानने वाले का क्या फल बताया गया है?",
+    "expected_sources": [
+      "SRIMAD-BHAGAVAD-GITA.pdf",
+      "data/SRIMAD-BHAGAVAD-GITA.pdf"
+    ],
+    "expected_pages": [
+      109,
+      110
+    ],
+    "answer_keywords": [
+      "धर्म",
+      "अधर्म",
+      "साधु",
+      "दुष्कृत",
+      "स्थापना",
+      "पुनर्जन्म",
+      "प्राप्त"
+    ],
+    "evidence": "इस प्रकार जो मनुष्य तत्त्व से जान लेता है, वह शरीर को त्यागकर फिर जन्म को प्राप्त नहीं होता, किंतु मुझे ही प्राप्त होता है ।। ६ ।।",
+    "match": "page",
+    "difficulty": "hard"
+  },
+  {
+    "id": "psych-01-en-hard",
+    "language": "en",
+    "category": "interpretive",
+    "question": "The author names four states of consciousness and links one-sided study of them to different philosophical outlooks. Which four states are named, and what outlook follows from studying only waking, only dreaming, or only dreamless sleep together with turiya?",
+    "expected_sources": [
+      "Ancient_Indian_Psychology.pdf",
+      "data/Ancient_Indian_Psychology.pdf"
+    ],
+    "expected_pages": [
+      11
+    ],
+    "answer_keywords": [
+      "waking",
+      "dreaming",
+      "dreamless",
+      "turiya",
+      "realistic",
+      "subjectivism",
+      "mystical"
+    ],
+    "evidence": "If the waking consciousness alone is taken into account, one's philosophic outlook will become realistic; if the dream consciousness is studied exclusively, it leads to subjectivism;",
+    "match": "page",
+    "difficulty": "hard"
+  },
+  {
+    "id": "hist-05-hi-hard",
+    "language": "hi",
+    "category": "interpretive",
+    "question": "इतिहासकार मेगस्थनीज की इण्डिका को अर्थशास्त्र का काल तय करने के लिए भरोसेमंद आधार क्यों नहीं मानता? उसके वर्णनों पर संदेह और दोनों ग्रंथों के संबंध—इन दो अलग कारणों को समझाइए।",
+    "expected_sources": [
+      "A_History_of_Ancient_and_Early_Medieval_India.pdf",
+      "data/A_History_of_Ancient_and_Early_Medieval_India.pdf"
+    ],
+    "expected_pages": [
+      379
+    ],
+    "answer_keywords": [
+      "विरोधाभास",
+      "तर्कहीन",
+      "द्वितीयक",
+      "सैद्धांतिक"
+    ],
+    "evidence": "मेगस्थनीज अवलोकन की दृष्टि से सर्वश्रेष्ठ नहीं था क्योंकि उसका ये कथन कि सम्पूर्ण भूमि राजा की संपत्ति है, यहां पर कोई दास नहीं है अथवा भारतीय लिखना नहीं जानते, सभी तर्कहीन हैं।",
+    "match": "page",
+    "difficulty": "hard"
+  },
+  {
+    "id": "arth-05-hi-hard",
+    "language": "hi",
+    "category": "factual",
+    "question": "कौटिल्य किन चार विद्याओं को स्वीकारते हैं? उनकी सूची की तुलना मनु, बृहस्पति और शुक्राचार्य के मतों से कीजिए, और बताइए कि कौटिल्य आन्वीक्षिकी को किस तरह के विचार के रूप में प्रस्तुत करते हैं।",
+    "expected_sources": [
+      "Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf",
+      "data/Arthasastra Of Kautilya & Chanakya Sutra Vachaspati Gairola Chowkambha.pdf"
+    ],
+    "expected_pages": [
+      87
+    ],
+    "answer_keywords": [
+      "आन्वीक्षिकी",
+      "त्रयी",
+      "वार्ता",
+      "दण्डनीति",
+      "मनु",
+      "बृहस्पति",
+      "शुक्राचार्य",
+      "धर्म",
+      "अधर्म"
+    ],
+    "evidence": "आन्वीक्षकी, त्रयी, वार्ता और दण्डनीति",
+    "match": "page",
+    "difficulty": "hard"
   }
 ]
