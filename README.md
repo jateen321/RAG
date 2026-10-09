@@ -25,6 +25,22 @@ ChromaDB runs locally. OCR and Gemini cost and availability depend on the select
 backends, models, billing status, and project-specific quotas; do not assume every
 configuration is free.
 
+## README index
+
+- [Quick Start](#quick-start)
+- [Index a PDF](#5-index-a-pdf)
+- [Index a YouTube source](#5b-index-a-youtube-video-playlist-or-channel)
+- [CLI commands](#-cli-commands)
+- [Web API and Swagger](#-web-api-and-swagger)
+- [React web interface](#-react-web-interface)
+- [How it works](#-how-it-works)
+- [Evaluation](#-evaluation)
+- [Verification before a demo](#-verification-before-a-demo)
+- [Project structure](#-project-structure)
+- [Configuration](#-configuration)
+- [Tips](#-tips)
+- [Troubleshooting](#-troubleshooting)
+
 ## ✨ What You Can Demonstrate
 
 - **Evidence-grounded chat** in English, Hindi, or mixed language, with source
