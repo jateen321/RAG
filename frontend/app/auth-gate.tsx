@@ -40,7 +40,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       .then(async (response) => {
         if (response.ok) setIdentity(await response.json() as Identity);
       })
-      .catch(() => setError('The RAG server is not reachable.'))
+      .catch(() => setError('We can’t connect to the library right now. Please try again.'))
       .finally(() => setChecking(false));
   }, []);
 

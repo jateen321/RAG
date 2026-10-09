@@ -245,7 +245,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include' });
   } catch {
-    throw new Error('The RAG server is not reachable. Start the FastAPI server and try again.');
+    throw new Error('We can’t connect to the library right now. Please try again.');
   }
 
   const payload = await response.json().catch(() => ({}));
@@ -1050,10 +1050,15 @@ export default function ChatWorkspace() {
       );
       setPassageViewer({ source, passage, loading: false });
     } catch (error) {
+      const message = error instanceof RequestError && error.status >= 500
+        ? 'We couldn’t load this passage right now. Please try again later.'
+        : error instanceof Error
+          ? error.message
+          : 'The cited passage could not be loaded.';
       setPassageViewer({
         source,
         loading: false,
-        error: error instanceof Error ? error.message : 'The cited passage could not be loaded.',
+        error: message,
       });
     }
   }
