@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import time
 from pathlib import Path
@@ -302,20 +301,7 @@ def main() -> None:
         action="store_true",
         help="Also generate answers and score citations, keywords and refusals.",
     )
-    parser.add_argument(
-        "--llm-rpm",
-        type=int,
-        default=10,
-        help=(
-            "Maximum Gemini content-generation requests per rolling minute "
-            "during --generate runs (default: 10)."
-        ),
-    )
     args = parser.parse_args()
-    if args.llm_rpm < 1:
-        parser.error("--llm-rpm must be a positive integer")
-    if args.generate:
-        os.environ["LLM_REQUESTS_PER_MINUTE"] = str(args.llm_rpm)
 
     report = evaluate(
         load_dataset(args.dataset),
