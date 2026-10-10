@@ -16,6 +16,8 @@ readonly FRONTEND_IMAGE="$2"
 readonly CADDY_IMAGE="$3"
 readonly APP_DOMAIN="$4"
 readonly RELEASE_ID="$5"
+# This stateful VM can take several minutes to load Chroma after a cold start.
+readonly COMPOSE_WAIT_TIMEOUT_S=600
 
 case "$RELEASE_ID" in
   *[!a-zA-Z0-9._-]*|'')
@@ -75,7 +77,7 @@ rollback() {
   fi
   echo "Deployment failed; restoring the previous healthy image set." >&2
   run_compose "$rollback_release" pull backend frontend caddy
-  run_compose "$rollback_release" up -d --no-build --wait --wait-timeout 120
+  run_compose "$rollback_release" up -d --no-build --wait --wait-timeout "$COMPOSE_WAIT_TIMEOUT_S"
   exit "$failed_status"
 }
 
@@ -90,7 +92,7 @@ fi
 if ! run_compose "$candidate" pull backend frontend caddy; then
   rollback 1
 fi
-if ! run_compose "$candidate" up -d --no-build --wait --wait-timeout 120; then
+if ! run_compose "$candidate" up -d --no-build --wait --wait-timeout "$COMPOSE_WAIT_TIMEOUT_S"; then
   rollback 1
 fi
 # The backend port is intentionally private to the Compose network; check it

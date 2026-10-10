@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from contextlib import asynccontextmanager
 from pathlib import Path
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import ANY, Mock, call, patch
 
 from fastapi.testclient import TestClient
 
@@ -358,6 +358,9 @@ class DocumentTenancyTests(unittest.TestCase):
             updated = assign_legacy_documents(api.SHARED_CORPUS_OWNER_ID)
 
         self.assertEqual(updated, 1)
+        collection.get.assert_called_once_with(
+            include=["metadatas"], limit=5000, offset=0,
+        )
         collection.update.assert_called_once_with(
             ids=["legacy"],
             metadatas=[{
@@ -368,10 +371,14 @@ class DocumentTenancyTests(unittest.TestCase):
 
     def test_legacy_migration_batches_large_collections(self):
         collection = Mock()
-        collection.get.return_value = {
-            "ids": ["one", "two", "three"],
-            "metadatas": [{}, {}, {}],
-        }
+        collection.get.side_effect = [
+            {
+                "ids": ["one", "private"],
+                "metadatas": [{}, {"owner_id": "user-a"}],
+            },
+            {"ids": ["two", "three"], "metadatas": [{}, {}]},
+            {"ids": [], "metadatas": []},
+        ]
         with (
             patch("indexer._get_collection", return_value=collection),
             patch("indexer.OWNER_MIGRATION_BATCH_SIZE", 2),
@@ -381,9 +388,14 @@ class DocumentTenancyTests(unittest.TestCase):
             updated = assign_legacy_documents(api.SHARED_CORPUS_OWNER_ID)
 
         self.assertEqual(updated, 3)
+        self.assertEqual(collection.get.call_args_list, [
+            call(include=["metadatas"], limit=2, offset=0),
+            call(include=["metadatas"], limit=2, offset=2),
+            call(include=["metadatas"], limit=2, offset=4),
+        ])
         self.assertEqual(collection.update.call_count, 2)
-        self.assertEqual(collection.update.call_args_list[0].kwargs["ids"], ["one", "two"])
-        self.assertEqual(collection.update.call_args_list[1].kwargs["ids"], ["three"])
+        self.assertEqual(collection.update.call_args_list[0].kwargs["ids"], ["one"])
+        self.assertEqual(collection.update.call_args_list[1].kwargs["ids"], ["two", "three"])
 
     def test_one_users_document_path_does_not_resolve_for_another_user(self):
         with (

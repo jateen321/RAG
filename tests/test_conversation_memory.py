@@ -67,6 +67,10 @@ class ConversationMemoryTests(unittest.TestCase):
 
         self.assertEqual(result["retrieval"]["route"], "direct")
         self.assertEqual(result["retrieval"]["confidence"]["score"], 0.91)
+        self.assertEqual(
+            result["sources"][0]["citation_label"],
+            "book.pdf · पृष्ठ 1 / Page 1",
+        )
 
     def test_context_dependent_question_is_rewritten_before_retrieval(self):
         chunk = {"text": "A verified passage", "page": 1, "source": "book.pdf", "distance": 0.1}

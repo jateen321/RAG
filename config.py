@@ -126,7 +126,7 @@ VERTEX_EMBEDDING_TIMEOUT_S = float(
 )
 
 # ── Retrieval Configuration ───────────────────────────────────────────
-TOP_K = 5                 # Fixed cutoff used by explicit top_k/evaluation calls
+TOP_K = 10                # Fixed cutoff used by explicit top_k/evaluation calls
 
 # ── Adaptive retrieval routing ───────────────────────────────────────
 # The router starts with one inexpensive direct vector search. These defaults
@@ -150,7 +150,7 @@ QUERY_REWRITE_ENABLED = os.getenv("QUERY_REWRITE_ENABLED", "1").strip().lower() 
 QUERY_REWRITE_MAX_QUERIES = min(
     10, max(1, int(os.getenv("QUERY_REWRITE_MAX_QUERIES", "10")))
 )
-QUERY_RETRIEVAL_TOP_K = max(1, int(os.getenv("QUERY_RETRIEVAL_TOP_K", "5")))
+QUERY_RETRIEVAL_TOP_K = max(1, int(os.getenv("QUERY_RETRIEVAL_TOP_K", "10")))
 RRF_RANK_CONSTANT = max(1, int(os.getenv("RRF_RANK_CONSTANT", "60")))
 RERANK_CANDIDATE_LIMIT = max(1, int(os.getenv("RERANK_CANDIDATE_LIMIT", "15")))
 RERANK_ENABLED = os.getenv("RERANK_ENABLED", "1").strip().lower() not in {
