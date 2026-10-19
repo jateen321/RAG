@@ -10,10 +10,10 @@ from pathlib import Path
 from uuid import uuid4
 
 from citation_sources import align_answer_sources
-from config import LEGACY_ADMIN_UID
+from config import SINGLE_USER_ID
 
 
-LOCAL_OWNER_ID = "local-user"
+LOCAL_OWNER_ID = SINGLE_USER_ID
 
 
 def _now() -> str:
@@ -58,11 +58,11 @@ def _ensure_schema(connection: sqlite3.Connection) -> None:
     }
     if "owner_id" not in conversation_columns:
         connection.execute("ALTER TABLE conversations ADD COLUMN owner_id TEXT")
-    if LEGACY_ADMIN_UID:
-        connection.execute(
-            "UPDATE conversations SET owner_id = ? WHERE owner_id IS NULL OR owner_id = ''",
-            (LEGACY_ADMIN_UID,),
-        )
+    # Consolidate existing account-owned rows into the one local account.
+    connection.execute(
+        "UPDATE conversations SET owner_id = ? WHERE owner_id IS NULL OR owner_id != ?",
+        (SINGLE_USER_ID, SINGLE_USER_ID),
+    )
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS exchanges (
@@ -157,7 +157,7 @@ def record_exchange(
 ) -> str:
     timestamp = _now()
     resolved_id = conversation_id or str(uuid4())
-    resolved_owner = owner_id or LEGACY_ADMIN_UID or LOCAL_OWNER_ID
+    resolved_owner = owner_id or LOCAL_OWNER_ID
     with _database(database_path) as connection:
         if conversation_id is None:
             connection.execute(

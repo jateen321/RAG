@@ -8,7 +8,9 @@ Consolidated findings for the Hindi/English RAG app. Each result is tagged with 
   ported into this repo. *Action: port the script/results back to make it reproducible here.*
 - ⚪ **Hypothesis** — believed/expected, not yet measured.
 
-Last updated: 2026-09-12.
+Last updated: 2026-10-19.
+
+- 🟢 **Repo-verified (2026-10-19):** Single-user mode skips application sign-in and treats every request as the local administrator. The production Compose file publishes ports 80/443, so deployment ingress must be restricted at the VM firewall/security group.
 
 - 🟣 **Cloud session (2026-09-16):** The Swadhyay Sadan course page exposed 342 book entries in 12 folders; 59 filename labels were visually truncated with ellipses and should be verified before download.
 - 🟢 **Repo-verified (2026-09-16):** `AuthGate` rendered Firebase auth errors as a third item in the sign-in tray's single flex row, allowing long errors to compete horizontally with the Sign in button. The new error state moves the message to a full-width second row; frontend lint and production build both pass.

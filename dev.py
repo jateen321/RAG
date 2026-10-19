@@ -34,7 +34,7 @@ LOCAL_API_URL = f"http://localhost:{BACKEND_PORT}"
 
 # Development is intentionally plain HTTP. Keep this override inside the local
 # supervisor so production continues to default to Secure session cookies.
-BACKEND_ENVIRONMENT = {"SESSION_COOKIE_SECURE": "0"}
+BACKEND_ENVIRONMENT = {}
 FRONTEND_ENVIRONMENT = {"NEXT_PUBLIC_RAG_API_URL": LOCAL_API_URL}
 
 

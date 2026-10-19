@@ -9,14 +9,12 @@ chromadb>=1.5           # persistent vector database
 
 # ── PDF rendering + OCR ──────────────────────────────────────────────
 pymupdf>=1.26           # PDF -> image rendering (import: pymupdf)
-google-cloud-vision>=3.10 # managed dense-document OCR (uses Google Cloud ADC)
 pytesseract>=0.3.13     # Tesseract OCR wrapper — needs the `tesseract` binary
                         # installed separately (e.g. `brew install tesseract tesseract-lang`)
 pillow>=11.0            # image handling for OCR (import: PIL)
 
 # ── Web API ──────────────────────────────────────────────────────────
 fastapi>=0.115          # /ask, /index, /health endpoints (pydantic comes with it)
-firebase-admin>=7.0     # verify Google/Firebase identity and issue browser sessions
 redis>=5.2              # shared rate limits and concurrency across API replicas
 uvicorn>=0.30           # ASGI server used to run the FastAPI app
 python-multipart>=0.0.20 # multipart parser for browser PDF uploads

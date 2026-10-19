@@ -12,7 +12,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      LLM_BACKEND: developer
       GEMINI_API_KEY: test-key
       OCR_BACKEND: tesseract
       RAG_RATE_LIMIT_ENABLED: "0"
@@ -65,26 +64,14 @@ jobs:
         env:
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
           API_DOMAIN: ${{ vars.API_DOMAIN }}
-          FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
-          FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-          FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
         run: |
           test -n "$APP_DOMAIN"
           test -n "$API_DOMAIN"
-          test -n "$FIREBASE_API_KEY"
-          test -n "$FIREBASE_AUTH_DOMAIN"
-          test -n "$FIREBASE_PROJECT_ID"
-          test -n "$FIREBASE_APP_ID"
       - name: Build and publish immutable images
         env:
           PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
           API_DOMAIN: ${{ vars.API_DOMAIN }}
-          FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
-          FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-          FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
         run: |
           registry="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY"
           backend_image="$registry/backend:${GITHUB_SHA}"
@@ -94,10 +81,6 @@ jobs:
           docker build --tag "$backend_image" .
           docker build \
             --build-arg NEXT_PUBLIC_RAG_API_URL="/api" \
-            --build-arg NEXT_PUBLIC_FIREBASE_API_KEY="$FIREBASE_API_KEY" \
-            --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$FIREBASE_AUTH_DOMAIN" \
-            --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
-            --build-arg NEXT_PUBLIC_FIREBASE_APP_ID="$FIREBASE_APP_ID" \
             --tag "$frontend_image" frontend
           docker build --file deploy/Dockerfile.caddy --tag "$caddy_image" .
           docker run --rm \

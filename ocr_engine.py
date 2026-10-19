@@ -7,8 +7,8 @@ text_quality.choose_method() decide how to extract it:
     "direct"  → the text layer is clean → use it as-is (fast, no OCR)
     "ocr"     → no/garbled text layer → rasterize and run the selected OCR backend
 
-Google Cloud Vision is the default OCR backend and uses Application Default
-Credentials. Tesseract remains available as a fully local backend.
+Tesseract is the default local backend. Gemini OCR is optional and uses the
+configured Gemini Developer API.
 """
 
 import io
@@ -27,7 +27,6 @@ from rich.console import Console
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import (
-    GOOGLE_VISION_LANGUAGE_HINTS,
     OCR_BACKEND,
     OCR_MAX_ATTEMPTS,
     OCR_BACKOFF_BASE_S,
@@ -93,62 +92,6 @@ def _with_retry(fn, what: str):
     raise RuntimeError(f"{what} failed after {OCR_MAX_ATTEMPTS} attempts") from last
 
 
-_vision_client = None
-
-
-def _get_vision_client():
-    """Build the Vision client once and reuse it.
-
-    The previous code constructed ImageAnnotatorClient() inside the per-page
-    function, so every page paid credential lookup and TLS setup.
-    """
-    global _vision_client
-    if _vision_client is None:
-        from google.cloud import vision
-        _vision_client = vision.ImageAnnotatorClient()
-    return _vision_client
-
-
-def _ocr_with_google_vision(png: bytes) -> str:
-    """Run Cloud Vision dense-document OCR using ADC authentication."""
-    try:
-        from google.cloud import vision
-    except ImportError as exc:
-        raise RuntimeError(
-            "Google Cloud Vision OCR requires google-cloud-vision. "
-            "Install it with: .venv/bin/python -m pip install -r requirements.txt"
-        ) from exc
-
-    def _call():
-        client = _get_vision_client()
-        response = client.document_text_detection(
-            image=vision.Image(content=png),
-            image_context=vision.ImageContext(
-                language_hints=GOOGLE_VISION_LANGUAGE_HINTS
-            ),
-        )
-        # The in-band check MUST live inside the retried callable. Vision reports
-        # transient failures ("The service is currently unavailable") on the
-        # RESPONSE rather than by raising, so checking it outside the retry means
-        # the retry sees success and the error escapes un-retried. Observed
-        # exactly that way on 2026-08-25 before this was moved inward.
-        if response.error.message:
-            raise RuntimeError(
-                f"Google Cloud Vision OCR failed: {response.error.message}"
-            )
-        return response
-
-    try:
-        response = _with_retry(_call, "Google Cloud Vision OCR")
-    except Exception as exc:
-        raise RuntimeError(
-            "Google Cloud Vision OCR request failed. Confirm Application Default "
-            "Credentials, Vision API enablement, billing, and quota."
-        ) from exc
-
-    return response.full_text_annotation.text.strip()
-
-
 _gemini_client = None
 
 # Transcription, not interpretation. Every rule here exists because the model
@@ -169,13 +112,12 @@ Rules:
 def _ocr_with_gemini(png: bytes) -> str:
     """Run multimodal-LLM OCR (config.LLM_MODEL) on the page image.
 
-    ⚠ This backend's failure mode differs IN KIND from the other two. Tesseract
-    emits detectable garbage and Vision misorders blocks, but an LLM can emit
+    ⚠ This backend's failure mode differs IN KIND from Tesseract. An LLM can emit
     fluent, plausible text that was never on the page — and, measured here, it
     SILENTLY DROPS regions it cannot read instead of writing [ILLEGIBLE] as the
     prompt asks. Verified 2026-08-25 by whiting out two words of a printed verse:
     the model omitted them without any marker. Quiet data loss is harder to
-    detect downstream than noise, so prefer 'google_vision' for bulk indexing.
+    detect downstream than noise, so prefer 'tesseract' for routine indexing.
 
     Gemini 3.x manages sampling and reasoning settings for this request; the
     prompt provides the deterministic transcription constraints.
@@ -205,14 +147,13 @@ def _ocr_with_gemini(png: bytes) -> str:
             config=types.GenerateContentConfig(),
         )
 
-    # 21 of 90 benchmark pages failed with 429 RESOURCE_EXHAUSTED (Vertex
-    # express per-minute quota) purely for want of this.
+    # Retry transient quota and service errors before failing a page.
     try:
         response = _with_retry(_call, "Gemini OCR")
     except Exception as exc:
         raise RuntimeError(
-            "Gemini OCR request failed. Confirm LLM_BACKEND, the matching API "
-            "key, and per-minute quota."
+            "Gemini OCR request failed. Confirm GEMINI_API_KEY and per-minute "
+            "quota."
         ) from exc
 
     return (response.text or "").strip()
@@ -220,7 +161,6 @@ def _ocr_with_gemini(png: bytes) -> str:
 
 _OCR_BACKENDS = {
     "tesseract": _ocr_with_tesseract,
-    "google_vision": _ocr_with_google_vision,
     "gemini": _ocr_with_gemini,
 }
 
@@ -229,13 +169,12 @@ def _prepare_page(page) -> bytes:
     """Rasterize + encode one page. MUST run on the main thread.
 
     PyMuPDF's Document is not thread-safe, so page rendering cannot move into a
-    worker. Splitting here is what makes concurrency safe AND cheap: rendering
-    is ~0.25 s while a Vision round-trip is ~2.6 s, so the part that stays
-    serial is ~10% of the work.
+    worker. Splitting here keeps the non-thread-safe render operation serial
+    while OCR work uses the configured worker pool.
 
     Encoding here rather than inside the backend also bounds memory. A rendered
     10.5 MP RGB page is ~31 MB in RAM; the grayscale PNG it becomes is ~1.6 MB.
-    With 8 workers in flight that is the difference between ~250 MB and ~13 MB.
+    With a few workers in flight that keeps memory use bounded.
     """
     img = _render_page(page)
     buf = io.BytesIO()
@@ -244,8 +183,7 @@ def _prepare_page(page) -> bytes:
         # refactor, so its measured accuracy still applies.
         img.save(buf, format="PNG")
     else:
-        # Hosted backends are upload-bound; grayscale is ~4x smaller for
-        # 0.9994 text similarity (measured 2026-08-25).
+        # Gemini uploads are image-size bound; grayscale keeps payloads smaller.
         img.convert("L").save(buf, format="PNG", optimize=True)
     return buf.getvalue()
 

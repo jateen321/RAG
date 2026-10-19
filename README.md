@@ -11,12 +11,11 @@ into a generated study visual.
 
 Uses **Google Gemini** for query planning, embeddings, reranking, and answers.
 PDF pages with clean text layers are read directly; scanned or garbled pages use
-the configured OCR backend: **Google Cloud Vision** (default), **Tesseract**, or
-**Gemini multimodal OCR**. No LangChain — the pipeline is hand-rolled.
+local **Tesseract OCR** by default, with optional **Gemini multimodal OCR**. No
+LangChain — the pipeline is hand-rolled.
 
-ChromaDB runs locally. OCR and Gemini cost and availability depend on the selected
-backends, models, billing status, and project-specific quotas; do not assume every
-configuration is free.
+ChromaDB and default OCR run locally. Gemini model calls use the Gemini Developer
+API key and are subject to its current quotas and billing settings.
 
 ## README index
 
@@ -64,15 +63,8 @@ configuration is free.
 
 ### 1. Choose an OCR backend
 
-The default is Google Cloud Vision. Authenticate it with Application Default
-Credentials after installing and initializing the Google Cloud CLI:
-
-```bash
-gcloud auth application-default login
-```
-
-For fully local OCR, set `OCR_BACKEND=tesseract` in `.env`. Tesseract is a native
-binary, so install it separately with the Hindi/Sanskrit language data:
+The default is Tesseract, a local binary. Install it with Hindi/Sanskrit
+language data:
 
 ```bash
 brew install tesseract tesseract-lang
@@ -80,8 +72,8 @@ brew install tesseract tesseract-lang
 
 > 🐧 On Debian/Ubuntu: `sudo apt install tesseract-ocr tesseract-ocr-hin tesseract-ocr-san`
 >
-> Gemini OCR uses the API backend and key selected by `LLM_BACKEND`; it needs no
-> separate OCR binary or Google Cloud Vision credentials.
+> Gemini OCR uses the same Gemini Developer API key as answer generation; it
+> needs no separate OCR binary or Google Cloud credentials.
 
 ### 2. Create a Virtual Environment
 
@@ -108,14 +100,12 @@ pip install -r requirements.txt
 
 ### 4. Set Up Your API Key
 
-This project talks to Gemini through **one of two backends** — pick with
-`LLM_BACKEND`. The selected backend is shared by **both embedding calls and
-answer generation**:
+This project uses the **Gemini Developer API** for both embedding calls and
+answer generation:
 
-| `LLM_BACKEND` | Backend | Key used | Key looks like |
-|---|---|---|---|
-| `developer` *(default)* | Gemini Developer API — free tier | `GEMINI_API_KEY` | `AIza…` |
-| `vertex` | Agent Platform / Vertex, express mode | `VERTEX_API_KEY` | `AQ.…` |
+| API | Key used | Key looks like |
+|---|---|---|
+| Gemini Developer API | `GEMINI_API_KEY` | `AIza…` |
 
 For Developer API experimentation, get a key from
 [Google AI Studio](https://aistudio.google.com/apikey), then:
@@ -127,13 +117,10 @@ cp .env.example .env
 Edit `.env`:
 
 ```dotenv
-LLM_BACKEND=developer
 GEMINI_API_KEY=your_actual_key_here
 ```
 
-> 💡 You only need the key for the backend you selected. Switching the API backend is
-> a one-line change in `.env`, but model availability, quotas, and billing can differ
-> between backends.
+> 💡 Generation, embeddings, and optional Gemini OCR all use this same key.
 
 ### 5. Index a PDF
 
@@ -251,12 +238,12 @@ it is the authoritative interface when this summary and the code ever disagree.
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/` | Service info |
-| `GET` | `/health` | Public liveness; authenticated requests include shared or private index statistics |
-| `GET` | `/documents/{source_path}` | Authenticated users open a source from their own corpus; administrators open shared sources |
-| `GET` | `/passages/{chunk_id}` | Authenticated users fetch a passage from their own corpus or the shared corpus |
-| `GET` | `/passages/resolve-legacy` | Authenticated users resolve an older citation in their own or shared corpus |
-| `POST` | `/ask` | Guests and administrators query the shared corpus; other signed-in users query their private corpus |
-| `POST` | `/ask/image` | Authenticated question with a PNG, JPEG, or WebP attachment (maximum 10 MB) |
+| `GET` | `/health` | Liveness and the single shared corpus statistics |
+| `GET` | `/documents/{source_path}` | Open a source from the single user's library |
+| `GET` | `/passages/{chunk_id}` | Fetch a passage from the single shared corpus |
+| `GET` | `/passages/resolve-legacy` | Resolve an older citation in the single shared corpus |
+| `POST` | `/ask` | Ask questions against the single shared corpus; saves conversation history |
+| `POST` | `/ask/image` | Ask with a PNG, JPEG, or WebP attachment (maximum 10 MB) |
 | `GET` | `/conversations` | List saved conversations |
 | `GET` | `/conversations/{conversation_id}` | Load one conversation and its exchanges |
 | `PUT` | `/conversations/{conversation_id}/exchanges/{exchange_id}` | Edit a prompt, regenerate its answer, and truncate later turns |
@@ -264,10 +251,10 @@ it is the authoritative interface when this summary and the code ever disagree.
 | `POST` | `/conversations/{conversation_id}/exchanges/{exchange_id}/generate-image` | Generate a visual for an eligible saved exchange |
 | `DELETE` | `/conversations/{conversation_id}` | Delete one saved conversation (`204 No Content`) |
 | `GET` | `/generated-images/{image_id}` | Return a generated image referenced by a conversation |
-| `POST` | `/index` | Administrator: index or deduplicate a shared local document |
-| `POST` | `/index/folder` | Administrator: recursively index an allowlisted shared folder |
-| `POST` | `/upload` | Authenticated users upload to their own corpus; administrators upload to the shared corpus (`201 Created`) |
-| `POST` | `/index/youtube` | Authenticated users index a YouTube video or playlist in their own corpus; administrators index it in the shared corpus |
+| `POST` | `/index` | Index or deduplicate a local document |
+| `POST` | `/index/folder` | Recursively index an allowlisted local folder |
+| `POST` | `/upload` | Upload a document into the single library (`201 Created`) |
+| `POST` | `/index/youtube` | Index a YouTube video or playlist into the single library |
 
 ```bash
 curl -X POST http://127.0.0.1:8000/index/youtube \
@@ -338,10 +325,7 @@ During development, the frontend and backend run as separate servers:
 
 Keeping the servers separate makes it possible to develop and restart either
 part independently. The browser opens the frontend on `http://localhost:3000`,
-and the frontend sends API requests to `http://localhost:8000`. Keeping the
-hostname identical allows the `SameSite=Lax` session cookie to survive page
-refreshes. The unified development launcher also disables the cookie's `Secure`
-flag for its plain-HTTP backend process; production keeps the secure default.
+and the frontend sends API requests to `http://localhost:8000`.
 
 A production deployment can expose both parts through one public port or
 domain. Common approaches are to serve the built frontend from FastAPI or use
@@ -349,48 +333,12 @@ a reverse proxy that routes `/` to the frontend and `/api/*` to FastAPI.
 For the current local-state architecture, the reproducible Google Cloud VM
 deployment is documented in [`deploy/README.md`](deploy/README.md).
 
-### Library roles and access
+### Single-user access
 
-The public study library is separate from each user's personal library. A Firebase
-`admin` custom claim, not an email address hard-coded in the frontend, determines
-administrator access.
-
-| User | Corpus visible to answers | What they can do |
-|---|---|---|
-| Guest | Shared library | Ask questions without saving history. Citations, source cards, uploads, web search, and image features are unavailable. |
-| Signed-in user | Their own initially empty library, keyed by Firebase UID | Upload PDF, TXT, or Markdown documents; index YouTube videos or playlists; view citations; and keep conversations and generated images private. One user's sources are not searchable by another user. |
-| Administrator | Shared library | Use the shared sources available to guests; upload shared documents; and index server-local files, folders, and YouTube content for every guest. |
-
-Administrators query and manage the same shared corpus used by guests. Each
-non-administrator's corpus, source links, conversations, and generated images are
-isolated by their verified Firebase UID.
-
-For production authentication, enable Google sign-in in Firebase Authentication
-and configure the backend `FIREBASE_PROJECT_ID` plus the frontend
-`NEXT_PUBLIC_FIREBASE_*` values. The browser exchanges a recent Firebase ID
-token for a Secure, HttpOnly session cookie. Set `LEGACY_ADMIN_UID` before the
-first production start only when pre-tenancy SQLite conversations must be
-assigned to one existing Firebase user. Unowned Chroma rows are automatically
-assigned to the shared corpus at API startup.
-
-`LEGACY_ADMIN_UID` does not grant the administrator role. Every ingestion route
-requires an `admin` custom claim, and Firebase custom claims can only be written
-by a trusted server through the Admin SDK. Grant it once after the account exists:
-
-```bash
-.venv/bin/python grant_admin.py you@example.com --grant
-```
-
-Run without a flag to inspect the current claim. The account must sign out and
-in again before a session carries it. Revoking also revokes refresh tokens, which
-the API only enforces when `AUTH_CHECK_REVOKED=1`.
-
-Deploy browser API requests on the same origin as the frontend (for example
-`https://app.example.com/api`) so `SameSite=Lax` session cookies work reliably
-for API requests and direct PDF/image links. Separate DuckDNS subdomains are
-cross-site for cookies, because DuckDNS is a Public Suffix List entry; browsers
-can block their API cookie as third-party state even with HTTPS and
-`SameSite=None`. A same-origin `/api` reverse proxy avoids that browser policy.
+The app runs as one local user without Firebase or sign-in. All requests share
+the same library, saved conversations, generated images, and ingestion controls.
+Restrict the AWS VM's inbound application ports to your own IP; the application
+does not provide an authentication boundary.
 
 ### Production deployment and continuous delivery
 
@@ -421,7 +369,7 @@ dependency audit. A push to `main` then performs continuous deployment:
 
 Configure these GitHub repository variables before enabling deployment:
 `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SERVICE_ACCOUNT`,
-`APP_DOMAIN`, `API_DOMAIN`, and the required `NEXT_PUBLIC_FIREBASE_*` values.
+`APP_DOMAIN` and `API_DOMAIN`.
 Keep `GEMINI_API_KEY` and all runtime secrets only in the VM's ignored
 `.env.production` or Secret Manager. The VM service account needs read-only
 Artifact Registry access, and its root Docker configuration must include the
@@ -478,9 +426,7 @@ npm run dev -- --host 127.0.0.1
 ```
 
 Open **http://localhost:3000**. The frontend connects to
-`http://localhost:8000` by default. When starting Uvicorn manually over HTTP,
-set `SESSION_COOKIE_SECURE=0` in the root `.env`; never use that setting for an
-HTTPS production deployment. Copy `frontend/.env.example` to
+`http://localhost:8000` by default. Copy `frontend/.env.example` to
 `frontend/.env.local` to configure a different API or site URL.
 
 ### Restarting after code or branch changes
@@ -507,8 +453,8 @@ Windows/Linux), or close and reopen **http://localhost:3000**.
 Remember that the two servers have different responsibilities: restarting Uvicorn on
 port 8000 updates the API only; it does not rebuild or restart the frontend on port 3000.
 
-PDF, UTF-8 TXT, and UTF-8 Markdown uploads are limited to 500 MB, saved inside
-the authenticated user's opaque data root (or the shared root for administrators).
+PDF, UTF-8 TXT, and UTF-8 Markdown uploads are limited to 500 MB and saved in
+the single user's data directory.
 A document already indexed in ChromaDB is rejected; when the file already exists
 in the selected root but is not indexed, that local copy is indexed without being
 overwritten. Set
@@ -538,8 +484,8 @@ metadata, `youtube-transcript-api` retrieves timestamped captions, and the
 resulting chunks enter the same Gemini embedding and ChromaDB pipeline. Answers
 cite transcript timestamps instead of PDF page numbers.
 
-`*` Query planning, embeddings, reranking, and answer generation use the backend
-selected by `LLM_BACKEND`.
+`*` Query planning, embeddings, reranking, and answer generation use the Gemini
+Developer API.
 
 **Two defenses worth knowing about:**
 - **Per-page routing** — pages with a usable text layer skip OCR entirely, so indexing is much faster on mixed PDFs.
@@ -684,7 +630,7 @@ RAG/
 ├── dev.py              # Unified backend/frontend development supervisor
 ├── api.py              # FastAPI web interface (/ask, /index, /health)
 ├── config.py           # Configuration & constants
-├── llm_client.py       # Gemini client factory (Developer API vs Vertex)
+├── llm_client.py       # Gemini Developer API client factory
 ├── ocr_engine.py       # PDF → text, per-page routing + selectable OCR
 ├── text_quality.py     # Scores the text layer to pick direct vs OCR
 ├── indexer.py          # Text → chunks → embeddings → ChromaDB
@@ -734,10 +680,9 @@ in `.env` as shown in `.env.example`:
 | `MIN_CONTEXT_CHUNKS` | 5 | Minimum passages selected for a normal app question |
 | `MAX_CONTEXT_CHUNKS` | 15 | Maximum passages selected for a normal app question |
 | `NEAR_DUPLICATE_OVERLAP` | 0.85 | Three-word-shingle containment threshold for near-copy removal |
-| `OCR_BACKEND` | `google_vision` | OCR implementation: `google_vision`, `tesseract`, or `gemini` |
-| `OCR_MAX_WORKERS` | backend-specific | Concurrent OCR calls/processes; defaults to Vision 8, Gemini 2, Tesseract up to 4 |
+| `OCR_BACKEND` | `tesseract` | OCR implementation: local `tesseract` or Gemini `gemini` |
+| `OCR_MAX_WORKERS` | backend-specific | Concurrent OCR calls/processes; defaults to one for Gemini or up to four for Tesseract |
 | `PDF_DPI` | 300 | Resolution used when rasterizing pages for any OCR backend |
-| `GOOGLE_VISION_LANGUAGE_HINTS` | `hi,sa,en` | Soft language hints for Google Cloud Vision |
 | `TESSERACT_LANG` | `eng+hin+san` | OCR languages (English + Hindi + Sanskrit) |
 | `LAYER_CHECK_SAMPLE` | 3 | Pages OCR'd per document to spot-check the text layer |
 | `LAYER_CHECK_MIN_SIMILARITY` | 0.4 | Median OCR-vs-layer similarity below this → distrust the layer and OCR the whole document |
@@ -745,11 +690,12 @@ in `.env` as shown in `.env.example`:
 | `LLM_MODEL` | `gemini-3.5-flash-lite` | Generation and query-planning model |
 | `RAG_RATE_LIMIT_ENABLED` | `0` | Enable Redis-backed admission control; set to `1` for public deployment |
 | `REDIS_URL` | unset | Managed Redis connection URL, required when admission control is enabled |
-| `SHARED_CORPUS_OWNER_ID` | `__shared_corpus__` | Internal metadata owner used for the guest-readable corpus |
-| `RAG_RATE_LIMIT_ASK_PER_MINUTE` / `ASK_BURST` | `10` / `3` | Sustained and burst allowance per user or hashed guest IP |
-| `RAG_RATE_LIMIT_WEB_PER_MINUTE` / `WEB_BURST` | `5` / `2` | Web-search allowance per authenticated user |
-| `RAG_RATE_LIMIT_IMAGE_PER_MINUTE` / `IMAGE_BURST` | `2` / `1` | Image-generation allowance per authenticated user |
-| `RAG_RATE_LIMIT_INGEST_PER_HOUR` / `INGEST_BURST` | `5` / `5` | Ingestion starts per authenticated user; server-folder indexing also requires an administrator |
+| `SINGLE_USER_ID` | `single-user` | Fixed local identity for conversations and rate limits |
+| `SHARED_CORPUS_OWNER_ID` | `__shared_corpus__` | Internal owner used for the one shared corpus |
+| `RAG_RATE_LIMIT_ASK_PER_MINUTE` / `ASK_BURST` | `10` / `3` | Sustained and burst allowance for the single user |
+| `RAG_RATE_LIMIT_WEB_PER_MINUTE` / `WEB_BURST` | `5` / `2` | Web-search allowance for the single user |
+| `RAG_RATE_LIMIT_IMAGE_PER_MINUTE` / `IMAGE_BURST` | `2` / `1` | Image-generation allowance for the single user |
+| `RAG_RATE_LIMIT_INGEST_PER_HOUR` / `INGEST_BURST` | `5` / `5` | Ingestion starts allowed for the single user |
 | `RAG_CONCURRENCY_INTERACTIVE` | `4` | Shared active document-answer limit across all replicas |
 | `RAG_CONCURRENCY_WEB` | `2` | Shared active web-search limit across all replicas |
 | `RAG_CONCURRENCY_IMAGE` | `1` | Shared active image-generation limit across all replicas |
@@ -757,8 +703,8 @@ in `.env` as shown in `.env.example`:
 
 ### Public API admission control
 
-Rate limits use the verified Firebase user ID, hashed before it becomes part of
-a Redis key. Token-bucket updates and multi-bucket charges are atomic Lua
+Rate limits use the fixed single-user ID, hashed before it becomes part of a
+Redis key. Token-bucket updates and multi-bucket charges are atomic Lua
 operations, so Web + Image requests cannot bypass a more expensive bucket.
 Concurrency slots are global renewable Redis leases: they coordinate multiple
 Uvicorn workers and deployment replicas and expire after a crashed worker.
@@ -791,9 +737,8 @@ serving public traffic.
   removed only after the new document is stored successfully.
 - **Index multiple books**: Run `index` on multiple PDFs — they all go into the same database.
 - **Ask in any language**: Questions can be in Hindi, English, or mixed.
-- **Rate limits vary**: Limits depend on the backend, model, region, billing tier,
-  and Google Cloud project. Check the quota assigned to your credential instead
-  of assuming a fixed requests-per-minute value.
+- **Rate limits vary**: Gemini Developer API limits depend on the model and API
+  key's tier. Check the quota assigned to your key rather than assuming a fixed rate.
 - **Embedding quota handling**: indexing batches embeddings, spaces calls with an
   adaptive shared delay, honors server retry hints, and retries transient quota
   failures with exponential backoff. Daily quota exhaustion fails fast because
@@ -807,8 +752,7 @@ serving public traffic.
 
 | Issue | Solution |
 |---|---|
-| `LLM_BACKEND=developer but GEMINI_API_KEY is not set` | Add the matching key to `.env` for the backend you chose |
-| Google Vision authentication fails | Run `gcloud auth application-default login` and confirm the credential's project has Vision enabled and billing configured |
+| `GEMINI_API_KEY is not set` | Add your Gemini Developer API key to `.env` |
 | `tesseract is not installed` / empty OCR output | When `OCR_BACKEND=tesseract`, run `brew install tesseract tesseract-lang` (see step 1) |
 | Garbled Hindi from a PDF that looks fine | Expected — corrupt-layer detection should force OCR automatically |
 | OCR gives poor results | Confirm the configured `OCR_BACKEND`, its language settings, and whether the page was routed to `direct` or `ocr`; compare backends with `benchmark_ocr.py` before changing DPI |

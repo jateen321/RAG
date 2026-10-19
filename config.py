@@ -11,30 +11,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── API Configuration ────────────────────────────────────────────────
-# Two separately-named keys so we can hold both and switch between them:
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")   # Gemini Developer API (AIza..., free-tier fallback)
-VERTEX_API_KEY = os.getenv("VERTEX_API_KEY")   # Agent Platform / Vertex express mode (AQ...)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")   # Gemini Developer API (AIza...)
 
-# Which backend to route calls through:
-#   "vertex"    → Agent Platform / Vertex (express mode, VERTEX_API_KEY)  [primary]
-#   "developer" → Gemini Developer API (GEMINI_API_KEY)                   [fallback]
-LLM_BACKEND = os.getenv("LLM_BACKEND", "developer").strip().lower()
-GCP_LOCATION = os.getenv("GCP_LOCATION", "global")   # region for Vertex/express
-
-if LLM_BACKEND == "vertex":
-    if not VERTEX_API_KEY:
-        print("❌ Error: LLM_BACKEND=vertex but VERTEX_API_KEY is not set in .env!")
-        sys.exit(1)
-elif LLM_BACKEND == "developer":
-    if not GEMINI_API_KEY or GEMINI_API_KEY == "your_api_key_here":
-        print("❌ Error: LLM_BACKEND=developer but GEMINI_API_KEY is not set in .env!")
-        sys.exit(1)
-else:
-    print(f"❌ Error: LLM_BACKEND must be 'vertex' or 'developer' (got '{LLM_BACKEND}').")
+if not GEMINI_API_KEY or GEMINI_API_KEY == "your_api_key_here":
+    print("❌ Error: GEMINI_API_KEY is not set in .env!")
     sys.exit(1)
 
 # ── Model Configuration ──────────────────────────────────────────────
-EMBEDDING_MODEL = "gemini-embedding-001"  # bare name (no "models/"): works on Developer API AND Vertex/express
+EMBEDDING_MODEL = "gemini-embedding-001"  # bare name (no "models/")
 LLM_MODEL = "gemini-3.5-flash-lite"        # answer generation and query planning
 RERANK_MODEL = os.getenv("RERANK_MODEL", "gemini-3.5-flash-lite").strip()
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gemini-3.1-flash-image").strip()
@@ -70,20 +54,8 @@ YOUTUBE_CHUNK_OVERLAP_SECONDS = float(
 )
 
 # ── Embedding request pacing ──────────────────────────────────────────
-# MEASURED, not assumed. The binding constraint is INPUT TOKENS per minute:
-#   aiplatform.googleapis.com/embed_content_input_tokens_per_minute_per_base_model
-# An earlier comment here claimed requests-per-minute. It was wrong, and the
-# difference matters: under a request limit, bigger batches give proportional
-# relief; under a TOKEN limit they give NONE, because 250 chunks carry exactly
-# the tokens of 20 chunks x 12.5. Proof (Vertex express, gemini-embedding-001):
-# a 250 x 1010-char request succeeded, and the NEXT request at 200 x 1010 --
-# strictly smaller -- was rejected, because the first had drained the window.
-#
-# The only levers on this quota are throughput over time (see the adaptive pace
-# below) and raising the quota itself. Batch size is now purely a throughput
-# and overhead choice: 250 instances is the hard API ceiling (n=400 -> HTTP 400
-# "too many instances"), and larger batches measured FASTER per chunk
-# (23.8 chunks/s at n=250 vs 13.0 at n=50).
+# Batch embedding reduces request overhead. Adaptive pacing responds to quota
+# errors; batching does not eliminate token-based usage limits.
 EMBED_BATCH_SIZE = 20       # Chunks per embed_content call (API max is 250)
 EMBED_BATCH_DELAY_S = 1.0   # Pause between successive batches (proactive pacing)
 EMBED_MAX_ATTEMPTS = 5      # Total tries per batch before giving up
@@ -99,31 +71,6 @@ EMBED_BACKOFF_BASE_S = 10   # First retry waits this; each retry doubles it
 # every batch, so a throttle taught it nothing.
 EMBED_PACE_MAX_S = 30.0     # Ceiling for the adaptive delay
 EMBED_PACE_DECAY_AFTER = 5  # Clean batches needed before easing the delay back
-
-# Vertex embedding requests can rotate through independent regional quotas.
-# This is active only with LLM_BACKEND=vertex and gemini-embedding-001.
-# LLM_BACKEND=developer never sends generation or embeddings to Vertex.
-EMBEDDING_REGION_ROTATION_ENABLED = (
-    os.getenv("EMBEDDING_REGION_ROTATION_ENABLED", "1").strip().lower()
-    not in {"0", "false", "no"}
-)
-VERTEX_EMBEDDING_PROJECT_ID = os.getenv(
-    "VERTEX_EMBEDDING_PROJECT_ID", "cloudexplore-502215"
-).strip()
-VERTEX_EMBEDDING_REGIONS = tuple(
-    region.strip()
-    for region in os.getenv(
-        "VERTEX_EMBEDDING_REGIONS",
-        "asia-south1,asia-southeast1,asia-east1,asia-northeast1,"
-        "us-west1,us-central1,us-east4,europe-west4,europe-west1",
-    ).split(",")
-    if region.strip()
-)
-if EMBEDDING_REGION_ROTATION_ENABLED and not VERTEX_EMBEDDING_REGIONS:
-    raise ValueError("VERTEX_EMBEDDING_REGIONS must contain at least one region.")
-VERTEX_EMBEDDING_TIMEOUT_S = float(
-    os.getenv("VERTEX_EMBEDDING_TIMEOUT_S", "20")
-)
 
 # ── Retrieval Configuration ───────────────────────────────────────────
 TOP_K = 10                # Fixed cutoff used by explicit top_k/evaluation calls
@@ -169,40 +116,25 @@ CHROMA_DB_PATH = os.path.join(os.path.dirname(__file__), "chroma_db")
 COLLECTION_NAME = "hindi_textbook"
 
 # ── OCR Configuration ────────────────────────────────────────────────
-OCR_BACKEND = os.getenv("OCR_BACKEND", "google_vision").strip().lower()
-# Three backends, measured 2026-08-25 over 90 pages (see OCR_NOTES.md):
-#   "google_vision" — hosted dense-document OCR. Best accuracy/cost balance and
-#                     the only one that never failed a page. ~$1.50/1000 pages.
-#   "tesseract"     — fully local, $0, no network. Lower Devanagari accuracy and
-#                     it CRASHED on 3 of 90 pages, returning nothing at all.
-#   "gemini"        — multimodal LLM. Accuracy comparable to Vision, ~1.3x its
-#                     cost, but it SILENTLY OMITS regions it cannot read rather
-#                     than flagging them. Quiet data loss; not a safe default.
-OCR_BACKENDS = ("google_vision", "tesseract", "gemini")
+OCR_BACKEND = os.getenv("OCR_BACKEND", "tesseract").strip().lower()
+# Tesseract is local and free. Gemini OCR remains available for pages where the
+# configured Gemini Developer API is worth its token cost.
+OCR_BACKENDS = ("tesseract", "gemini")
 if OCR_BACKEND not in OCR_BACKENDS:
     raise ValueError(
         f"OCR_BACKEND must be one of {OCR_BACKENDS} (got {OCR_BACKEND!r})."
     )
 # ── OCR request retry ─────────────────────────────────────────────────
-# Hosted OCR fails transiently: a 503 "service is currently unavailable" was
-# observed mid-run on 2026-08-25, and Vertex returns 429 RESOURCE_EXHAUSTED
-# under per-minute quota. Without retry ONE blip aborts a whole 1877-page
-# index, so mirror indexer.py's embedding pacing.
+# OCR providers can fail transiently. Without retry ONE blip can abort a large
+# document index, so mirror indexer.py's embedding pacing.
 # ── OCR concurrency ───────────────────────────────────────────────────
-# Only the NETWORK call is parallelised; rasterization stays on the main thread
-# because PyMuPDF's Document is not thread-safe. That split works because the
-# network dominates: ~0.25s to rasterize vs ~2.6s for a Vision round-trip.
+# Only the OCR call is parallelised; rasterization stays on the main thread
+# because PyMuPDF's Document is not thread-safe.
 #
-# Worker counts are PER BACKEND, not one global number, because their limits
-# differ by an order of magnitude:
-#   google_vision  quota is generous; 8 workers ≈ 185 req/min, well inside it.
-#   gemini         Vertex express 429'd at SEQUENTIAL rates in benchmarking, so
-#                  parallelism mostly buys retries. Keep it near 1.
-#   tesseract      pytesseract shells out, so threads do help, but past core
-#                  count they just thrash.
+# Worker counts are PER BACKEND: Gemini requests are quota-limited, while
+# Tesseract shells out locally and benefits from a few CPU-bound workers.
 _DEFAULT_OCR_WORKERS = {
-    "google_vision": 8,
-    "gemini": 2,
+    "gemini": 1,
     "tesseract": min(4, os.cpu_count() or 1),
 }
 # 0 / unset → use the per-backend default above.
@@ -211,11 +143,6 @@ OCR_MAX_WORKERS = int(os.getenv("OCR_MAX_WORKERS", "0")) or _DEFAULT_OCR_WORKERS
 OCR_MAX_ATTEMPTS = 4        # total tries per page
 OCR_BACKOFF_BASE_S = 2      # first retry waits this; each retry doubles (2→4→8)
 
-GOOGLE_VISION_LANGUAGE_HINTS = [
-    language.strip()
-    for language in os.getenv("GOOGLE_VISION_LANGUAGE_HINTS", "hi,sa,en").split(",")
-    if language.strip()
-]
 TESSERACT_LANG = "eng+hin+san"      # Tesseract format: English + Hindi + Sanskrit
 PDF_DPI = 300                       # Resolution for PDF to image conversion
                                     # 300 is Tesseract's recommended minimum for
@@ -248,37 +175,16 @@ GENERATED_IMAGE_DIR = os.getenv(
     os.path.join(DATA_DIR, "generated_images"),
 )
 
-# Firebase Authentication. The browser exchanges a Firebase ID token for an
-# HttpOnly session cookie. Conversations remain keyed by verified Firebase UID,
-# while every user and guest retrieves from this dedicated shared corpus.
-FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "").strip()
+# One local account owns conversations and privileged routes. Restrict network
+# access at the VM firewall because the app does not perform hosted sign-in.
+SINGLE_USER_ID = os.getenv("SINGLE_USER_ID", "single-user").strip()
+if not SINGLE_USER_ID:
+    raise ValueError("SINGLE_USER_ID cannot be empty.")
 SHARED_CORPUS_OWNER_ID = os.getenv(
     "SHARED_CORPUS_OWNER_ID", "__shared_corpus__"
 ).strip()
 if not SHARED_CORPUS_OWNER_ID:
     raise ValueError("SHARED_CORPUS_OWNER_ID cannot be empty.")
-SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "sarthi_session").strip()
-SESSION_COOKIE_MAX_AGE_S = min(
-    14 * 24 * 60 * 60,
-    max(300, int(os.getenv("SESSION_COOKIE_MAX_AGE_S", str(5 * 24 * 60 * 60)))),
-)
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "1").strip().lower() not in {
-    "0", "false", "no",
-}
-SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "lax").strip().lower()
-if SESSION_COOKIE_SAMESITE not in {"lax", "strict", "none"}:
-    raise ValueError("SESSION_COOKIE_SAMESITE must be lax, strict, or none.")
-if SESSION_COOKIE_SAMESITE == "none" and not SESSION_COOKIE_SECURE:
-    raise ValueError("SESSION_COOKIE_SECURE must be enabled when SameSite is none.")
-AUTH_RECENT_SIGN_IN_MAX_AGE_S = max(
-    60, int(os.getenv("AUTH_RECENT_SIGN_IN_MAX_AGE_S", "300"))
-)
-AUTH_CHECK_REVOKED = os.getenv("AUTH_CHECK_REVOKED", "0").strip().lower() not in {
-    "0", "false", "no",
-}
-# Retained for conversation-row migration only. Pre-tenancy Chroma rows now
-# belong to SHARED_CORPUS_OWNER_ID so guests can query the existing corpus.
-LEGACY_ADMIN_UID = os.getenv("LEGACY_ADMIN_UID", "").strip()
 
 # Server-local folders that POST /index/folder may read. The CLI does not need
 # an allowlist because it already runs with the invoking user's permissions.

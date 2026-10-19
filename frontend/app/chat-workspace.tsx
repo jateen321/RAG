@@ -254,7 +254,6 @@ function LoadingAnswer({ web = false }: { web?: boolean }) {
 export default function ChatWorkspace() {
   const { identity, checking: checkingAuth } = useAuth();
   const isAuthenticated = Boolean(identity);
-  const isAdmin = identity?.is_admin === true;
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState('');
   const [question, setQuestion] = useState('');
@@ -941,7 +940,7 @@ export default function ChatWorkspace() {
         />
 
         <div className="library-heading">
-          <span>{isAuthenticated && !isAdmin ? 'Your library' : 'Shared library'}</span>
+          <span>{isAuthenticated ? 'Your library' : 'Shared library'}</span>
           <span className="library-count">{isAuthenticated ? health?.documents?.length ?? '—' : '—'}</span>
         </div>
 
@@ -968,7 +967,7 @@ export default function ChatWorkspace() {
               </div>
             );
           })}
-          {isAuthenticated && health?.documents?.length === 0 && <p className="empty-library">{isAdmin ? 'The shared library is empty. Add a source to make it available to guests.' : 'Your library is empty. Upload a document to get started.'}</p>}
+          {isAuthenticated && health?.documents?.length === 0 && <p className="empty-library">Your library is empty. Add a source to get started.</p>}
           {!isAuthenticated && health && <p className="empty-library">Sign in to inspect sources and save your conversations.</p>}
         </div>
 
@@ -976,7 +975,7 @@ export default function ChatWorkspace() {
           <span className="status-dot" />
           <span>
             <strong>{healthError ? 'Server unavailable' : health ? 'Knowledge base ready' : 'Connecting…'}</strong>
-            <small>{health?.total_chunks != null ? `${health.total_chunks} passages indexed` : health ? `Ask a question to search ${isAuthenticated && !isAdmin ? 'your library' : 'the shared library'}.` : 'Checking your library'}</small>
+            <small>{health?.total_chunks != null ? `${health.total_chunks} passages indexed` : health ? `Ask a question to search your library.` : 'Checking your library'}</small>
           </span>
         </div>
       </aside>
@@ -992,12 +991,12 @@ export default function ChatWorkspace() {
             <div><span className="eyebrow">STUDY WORKSPACE</span><h1>Ask your books</h1></div>
           </div>
           {isAuthenticated && (
-            <div className="header-actions" role="group" aria-label={isAdmin ? 'Manage shared sources' : 'Manage your sources'}>
-              <button type="button" onClick={() => fileInput.current?.click()} aria-label={isAdmin ? 'Add a shared document' : 'Upload a document'} title={isAdmin ? 'Add a shared document' : 'Upload a document'}>
-                <span aria-hidden="true">↑</span><span className="header-action-label">{isAdmin ? 'Add a document' : 'Upload a document'}</span>
+            <div className="header-actions" role="group" aria-label="Manage your library">
+              <button type="button" onClick={() => fileInput.current?.click()} aria-label="Add a document" title="Add a document">
+                <span aria-hidden="true">↑</span><span className="header-action-label">Add a document</span>
               </button>
-              <button type="button" onClick={() => folderInput.current?.click()} aria-label={isAdmin ? 'Add a shared folder' : 'Upload a folder'} title={isAdmin ? 'Add a shared folder' : 'Upload a folder'}>
-                <span aria-hidden="true">▤</span><span className="header-action-label">{isAdmin ? 'Add a folder' : 'Upload a folder'}</span>
+              <button type="button" onClick={() => folderInput.current?.click()} aria-label="Add a folder" title="Add a folder">
+                <span aria-hidden="true">▤</span><span className="header-action-label">Add a folder</span>
               </button>
               <button type="button" onClick={() => setYoutubeOpen(true)} aria-label="Add YouTube" title="Add YouTube">
                 <span aria-hidden="true">▶</span><span className="header-action-label">Add YouTube</span>
@@ -1027,9 +1026,9 @@ export default function ChatWorkspace() {
         {!hasConversation ? (
           <div className="welcome-state">
             <div className="welcome-seal">अ</div>
-            <p className="eyebrow">{isAuthenticated && !isAdmin ? 'YOUR INDEXED KNOWLEDGE' : 'SHARED INDEXED KNOWLEDGE'}</p>
+          <p className="eyebrow">{isAuthenticated ? 'YOUR INDEXED KNOWLEDGE' : 'SHARED INDEXED KNOWLEDGE'}</p>
             <h2>Read less. Understand more.</h2>
-            <p className="welcome-copy">Ask in English or Hindi. Every answer is grounded in {isAuthenticated && !isAdmin ? 'your private library' : 'the shared library'} and linked back to its source.</p>
+            <p className="welcome-copy">Ask in English or Hindi. Every answer is grounded in {isAuthenticated ? 'your library' : 'the shared library'} and linked back to its source.</p>
             <div className="suggestion-list">
               {suggestions.map((suggestion) => (
                 <button key={suggestion} type="button" onClick={() => void ask(suggestion)} disabled={isAsking}>
@@ -1119,7 +1118,7 @@ export default function ChatWorkspace() {
                 <button type="button" onClick={clearPromptImage} aria-label="Remove attached image" title="Remove image">×</button>
               </div>
             )}
-            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} onPaste={isAuthenticated ? pastePromptImage : undefined} onKeyDown={handleQuestionKey} aria-label="Ask a question" placeholder={`Ask a question about ${isAuthenticated && !isAdmin ? 'your library' : 'the shared library'}…`} rows={1} maxLength={2000} />
+            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} onPaste={isAuthenticated ? pastePromptImage : undefined} onKeyDown={handleQuestionKey} aria-label="Ask a question" placeholder="Ask a question about your library…" rows={1} maxLength={2000} />
             <div className="composer-footer">
               <div className="composer-tools">
                 {isAuthenticated ? (

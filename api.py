@@ -1,8 +1,6 @@
 """FastAPI interface for the Gyaan Sarthi RAG pipeline."""
 
-import hashlib
 import logging
-import re
 import os
 from functools import wraps
 from inspect import signature
@@ -11,7 +9,7 @@ from typing import Callable
 from uuid import uuid4
 
 from fastapi import (
-    Depends, FastAPI, File, Form, HTTPException, Query, Request, Response,
+    Depends, FastAPI, File, Form, HTTPException, Query, Request,
     UploadFile, status,
 )
 from fastapi.concurrency import run_in_threadpool
@@ -19,25 +17,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from chromadb.errors import InternalError as ChromaInternalError
 from config import (
-    FIREBASE_PROJECT_ID,
     CONVERSATION_DB_PATH,
     DATA_DIR,
     GENERATED_IMAGE_DIR,
     INDEX_FOLDER_ROOTS,
-    LEGACY_ADMIN_UID,
     SHARED_CORPUS_OWNER_ID,
-    SESSION_COOKIE_MAX_AGE_S,
-    SESSION_COOKIE_NAME,
-    SESSION_COOKIE_SAMESITE,
-    SESSION_COOKIE_SECURE,
 )
 from auth import (
     AuthenticatedUser,
-    create_session_cookie,
     get_current_user,
-    get_optional_user,
     require_admin,
-    verify_session_cookie,
 )
 from conversation_store import (
     attach_generated_image,
@@ -71,7 +60,6 @@ from backend.api.models import (
     EditExchangeRequest,
     FolderIndexRequest,
     IndexRequest,
-    SessionRequest,
     YouTubeIndexRequest,
 )
 
@@ -91,12 +79,12 @@ def _save_generated_image(image_id: str, data: bytes) -> Path:
 
 
 def _tenant_data_root(owner_id: str) -> Path:
-    return api_files.tenant_data_root(owner_id, DATA_DIR, FIREBASE_PROJECT_ID)
+    return api_files.tenant_data_root(owner_id, DATA_DIR)
 
 
 def _resolve_data_document(filename: str, owner_id: str | None = None) -> Path:
     return api_files.resolve_data_document(
-        filename, owner_id, DATA_DIR, FIREBASE_PROJECT_ID
+        filename, owner_id, DATA_DIR
     )
 
 
@@ -122,34 +110,19 @@ ALLOWED_CONTENT_TYPES = {
 }
 
 _STATE_CHANGING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
-_INLINE_CITATION = re.compile(r"\s*⟦[^⟦⟧\n]+⟧")
-
-
-def _redact_guest_citations(answer: str) -> str:
-    """Remove model citation markers before returning an anonymous answer."""
-    return _INLINE_CITATION.sub("", answer).strip()
-
-
-def _corpus_owner_id(user: AuthenticatedUser | None) -> str:
+def _corpus_owner_id(user: AuthenticatedUser) -> str:
     """Select the corpus visible to a request.
 
-    Guests and administrators use the shared library. Every other verified
-    user receives a private corpus keyed by their Firebase UID.
+    Every request belongs to the same local user and therefore sees the same
+    corpus. The identity is fixed in auth.py for this single-user deployment.
     """
-    if user is None or user.is_admin:
-        return SHARED_CORPUS_OWNER_ID
-    return user.uid
+    del user
+    return SHARED_CORPUS_OWNER_ID
 
 
 @app.middleware("http")
 async def enforce_trusted_origin(request: Request, call_next):
-    """Reject cross-site writes so a session cookie alone cannot authorize them.
-
-    ``SameSite=Lax`` already blocks forged writes for same-site deployments, but
-    the README documents ``SESSION_COOKIE_SAMESITE=none`` for cross-site
-    domains. There the cookie would ride along on a forged POST, so every
-    state-changing method is checked here rather than route by route.
-    """
+    """Reject cross-site state-changing requests from browser origins."""
     if request.method in _STATE_CHANGING_METHODS:
         try:
             _require_trusted_origin(request)
@@ -198,21 +171,7 @@ def _rate_limited(
                 select(arguments.arguments) if select else (rates, concurrency)
             )
             user = arguments.arguments["user"]
-            if user is not None and user.is_admin:
-                # Admins share _corpus_owner_id's exemption; keeps "root user" tied to the claim, not a hardcoded email.
-                return await endpoint(*args, **kwargs)
-            if user is None:
-                http_request = arguments.arguments.get("http_request")
-                client_host = (
-                    http_request.client.host
-                    if isinstance(http_request, Request) and http_request.client
-                    else "unknown"
-                )
-                identity = "guest:" + hashlib.sha256(
-                    client_host.encode("utf-8")
-                ).hexdigest()
-            else:
-                identity = user.uid
+            identity = user.uid
             try:
                 limiter = get_rate_limiter()
             except RuntimeError as exc:
@@ -248,8 +207,6 @@ def _rate_limited(
 
 def _ask_request_limits(arguments: dict) -> tuple[tuple[str, ...], tuple[str, ...]]:
     payload = arguments["payload"]
-    if arguments["user"] is None:
-        return _answer_limits(False, False)
     return _answer_limits(payload.use_web, payload.generate_image)
 
 
@@ -282,60 +239,19 @@ def _require_trusted_origin(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Untrusted request origin.")
 
 
-@app.post("/auth/session")
-async def session_login(
-    payload: SessionRequest,
-    request: Request,
-    response: Response,
-) -> dict:
-    """Exchange a recently issued Firebase ID token for an HttpOnly session."""
-    _require_trusted_origin(request)
-    try:
-        session_cookie = await run_in_threadpool(
-            create_session_cookie, payload.id_token, SESSION_COOKIE_MAX_AGE_S
-        )
-        user = await run_in_threadpool(verify_session_cookie, session_cookie)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    response.set_cookie(
-        SESSION_COOKIE_NAME,
-        session_cookie,
-        max_age=SESSION_COOKIE_MAX_AGE_S,
-        httponly=True,
-        secure=SESSION_COOKIE_SECURE,
-        samesite=SESSION_COOKIE_SAMESITE,
-        path="/",
-    )
-    return {"uid": user.uid, "email": user.email, "is_admin": user.is_admin}
-
-
-@app.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def session_logout(request: Request, response: Response) -> None:
-    _require_trusted_origin(request)
-    response.delete_cookie(
-        SESSION_COOKIE_NAME,
-        path="/",
-        secure=SESSION_COOKIE_SECURE,
-        httponly=True,
-        samesite=SESSION_COOKIE_SAMESITE,
-    )
-
-
 @app.get("/auth/me")
 async def session_identity(
     user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
+    """Expose the configured single-user identity to the frontend."""
     return {"uid": user.uid, "email": user.email, "is_admin": user.is_admin}
 
 
 @app.get("/health")
 def health(
-    user: AuthenticatedUser | None = Depends(get_optional_user),
+    user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
-    """Expose only liveness to guests; source metadata requires a session."""
-    if user is None:
-        return {"status": "ok"}
-
+    """Report liveness and the one user's shared corpus statistics."""
     from indexer import get_stats
 
     return {"status": "ok", **get_stats(owner_id=_corpus_owner_id(user))}
@@ -399,24 +315,15 @@ async def passage_detail(
 @_rate_limited(select=_ask_request_limits)
 async def ask_question(
     payload: AskRequest,
-    http_request: Request,
-    user: AuthenticatedUser | None = Depends(get_optional_user),
+    user: AuthenticatedUser = Depends(get_current_user),
 ) -> dict:
-    if user is None and (
-        payload.conversation_id or payload.use_web or payload.generate_image
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sign in to save conversations, search the web, or generate images.",
-        )
     return await _answer_and_record(
         payload.question,
         payload.conversation_id,
         use_web=payload.use_web,
         generate_image_requested=payload.generate_image,
-        conversation_owner_id=user.uid if user else None,
+        conversation_owner_id=user.uid,
         corpus_owner_id=_corpus_owner_id(user),
-        include_sources=user is not None,
     )
 
 
@@ -458,7 +365,6 @@ async def ask_question_with_image(
         generate_image_requested=generate_image,
         conversation_owner_id=user.uid,
         corpus_owner_id=_corpus_owner_id(user),
-        include_sources=True,
     )
 
 
@@ -472,7 +378,6 @@ async def _answer_and_record(
     generate_image_requested: bool = False,
     conversation_owner_id: str | None,
     corpus_owner_id: str,
-    include_sources: bool,
 ) -> dict:
     from rag_engine import (
         ask_with_sources,
@@ -562,11 +467,6 @@ async def _answer_and_record(
             "web_search_available": False,
             "image_generation_available": False,
         }
-        if not include_sources:
-            # The model still uses the shared corpus to ground the answer, but
-            # anonymous callers must not receive source names or passage text.
-            response["answer"] = _redact_guest_citations(response["answer"])
-            response.pop("sources", None)
         if image_result is not None:
             image_id = str(uuid4())
             destination = await run_in_threadpool(

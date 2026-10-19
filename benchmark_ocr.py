@@ -3,11 +3,8 @@
 The point is a fair comparison, which means separating costs that belong to
 different layers:
 
-  * Rasterization (PDF page -> PNG) is work the LOCAL path must do before
-    Tesseract sees anything. A hosted OCR API that accepts a PDF does it
-    internally. Charging it to one side and not the other is the easiest way to
-    get a misleading number, so it is timed ONCE per page and shared: both
-    backends receive the identical PNG bytes.
+  * Rasterization (PDF page -> PNG) is timed ONCE per page and shared: both
+    backends receive identical PNG bytes.
   * The first call to a backend pays one-time cost (model load, TLS handshake,
     client construction). Cold and warm requests are therefore reported
     separately rather than averaged.
@@ -50,14 +47,7 @@ from pathlib import Path
 
 import pymupdf
 
-from config import PDF_DPI, TESSERACT_LANG, GOOGLE_VISION_LANGUAGE_HINTS
-
-# Cloud Vision pricing, fetched from cloud.google.com/vision/pricing 2026-08-25.
-# A "unit" is one image; for a multi-page file each PAGE is one image. Document
-# Text Detection: first 1,000 units/month free, then $1.50 per 1,000 units
-# (through 5M/month), then $0.60 per 1,000.
-VISION_FREE_UNITS_PER_MONTH = 1_000
-VISION_USD_PER_1K_UNITS = 1.50
+from config import PDF_DPI, TESSERACT_LANG
 
 # Gemini 2.5 Flash, fetched from ai.google.dev/gemini-api/docs/pricing 2026-08-25.
 # Paid tier, per 1M tokens. Thinking tokens bill at the OUTPUT rate.
@@ -80,46 +70,6 @@ def _ocr_tesseract(png: bytes) -> str:
     return pytesseract.image_to_string(
         Image.open(io.BytesIO(png)), lang=TESSERACT_LANG
     )
-
-
-_vision_client = None
-
-
-def _ocr_vision(png: bytes) -> str:
-    """OCR PNG bytes with Cloud Vision's DENSE-document model.
-
-    `document_text_detection`, not `text_detection`: the latter targets sparse
-    text (signage, photos) and reads a scanned book page worse. The client is
-    built once and reused — constructing it per page would charge every page the
-    auth/TLS setup that only the first one really pays.
-    """
-    global _vision_client
-    from google.cloud import vision
-    from PIL import Image
-
-    if _vision_client is None:
-        _vision_client = vision.ImageAnnotatorClient()
-
-    # Upload GRAYSCALE. Vision's latency here is upload-bound, not OCR-bound:
-    # 6.4 MB RGB PNG ~9.0s vs 1.6 MB grayscale PNG 2.64s for 0.9994 similarity
-    # (Gita p.250/254/255, 2026-08-25). Mirrors ocr_engine's production path.
-    # NOTE this means Vision receives a grayscale copy while Tesseract reads the
-    # RGB original -- deliberate, because it is what each path really does.
-    buf = io.BytesIO()
-    Image.open(io.BytesIO(png)).convert("L").save(buf, format="PNG", optimize=True)
-
-    # content= takes RAW bytes: the client base64-encodes for the wire itself.
-    response = _vision_client.document_text_detection(
-        image=vision.Image(content=buf.getvalue()),
-        image_context=vision.ImageContext(
-            language_hints=GOOGLE_VISION_LANGUAGE_HINTS
-        ),
-    )
-    # Vision reports some failures IN-BAND rather than raising, so an unchecked
-    # response looks like "OCR returned nothing" instead of "request rejected".
-    if response.error.message:
-        raise RuntimeError(f"Vision API error: {response.error.message}")
-    return response.full_text_annotation.text
 
 
 _gemini_client = None
@@ -147,8 +97,8 @@ def _ocr_gemini(png: bytes) -> str:
     Gemini 3.x manages sampling and reasoning settings for this request; the
     prompt provides the deterministic transcription constraints.
 
-    NOTE the failure mode differs in KIND from the other two backends.
-    Tesseract emits detectable garbage; Vision misorders blocks; an LLM emits
+    NOTE the failure mode differs in KIND from Tesseract.
+    Tesseract emits detectable garbage; an LLM emits
     FLUENT PLAUSIBLE TEXT THAT WAS NOT ON THE PAGE. Only ground truth or
     three-way disagreement surfaces that, so never rank this backend on
     char counts or `script_runs` (it reformats cleanly whether or not it read
@@ -181,7 +131,6 @@ def _ocr_gemini(png: bytes) -> str:
 
 BACKENDS = {
     "tesseract": _ocr_tesseract,
-    "vision": _ocr_vision,
     "gemini": _ocr_gemini,
 }
 
@@ -356,14 +305,7 @@ def _summarize(pdf_path: Path, backend_names: list[str], rows: list[dict]) -> di
             "mean_script_runs": round(statistics.mean(runs), 1) if runs else None,
             "errors": errors,
         }
-        if name == "vision":
-            units = len(rows)                    # 1 page = 1 unit
-            stats["vision_units"] = units
-            stats["usd_if_free_tier_exhausted"] = round(
-                units / 1000 * VISION_USD_PER_1K_UNITS, 4
-            )
-            stats["free_units_per_month"] = VISION_FREE_UNITS_PER_MONTH
-        elif name == "gemini":
+        if name == "gemini":
             tin = sum(r["backends"][name].get("input_tokens", 0) or 0 for r in rows)
             tout = sum((r["backends"][name].get("output_tokens", 0) or 0)
                        + (r["backends"][name].get("thinking_tokens", 0) or 0)
@@ -412,7 +354,7 @@ def main() -> None:
     parser.add_argument("--pdf", type=Path, default=Path("data/bhagya-bada-ya-karm.pdf"))
     parser.add_argument("--backend", choices=sorted(BACKENDS), default="tesseract")
     parser.add_argument("--compare", action="store_true",
-                        help="Run tesseract AND vision on every page.")
+                        help="Run tesseract AND Gemini OCR on every page.")
     parser.add_argument("--pages", type=int, default=None,
                         help="Limit to the FIRST N pages (ignored if --start given).")
     parser.add_argument("--start", type=int, default=None, help="First page, 1-based inclusive.")
@@ -426,7 +368,7 @@ def main() -> None:
     else:
         start, end = 1, args.pages if args.pages is not None else 10**9
 
-    names = ["tesseract", "vision"] if args.compare else [args.backend]
+    names = ["tesseract", "gemini"] if args.compare else [args.backend]
     report = run(args.pdf, names, start, end)
 
     tag = "compare" if args.compare else args.backend

@@ -1,6 +1,5 @@
 """Validated file and tenant-path helpers used by API routes."""
 
-import hashlib
 from pathlib import Path
 from uuid import UUID
 
@@ -8,9 +7,7 @@ from fastapi import HTTPException
 
 from config import (
     DATA_DIR,
-    FIREBASE_PROJECT_ID,
     GENERATED_IMAGE_DIR,
-    LEGACY_ADMIN_UID,
     SHARED_CORPUS_OWNER_ID,
 )
 from document_ingester import SUPPORTED_DOCUMENT_EXTENSIONS
@@ -55,24 +52,20 @@ def save_generated_image(
 def tenant_data_root(
     owner_id: str,
     data_root: str | Path = DATA_DIR,
-    firebase_project_id: str | None = FIREBASE_PROJECT_ID,
 ) -> Path:
-    """Use an opaque directory so Firebase UIDs never become path segments."""
-    if not firebase_project_id:
-        return Path(data_root).resolve()
-    tenant = hashlib.sha256(owner_id.encode("utf-8")).hexdigest()
-    return (Path(data_root).resolve() / "users" / tenant).resolve()
+    """Return the one shared data directory used by this single-user app."""
+    del owner_id
+    return Path(data_root).resolve()
 
 
 def resolve_data_document(
     filename: str,
     owner_id: str | None = None,
     data_root: str | Path = DATA_DIR,
-    firebase_project_id: str | None = FIREBASE_PROJECT_ID,
 ) -> Path:
     """Resolve a supported document while preventing traversal outside ``data/``."""
     root = (
-        tenant_data_root(owner_id, data_root, firebase_project_id)
+        tenant_data_root(owner_id, data_root)
         if owner_id
         else Path(data_root).resolve()
     )
@@ -84,7 +77,7 @@ def resolve_data_document(
         raise ValueError("The document must be located inside the data directory.")
     if candidate.suffix.lower() not in SUPPORTED_DOCUMENT_EXTENSIONS:
         raise ValueError("Only PDF, TXT, and Markdown files can be indexed.")
-    if not candidate.is_file() and owner_id in {LEGACY_ADMIN_UID, SHARED_CORPUS_OWNER_ID}:
+    if not candidate.is_file() and owner_id == SHARED_CORPUS_OWNER_ID:
         legacy_root = Path(data_root).resolve()
         legacy_candidate = (legacy_root / relative_path).resolve()
         if (

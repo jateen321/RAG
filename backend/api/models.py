@@ -10,10 +10,6 @@ class AskRequest(BaseModel):
     generate_image: bool = False
 
 
-class SessionRequest(BaseModel):
-    id_token: str = Field(min_length=20, max_length=10000)
-
-
 class EditExchangeRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
 

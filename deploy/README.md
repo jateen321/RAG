@@ -24,12 +24,14 @@ gcloud compute instances create gyaan-sarthi \
   --image-project=ubuntu-os-cloud \
   --tags=http-server,https-server
 gcloud compute firewall-rules create allow-web \
-  --allow=tcp:80,tcp:443 --target-tags=http-server,https-server
+  --allow=tcp:80,tcp:443 --source-ranges=YOUR_PUBLIC_IP/32 \
+  --target-tags=http-server,https-server
 ```
 
 Point the `APP_DOMAIN` DNS A record at the VM's external IP. `API_DOMAIN` can
 remain pointed at the same address for compatibility health checks and direct
-API access. Add `APP_DOMAIN` to Firebase Authentication's Authorized domains.
+API access. Restrict the VM's inbound application ports to your own IP because
+single-user mode does not require sign-in.
 Caddy obtains and renews HTTPS certificates automatically, and routes browser
 API requests from `https://${APP_DOMAIN}/api/*` to FastAPI on the same origin.
 
@@ -47,7 +49,7 @@ gcloud compute scp --recurse chroma_db data gyaan-sarthi:/opt/gyaan-sarthi/ --zo
 ```
 
 On the VM, copy `.env.production.example` to `.env.production`, fill in the
-Firebase public configuration and backend secret, then start the stack:
+Gemini Developer API key and application domains, then start the stack:
 
 ```bash
 cd /opt/gyaan-sarthi
@@ -56,13 +58,12 @@ docker compose --env-file .env.production -f docker-compose.production.yml up -d
 curl -fsS "https://${APP_DOMAIN}/api/health"
 ```
 
-Set `NEXT_PUBLIC_RAG_API_URL=/api`, `SESSION_COOKIE_SAMESITE=lax`, and
-`SESSION_COOKIE_SECURE=1` in `.env.production`. Use Secret Manager for
+Set `NEXT_PUBLIC_RAG_API_URL=/api` in `.env.production`. Use Secret Manager for
 `GEMINI_API_KEY` and any other sensitive values. Grant the
 VM service account only `roles/secretmanager.secretAccessor`; never commit a
 service-account key. Before opening the app publicly, verify that `/health`
-reports 21,499 shared chunks, guests can ask questions, and only the Firebase
-user with the `admin` custom claim can ingest documents.
+reports 21,499 shared chunks and that upload, ingestion, and saved conversations
+work in the single-user instance.
 
 ## Backups and rollback
 
