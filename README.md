@@ -73,7 +73,7 @@ brew install tesseract tesseract-lang
 > 🐧 On Debian/Ubuntu: `sudo apt install tesseract-ocr tesseract-ocr-hin tesseract-ocr-san`
 >
 > Gemini OCR uses the same Gemini Developer API key as answer generation; it
-> needs no separate OCR binary or Google Cloud credentials.
+> needs no separate OCR binary or hosted OCR credentials.
 
 ### 2. Create a Virtual Environment
 
@@ -330,8 +330,8 @@ and the frontend sends API requests to `http://localhost:8000`.
 A production deployment can expose both parts through one public port or
 domain. Common approaches are to serve the built frontend from FastAPI or use
 a reverse proxy that routes `/` to the frontend and `/api/*` to FastAPI.
-For the current local-state architecture, the reproducible Google Cloud VM
-deployment is documented in [`deploy/README.md`](deploy/README.md).
+For the current local-state architecture, the AWS EC2 VM deployment is
+documented in [`deploy/README.md`](deploy/README.md).
 
 ### Single-user access
 
@@ -340,43 +340,25 @@ the same library, saved conversations, generated images, and ingestion controls.
 Restrict the AWS VM's inbound application ports to your own IP; the application
 does not provide an authentication boundary.
 
-### Production deployment and continuous delivery
+### AWS production deployment and CI
 
-The current production deployment uses one persistent Google Compute Engine VM
-in `asia-south1-a`. Caddy terminates HTTPS, serves the frontend, and routes the
-app's same-origin API requests to FastAPI:
-
-- App: [gyaan-sarthi.duckdns.org](https://gyaan-sarthi.duckdns.org)
-- App API and primary health check: [gyaan-sarthi.duckdns.org/api/health](https://gyaan-sarthi.duckdns.org/api/health)
-- Compatibility API and health check: [gyaan-sarthi-api.duckdns.org/health](https://gyaan-sarthi-api.duckdns.org/health)
+The AWS deployment guide uses one persistent EC2 VM. Caddy terminates HTTPS,
+serves the frontend, and routes same-origin API requests to FastAPI.
 
 Docker Compose runs the FastAPI backend, frontend, Redis, and Caddy. ChromaDB,
 uploaded documents, SQLite conversations, and generated images stay on the VM's
 persistent disk. This design is appropriate for the current single-VM deployment;
 those stateful services must move to managed storage before scaling across
-instances or using Cloud Run.
+instances.
 
-Every pull request runs backend tests plus frontend lint, build, and production
-dependency audit. A push to `main` then performs continuous deployment:
+Every pull request and push to `main` runs backend tests plus frontend lint,
+build, and production dependency audit. Deployment to AWS is currently a manual
+Docker Compose step; no cloud credentials or instance identifiers are stored in
+GitHub Actions. Keep `GEMINI_API_KEY` and other runtime secrets only in the VM's
+ignored `.env.production` file.
 
-1. GitHub Actions authenticates to Google Cloud with Workload Identity Federation
-   (no downloaded service-account key).
-2. It builds and publishes immutable backend, frontend, and Caddy images, tagged
-   with the Git commit SHA, to Artifact Registry.
-3. It transfers the checked-in Compose configuration and release script through
-   IAP SSH, starts the image set, verifies `/api/health` through Caddy, and
-   records the healthy release for rollback protection.
-
-Configure these GitHub repository variables before enabling deployment:
-`GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SERVICE_ACCOUNT`,
-`APP_DOMAIN` and `API_DOMAIN`.
-Keep `GEMINI_API_KEY` and all runtime secrets only in the VM's ignored
-`.env.production` or Secret Manager. The VM service account needs read-only
-Artifact Registry access, and its root Docker configuration must include the
-regional Artifact Registry credential helper.
-
-For VM bootstrap, firewall, DNS, backup, and recovery instructions, see
-[`deploy/README.md`](deploy/README.md). The deployment workflow is in
+For EC2 setup, firewall, DNS, backup, and recovery instructions, see
+[`deploy/README.md`](deploy/README.md). The CI workflow is in
 [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml), and the release
 health/rollback script is [`deploy/release.sh`](deploy/release.sh).
 

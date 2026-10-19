@@ -66,9 +66,8 @@ def _ocr_with_tesseract(png: bytes) -> str:
 def _with_retry(fn, what: str):
     """Retry a hosted-OCR call with exponential backoff.
 
-    Hosted OCR fails transiently in two ways seen in practice: Vision 503
-    "service is currently unavailable", and Vertex 429 RESOURCE_EXHAUSTED under
-    per-minute quota. Neither means the page is unreadable — retrying works.
+    Gemini OCR can fail transiently with service-unavailable or rate-limit
+    errors. Neither means the page is unreadable — retrying may work.
     Without this, a single blip aborts an entire multi-hour index.
     """
     last = None

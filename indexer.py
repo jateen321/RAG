@@ -27,8 +27,7 @@ from chroma_lock import LockedCollection, chroma_db_lock, validate_chroma_store
 
 console = Console()
 
-# Embeddings have their own client so Vertex regional routing cannot affect
-# answer generation.
+# Share the Gemini Developer API client for document embeddings.
 _client = get_embedding_client()
 _document_index_lock = threading.RLock()
 OWNER_MIGRATION_BATCH_SIZE = 5000

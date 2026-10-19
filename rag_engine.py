@@ -29,7 +29,7 @@ from retrieval_pipeline import retrieve_adaptive_context as retrieve_context
 console = Console()
 logger = logging.getLogger(__name__)
 
-# Initialize Gemini client (backend chosen in config: Developer API or Vertex)
+# Initialize the Gemini Developer API client.
 _client = get_client()
 
 # System prompt for the LLM.

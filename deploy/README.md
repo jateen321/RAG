@@ -1,77 +1,76 @@
-# Google Cloud VM deployment
+# AWS EC2 VM deployment
 
-This deployment keeps the current local-state design intact: ChromaDB, SQLite,
-uploaded documents, and generated images live on a persistent VM disk. It runs
-the FastAPI backend, Next/Vinext frontend, Redis rate limiter, and Caddy HTTPS
-proxy with Docker Compose.
+The app runs as a single-user Docker Compose stack on a persistent EC2 VM. It
+uses local ChromaDB and SQLite state, Tesseract by default, and Gemini Developer
+API for model requests. OCR runs locally or through the Gemini Developer API.
 
-## One-time Google Cloud setup
+## Prepare the EC2 instance
 
-Use a billing-enabled Google Cloud project. The recommended starting size is an
-`e2-medium` VM in `asia-south1` with at least a 30 GB standard persistent disk.
-The Compute Engine free tier is not sufficient for this application's current
-~1.4 GB corpus plus runtime headroom in every region.
+Create or use an Ubuntu EC2 instance with enough memory for ChromaDB, the API,
+frontend, Redis, and indexing. Attach persistent EBS storage with enough room
+for the repository, Docker images, ChromaDB, and uploaded files. Install Docker
+Engine and the Docker Compose plugin. Mount or create `/opt/gyaan-sarthi` for
+the application and its persistent data.
 
-```bash
-gcloud auth login
-gcloud config set project gyaan-sarthi
-gcloud services enable compute.googleapis.com secretmanager.googleapis.com
-gcloud compute instances create gyaan-sarthi \
-  --zone=asia-south1-a \
-  --machine-type=e2-medium \
-  --boot-disk-size=30GB \
-  --image-family=ubuntu-2404-lts-amd64 \
-  --image-project=ubuntu-os-cloud \
-  --tags=http-server,https-server
-gcloud compute firewall-rules create allow-web \
-  --allow=tcp:80,tcp:443 --source-ranges=YOUR_PUBLIC_IP/32 \
-  --target-tags=http-server,https-server
-```
+Configure the instance security group to allow SSH only from your IP. Because
+the app has no sign-in, restrict app access to your IP as well. The Caddyfile
+uses automatic public certificate validation, which requires the certificate
+authority to reach the validation port. If ports 80/443 are IP-restricted,
+configure TLS with DNS validation or a pre-provisioned certificate; otherwise
+publicly reachable ports make the unauthenticated app accessible to others.
+Point the `APP_DOMAIN` DNS A record to the instance's public IP; `API_DOMAIN`
+may point to the same address for compatibility checks.
 
-Point the `APP_DOMAIN` DNS A record at the VM's external IP. `API_DOMAIN` can
-remain pointed at the same address for compatibility health checks and direct
-API access. Restrict the VM's inbound application ports to your own IP because
-single-user mode does not require sign-in.
-Caddy obtains and renews HTTPS certificates automatically, and routes browser
-API requests from `https://${APP_DOMAIN}/api/*` to FastAPI on the same origin.
+## Copy the app and data
 
-## Transfer and start
-
-Install Docker on the VM, clone the repository, and copy the ignored runtime
-state from a trusted local backup. Do not copy `.env`, service-account JSON, or
-the local `.venv`.
+From a trusted machine that has the repository and the indexed data, set these
+shell variables for your own instance, then copy the files over SSH:
 
 ```bash
-gcloud compute ssh gyaan-sarthi --zone=asia-south1-a --command='sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin && sudo mkdir -p /opt/gyaan-sarthi && sudo chown "$USER":"$USER" /opt/gyaan-sarthi'
+export EC2_HOST=your-instance-public-dns
+export EC2_USER=ubuntu
+export SSH_KEY=~/.ssh/your-ec2-key.pem
+ssh -i "$SSH_KEY" "$EC2_USER@$EC2_HOST" \
+  'sudo mkdir -p /opt/gyaan-sarthi && sudo chown ubuntu:ubuntu /opt/gyaan-sarthi'
 git clone https://github.com/jateen321/RAG.git /tmp/gyaan-sarthi-source
-gcloud compute scp --recurse /tmp/gyaan-sarthi-source/. gyaan-sarthi:/opt/gyaan-sarthi/ --zone=asia-south1-a
-gcloud compute scp --recurse chroma_db data gyaan-sarthi:/opt/gyaan-sarthi/ --zone=asia-south1-a
+rsync -az --exclude .git --exclude .venv --exclude node_modules \
+  -e "ssh -i $SSH_KEY" /tmp/gyaan-sarthi-source/ \
+  "$EC2_USER@$EC2_HOST:/opt/gyaan-sarthi/"
+rsync -az -e "ssh -i $SSH_KEY" chroma_db data \
+  "$EC2_USER@$EC2_HOST:/opt/gyaan-sarthi/"
 ```
 
-On the VM, copy `.env.production.example` to `.env.production`, fill in the
-Gemini Developer API key and application domains, then start the stack:
+Do not copy local `.env` files or credentials. On the instance, create
+`.env.production` from the example and set the real Gemini key and domains:
 
 ```bash
 cd /opt/gyaan-sarthi
 cp .env.production.example .env.production
-docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
-curl -fsS "https://${APP_DOMAIN}/api/health"
+chmod 600 .env.production
 ```
 
-Set `NEXT_PUBLIC_RAG_API_URL=/api` in `.env.production`. Use Secret Manager for
-`GEMINI_API_KEY` and any other sensitive values. Grant the
-VM service account only `roles/secretmanager.secretAccessor`; never commit a
-service-account key. Before opening the app publicly, verify that `/health`
-reports 21,499 shared chunks and that upload, ingestion, and saved conversations
-work in the single-user instance.
+## Start and verify
 
-## Backups and rollback
+Build the app on the instance and start the Compose stack:
 
-Schedule daily Compute Engine disk snapshots and test restoring one. Before a
-corpus update, snapshot the disk or copy `chroma_db/`, `data/`, and the SQLite
-conversation database to a separate backup location. Roll back by stopping the
-stack, restoring the snapshot, and starting the same Compose revision.
+```bash
+cd /opt/gyaan-sarthi
+docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.production.yml ps
+curl -fsS "https://your-app-domain.example/api/health"
+```
 
-For higher traffic, migrate ChromaDB and SQLite to managed services before
-moving to Cloud Run; Cloud Run's writable filesystem is disposable and does not
-preserve these files between instances.
+Keep the populated `.env.production` file on the instance only. The single-user
+app has no sign-in boundary; restrict the security group to your IP.
+
+## Backups and recovery
+
+Take regular EBS snapshots and verify that you can restore one. Back up
+`chroma_db/`, `data/`, and the SQLite conversation database before indexing
+large document batches. Restore the data and restart the same Compose stack to
+recover the instance.
+
+GitHub Actions runs CI checks only; deployment is manual. No cloud deployment
+credentials are configured in the workflow. The Compose configuration is
+[`../docker-compose.production.yml`](../docker-compose.production.yml), and the
+optional image-based release/rollback helper is [`release.sh`](release.sh).

@@ -16,7 +16,7 @@ from chroma_lock import chroma_db_lock
 
 console = Console()
 
-# Keep the familiar SDK-shaped interface while rotating Vertex embeddings.
+# Reuse the Gemini Developer API client for query embeddings.
 _client = get_embedding_client()
 
 
