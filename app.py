@@ -4,7 +4,7 @@
 Query documents and YouTube transcripts in Hindi or English using AI.
 Uses Google Gemini for retrieval and answers, with adaptive extraction that keeps
 clean document text and routes scanned or garbled pages through the configured
-OCR backend (Google Vision, Tesseract, or Gemini).
+OCR backend (Tesseract or Gemini).
 
 Usage:
     python app.py index                  Pick a PDF from data/ and index it
