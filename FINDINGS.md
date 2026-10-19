@@ -1322,11 +1322,6 @@ operation concurrency; endpoint requests-per-minute alone cannot represent or ca
 consumption. Redis-backed atomic state is required when multiple API workers or replicas share the
 same paid provider credentials.
 
-**Revised 2026-09-12 (🟢 code-verified):** administrators are now outside this protection.
-`_rate_limited` returns before `admit()` when `user.is_admin`, so admin requests spend no bucket
-tokens and hold no global concurrency slot. An admin import can therefore run alongside a user's
-import despite `RAG_CONCURRENCY_INGEST=1`.
-
 ## 27. Authentication without storage filters is not tenant isolation (2026-08-31)
 
 🟢 **Repo-verified design:** before authentication, conversation IDs, source paths, generated-image
@@ -1374,12 +1369,6 @@ layout and the `{identity_tag}` / `{global}` hash tags keep multi-key scripts in
 but reviewed-and-plausible is not verified. Installing `fakeredis` and exercising bucket
 exhaustion, refill, lease expiry, and heartbeat renewal is the outstanding work before the
 concurrency claims can be stated as fact.
-
-**Revised 2026-09-12 (🟢 code-verified):** the test gap still stands (`test_rate_limit.py` mocks Redis with
-`AsyncMock`), but the path is no longer dormant. Since the VM deployment (`49c4c77`),
-`docker-compose.production.yml` sets `RAG_RATE_LIMIT_ENABLED: "1"` with a Compose `redis` service,
-so this unverified Lua runs in production. §40's `Retry-After` analysis comes from reading
-`_ACQUIRE_CONCURRENCY_SCRIPT`, not from a Redis run.
 
 ## 31. VM public IP is now static (2026-09-01)
 
@@ -1469,8 +1458,7 @@ and rollback then failed to copy a 398-byte file, leaving an empty `rollback-*.e
 kept serving `0f055f9` (public `/api/health` 200). The disk was 29 GB with 258 MB free: 25 images
 totalled 23.8 GB with only 4 in use (each release adds a ~1.14 GB backend and ~1.25 GB frontend),
 plus 6.6 GB of build cache from the first manual build; app data was only 1.4 GB. `release.sh` now
-runs `docker image prune --all` and `docker builder prune --all` before each pull; the first such
-release (`7cb6eb7`) took the disk from 258 MB free to 19 GB free (34% used). Every release
+runs `docker image prune --all` and `docker builder prune --all` before each pull. Every release
 image remains in Artifact Registry, which has no cleanup policy yet (⚪ growing storage cost).
 
 ## 43. The CI audit gate skips packages that run in production (2026-09-11)
