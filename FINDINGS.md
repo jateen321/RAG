@@ -1597,3 +1597,9 @@ the raw `⟦...⟧` marker instead of a numbered citation. Source serialization 
 Caddy `/api/health` at 502. A 4 GiB swap file on the existing disk restored healthy containers and
 HTTP 200; startup exceeded the release script's former 120-second wait. The ownership migration also
 fetched all Chroma metadata at once, so its reads are now paged.
+
+## 56. Docker does not copy local environment files into the image (2026-10-23)
+
+🟢 **Repo-verified:** `.dockerignore` excludes `.env` and `.env.*` from the Docker build context,
+while Compose supplies `.env.production` to the backend at runtime through `env_file`. A successful
+API-key test from the host's `.env` therefore does not verify which key the running container uses.
