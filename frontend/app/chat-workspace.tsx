@@ -170,9 +170,11 @@ const MAX_PROMPT_IMAGE_BYTES = 10 * 1024 * 1024;
 const generatedImageUrl = (imageId: string) => `${API_URL}/generated-images/${encodeURIComponent(imageId)}`;
 
 const suggestions = [
-  'Summarize the main ideas in the indexed books',
-  "What does the CIL report say about India's coal production?",
-  'भाग्य और कर्म के संबंध को समझाइए',
+  'नचिकेता ने मृत्यु के बाद क्या होता है, यह यम से पूछा। यम ने जवाब टालने के लिए उसे कौन-कौन से आकर्षक वरदान देने चाहे?',
+  'How did Chandarava fool the forest animals into making him king, and what finally exposed him?',
+  'कौटिल्य के अर्थशास्त्र में राजा के spies का काम सिर्फ अपराध पकड़ना नहीं था—वे प्रजा की कौन-सी समस्याएँ पता लगाते थे?',
+  'कलिंग युद्ध के बाद अशोक ने “विजय” का अर्थ कैसे बदला?',
+  'The Gita says to act without attachment to results. What does it add to guard against using that teaching as an excuse for inaction?',
 ];
 
 class RequestError extends Error {
