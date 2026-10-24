@@ -1607,3 +1607,14 @@ fetched all Chroma metadata at once, so its reads are now paged.
 🟢 **Repo-verified:** `.dockerignore` excludes `.env` and `.env.*` from the Docker build context,
 while Compose supplies `.env.production` to the backend at runtime through `env_file`. A successful
 API-key test from the host's `.env` therefore does not verify which key the running container uses.
+
+## 57. Production Caddy is restarting with no public web listener (2026-10-24)
+
+🟢 **VM-observed:** backend, frontend, and Redis report healthy, but the Caddy container is
+restarting and the VM has no listener on ports 80 or 443. Direct access to the VM IP therefore
+fails before reaching the application.
+
+🟡 **Hypothesis:** `.env.production` sets `APP_DOMAIN` and `API_DOMAIN` to the same hostname, while
+`Caddyfile` declares separate site blocks for both. Check Caddy logs to confirm whether the
+duplicate site address is the startup error; the app-domain block already proxies `/api/*` to the
+backend.
