@@ -134,6 +134,10 @@ body). They are left as-is so existing references stay valid; cite a section by 
   single-bracket `[source, locator]` form only after that exact source-and-locator match;
   unrelated bracketed prose remains literal. The focused static-render check covers all
   three wrappers, including the single-bracket delimiter drift seen in a saved answer.
+- 🟢 **Repo-verified (2026-10-24):** PDF passage labels use
+  `filename · पृष्ठ N / Page N`. The citation parser accepts comma, period, or middle-dot
+  separators between source and locator, so these labels can render as source buttons
+  while existing comma-form citations remain supported.
 
 ---
 

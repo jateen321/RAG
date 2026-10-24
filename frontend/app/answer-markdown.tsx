@@ -34,7 +34,7 @@ const BULLET = /^\s*[*-]\s+(.*)$/;
 const ORDERED = /^\s*(\d+)\.\s+(.*)$/;
 const INLINE_TOKEN = /(\*\*[^*]+\*\*|⟦[^⟦⟧\n]+⟧|\[\[[^\[\]\n]+\]\]|\[[^\[\]\n]+\])/g;
 const CITATION_WRAPPER = /^(?:⟦(.+)⟧|\[\[(.+)\]\]|\[(.+)\])$/;
-const CITATION_CONTENT = /^(.+),\s*(?:(?:(?:Page|पृष्ठ|पेज)\s+(\d+)(?:\s*\/\s*(?:Page|पृष्ठ|पेज)\s+\2)?|Document section\s+(\d+))|Timestamp\s+(\d{1,2}:\d{2})|(Web))$/i;
+const CITATION_CONTENT = /^(.+?)[,.·]\s*(?:(?:(?:Page|पृष्ठ|पेज)\s+(\d+)(?:\s*\/\s*(?:Page|पृष्ठ|पेज)\s+\2)?|Document section\s+(\d+))|Timestamp\s+(\d{1,2}:\d{2})|(Web))$/i;
 
 const normalized = (value: string) => value.trim().replace(/\\/g, '/').split('/').at(-1)?.toLocaleLowerCase() || '';
 
